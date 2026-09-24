@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+data/flywire_parts/*.parquet
+*.feather
+proofread_connections_783.parquet
