@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 import glob
+import os
+import tempfile
 
 import duckdb
 
@@ -44,6 +46,21 @@ class FlyWireConnectome:
     def __post_init__(self) -> None:
         self.source = Path(self.source).expanduser()
         self.connection = duckdb.connect(database=":memory:")
+
+        # Large global aggregations can otherwise make a small Codespace hit its
+        # container memory limit. Keep DuckDB below that ceiling and allow it to
+        # spill intermediate data to disk instead of being killed by the OS.
+        temp_dir = Path(tempfile.gettempdir()) / "flygpt_duckdb"
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        memory_limit = os.environ.get("FLYGPT_MEMORY_LIMIT", "1GB")
+        threads = int(os.environ.get("FLYGPT_THREADS", "2"))
+        escaped_temp_dir = temp_dir.as_posix().replace("'", "''")
+        escaped_memory_limit = memory_limit.replace("'", "''")
+        self.connection.execute(f"SET memory_limit='{escaped_memory_limit}'")
+        self.connection.execute(f"SET threads={max(1, threads)}")
+        self.connection.execute("SET preserve_insertion_order=false")
+        self.connection.execute(f"SET temp_directory='{escaped_temp_dir}'")
+
         self._files = self._resolve_files()
         self._create_view()
         self._validate_schema()
@@ -261,24 +278,56 @@ class FlyWireConnectome:
             params.append(neuropil)
 
         where_sql = "WHERE " + " AND ".join(where) if where else ""
-        params.extend([int(min_synapses), int(limit)])
+
+        # First find the tiny set of strongest pairs using only IDs + syn_count.
+        # The old one-pass query kept six neurotransmitter aggregates plus a
+        # distinct-neuropil state for every pair in memory, which can exceed a
+        # Codespace's RAM on the 16.8M-row dataset. Once the top IDs are known,
+        # scan again and calculate the richer metrics for only those pairs.
+        top_params = [*params, int(min_synapses), int(limit)]
+        detail_where = ""
+        if neuropil is not None:
+            detail_where = "WHERE c.neuropil = ?"
+            top_params.append(neuropil)
 
         cursor = self.connection.execute(
             f"""
+            WITH top_pairs AS MATERIALIZED (
+                SELECT
+                    pre_pt_root_id,
+                    post_pt_root_id,
+                    SUM(syn_count)::BIGINT AS syn_count
+                FROM connections
+                {where_sql}
+                GROUP BY pre_pt_root_id, post_pt_root_id
+                HAVING SUM(syn_count) >= ?
+                ORDER BY syn_count DESC, pre_pt_root_id, post_pt_root_id
+                LIMIT ?
+            )
             SELECT
-                pre_pt_root_id,
-                post_pt_root_id,
-                SUM(syn_count)::BIGINT AS syn_count,
-                COUNT(DISTINCT neuropil)::INTEGER AS neuropil_count,
-                {_weighted_nt_sql()}
-            FROM connections
-            {where_sql}
-            GROUP BY pre_pt_root_id, post_pt_root_id
-            HAVING SUM(syn_count) >= ?
-            ORDER BY syn_count DESC, pre_pt_root_id, post_pt_root_id
-            LIMIT ?
+                t.pre_pt_root_id,
+                t.post_pt_root_id,
+                t.syn_count,
+                COUNT(DISTINCT c.neuropil)::INTEGER AS neuropil_count,
+                {", ".join(
+                    f"SUM(c.{column} * c.syn_count) / NULLIF(SUM(c.syn_count), 0) AS {column}"
+                    for column in NT_COLUMNS
+                )}
+            FROM top_pairs AS t
+            JOIN connections AS c
+              ON c.pre_pt_root_id = t.pre_pt_root_id
+             AND c.post_pt_root_id = t.post_pt_root_id
+            {detail_where}
+            GROUP BY
+                t.pre_pt_root_id,
+                t.post_pt_root_id,
+                t.syn_count
+            ORDER BY
+                t.syn_count DESC,
+                t.pre_pt_root_id,
+                t.post_pt_root_id
             """,
-            params,
+            top_params,
         )
         return self._dict_rows(cursor)
 
