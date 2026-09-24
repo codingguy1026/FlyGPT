@@ -64,6 +64,14 @@ class FlyWireConnectomeTest(unittest.TestCase):
         self.assertEqual(pair["syn_count"], 5)
         self.assertEqual(len(pair["by_neuropil"]), 2)
 
+    def test_top_connections(self) -> None:
+        with FlyWireConnectome(self.data_dir) as connectome:
+            rows = connectome.top_connections(limit=2)
+        self.assertEqual(rows[0]["pre_pt_root_id"], 1)
+        self.assertEqual(rows[0]["post_pt_root_id"], 2)
+        self.assertEqual(rows[0]["syn_count"], 5)
+        self.assertEqual(rows[0]["neuropil_count"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()
