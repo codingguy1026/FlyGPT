@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>FlyGPT - Drosophila Connectome Chat</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="chat-container">
+    <header class="chat-header">
+      <div class="brand">
+        <span class="logo">🪰</span>
+        <div>
+          <h1>FlyGPT</h1>
+          <div class="sub">Explore the FlyWire Drosophila connectome</div>
+        </div>
+      </div>
+      <div class="status-badge">ONLINE</div>
+    </header>
+
+    <main class="chat-messages" id="chatMessages" aria-live="polite">
+      <div class="message assistant">
+        <div class="avatar">🪰</div>
+        <div class="bubble">안녕하세요! FlyGPT입니다. FlyWire 초파리 커넥톰 데이터를 질의할 수 있습니다.
+
+예시:
+• 데이터 통계 보여줘
+• 가장 강한 연결 10개 보여줘
+• 뉴런 720575940000000000 보여줘</div>
+      </div>
+    </main>
+
+    <div class="chat-input-area">
+      <form id="chatForm">
+        <input
+          type="text"
+          id="userInput"
+          placeholder="커넥톰 데이터에 대해 무엇이든 물어보세요..."
+          autocomplete="off"
+          required
+        >
+        <button type="submit" id="sendBtn">전송</button>
+      </form>
+      <div class="footer-note">FlyGPT Research Prototype</div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
