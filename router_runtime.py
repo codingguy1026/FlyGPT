@@ -136,6 +136,7 @@ class FlyRouterRuntime:
         ]
 
         return {
+            "model": self.model_path.name,
             "route": ranked[0]["route"],
             "confidence": ranked[0]["confidence"],
             "top_routes": ranked,
