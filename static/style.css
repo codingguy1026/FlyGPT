@@ -264,7 +264,11 @@ h2 {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
-.app-shell.brain-open .brain-panel {
+.brain-panel[hidden] {
+  display: none !important;
+}
+
+.app-shell.brain-open .brain-panel:not([hidden]) {
   display: flex;
 }
 
