@@ -7,43 +7,87 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <div class="chat-container">
-    <header class="chat-header">
-      <div class="brand">
-        <span class="logo">🪰</span>
-        <div>
-          <h1>FlyGPT</h1>
-          <div class="sub">FlyWire connectome + learned Fly Router</div>
+  <div class="app-shell">
+    <section class="chat-container">
+      <header class="chat-header">
+        <div class="brand">
+          <span class="logo">🪰</span>
+          <div>
+            <h1>FlyGPT</h1>
+            <div class="sub">FlyWire connectome + learned Fly Router</div>
+          </div>
         </div>
-      </div>
-      <div class="status-badge">ONLINE</div>
-    </header>
+        <div class="status-badge">ONLINE</div>
+      </header>
 
-    <main class="chat-messages" id="chatMessages" aria-live="polite">
-      <div class="message assistant">
-        <div class="avatar">🪰</div>
-        <div class="bubble">안녕하세요! FlyGPT입니다. FlyWire 초파리 커넥톰 데이터를 질의할 수 있습니다.
+      <main class="chat-messages" id="chatMessages" aria-live="polite">
+        <div class="message assistant">
+          <div class="avatar">🪰</div>
+          <div class="bubble">안녕하세요! FlyGPT입니다. FlyWire 초파리 커넥톰과 학습된 라우터를 테스트할 수 있습니다.
 
 예시:
 • 데이터 통계 보여줘
 • 가장 강한 연결 10개 보여줘
-• 뉴런 720575940627737365 보여줘\n• 17 × 23은?</div>
-      </div>
-    </main>
+• 뉴런 720575940627737365 보여줘
+• 17 × 23은?</div>
+        </div>
+      </main>
 
-    <div class="chat-input-area">
-      <form id="chatForm">
-        <input
-          type="text"
-          id="userInput"
-          placeholder="커넥톰 질의 또는 Fly Router 테스트..."
-          autocomplete="off"
-          required
-        >
-        <button type="submit" id="sendBtn">전송</button>
-      </form>
-      <div class="footer-note">FlyGPT Research Prototype</div>
-    </div>
+      <div class="chat-input-area">
+        <form id="chatForm">
+          <input
+            type="text"
+            id="userInput"
+            placeholder="커넥톰 질의 또는 Fly Router 테스트..."
+            autocomplete="off"
+            required
+          >
+          <button type="submit" id="sendBtn">전송</button>
+        </form>
+        <div class="footer-note">FlyGPT Research Prototype</div>
+      </div>
+    </section>
+
+    <aside class="brain-panel">
+      <header class="brain-header">
+        <div>
+          <div class="eyebrow">LIVE MODEL VIEW</div>
+          <h2>FlyGraph Neural Map</h2>
+        </div>
+        <div class="brain-status" id="brainStatus">LOADING</div>
+      </header>
+
+      <div class="brain-stats">
+        <span id="brainNodeCount">— nodes</span>
+        <span id="brainEdgeCount">— edges</span>
+        <span id="brainStepCount">— steps</span>
+      </div>
+
+      <div class="brain-stage" id="brainStage">
+        <canvas id="brainCanvas" aria-label="FlyGPT connectome scaffold activation map"></canvas>
+        <div class="brain-empty" id="brainEmpty">파리 뇌 지도를 불러오는 중...</div>
+        <div class="brain-tooltip" id="brainTooltip" hidden></div>
+        <div class="stage-chip" id="stageChip">idle</div>
+      </div>
+
+      <section class="route-card">
+        <div class="route-card-top">
+          <div>
+            <div class="eyebrow">ROUTE DECISION</div>
+            <div class="route-name" id="routeName">Waiting for a question</div>
+          </div>
+          <div class="route-confidence" id="routeConfidence">—</div>
+        </div>
+        <div class="route-bars" id="routeBars">
+          <div class="route-placeholder">질문을 보내면 여기서 라우팅 결과가 표시됩니다.</div>
+        </div>
+      </section>
+
+      <div class="brain-note">
+        그래프의 연결은 FlyWire scaffold에서 가져오며, 빛나는 정도는 모델의 내부 활성도입니다.
+        실제 생물학적 뉴런 발화 지도가 아니라 모델 계산을 시각화한 것입니다.
+      </div>
+    </aside>
   </div>
 
   <script src="/static/app.js"></script>
