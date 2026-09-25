@@ -34,7 +34,7 @@ function createLoadingMessage() {
 
   const bubble = document.createElement('div');
   bubble.className = 'bubble loading';
-  bubble.textContent = '커넥톰 데이터베이스를 쿼리 중입니다...';
+  bubble.textContent = 'FlyGPT가 요청을 처리 중입니다...';
 
   wrapper.appendChild(avatar);
   wrapper.appendChild(bubble);
