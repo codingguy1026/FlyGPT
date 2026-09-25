@@ -16,7 +16,19 @@ from connectome import FlyWireConnectome, NT_COLUMNS
 
 
 DATA_DIR = os.environ.get("FLYWIRE_DATA_DIR", "data/flywire_parts")
-MODEL_PATH = os.environ.get("FLYGPT_MODEL_PATH", "artifacts/fly_router_v0_2.pt")
+
+_model_override = os.environ.get("FLYGPT_MODEL_PATH")
+if _model_override:
+    MODEL_PATH = _model_override
+else:
+    _model_candidates = (
+        "artifacts/fly_router_v0_2.pt",
+        "artifacts/fly_router_v0_1.pt",
+    )
+    MODEL_PATH = next(
+        (path for path in _model_candidates if Path(path).is_file()),
+        _model_candidates[0],
+    )
 
 app = FastAPI(
     title="FlyGPT",
@@ -146,6 +158,17 @@ def index(request: Request):
         request=request,
         name="index.html",
     )
+
+
+@app.get("/api/router/graph")
+def router_graph():
+    router = get_router()
+    if router is None:
+        raise HTTPException(
+            status_code=503,
+            detail=_router_error or f"Fly router model not found: {MODEL_PATH}",
+        )
+    return router.graph()
 
 
 @app.get("/api/health")
@@ -317,8 +340,8 @@ def chat_endpoint(req: ChatRequest):
                 f"({route['n_nodes']} nodes, {route['steps']} propagation steps)\n\n"
                 "Top routes:\n"
                 f"{ranked}\n\n"
-                "현재 v0.1은 답변 생성 모델이 아니라 요청을 분류하는 라우터입니다. "
-                "즉 이 질문이 어느 처리 경로로 가야 하는지를 실제 학습된 체크포인트가 판단했습니다."
+                "현재 라우터는 답변 생성 모델이 아니라 요청을 분류하는 모델입니다. "
+                "오른쪽 그래프는 실제 FlyWire scaffold 위에서 계산된 모델 활성도를 보여줍니다."
             )
             return response_with_router(
                 answer=answer,
