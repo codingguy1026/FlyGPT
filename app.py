@@ -13,6 +13,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from connectome import FlyWireConnectome, NT_COLUMNS
+from dispatcher import dispatch
 
 
 DATA_DIR = os.environ.get("FLYWIRE_DATA_DIR", "data/flywire_parts")
@@ -32,7 +33,8 @@ else:
 
 app = FastAPI(
     title="FlyGPT",
-    description="Drosophila Connectome Chat Interface",
+    version="0.3.0",
+    description="Drosophila Connectome Chat Interface with Fly Router dispatching",
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -188,6 +190,8 @@ def health():
         "model_available": model_path.is_file(),
         "router_initialized": _router is not None,
         "router_error": _router_error,
+        "app_version": "0.3.0",
+        "dispatcher_enabled": True,
     }
 
 
@@ -328,26 +332,20 @@ def chat_endpoint(req: ChatRequest):
             )
 
         if route is not None:
-            ranked = "\n".join(
-                f"• {item['route']}: {item['confidence']:.1%}"
-                for item in route["top_routes"]
-            )
+            result = dispatch(msg, route)
             model_label = route.get("model", Path(MODEL_PATH).name)
+
             answer = (
-                f"🪰 Fly Router · {model_label}\n\n"
-                f"Predicted route: {route['route']}\n"
-                f"Confidence: {route['confidence']:.1%}\n"
-                f"Scaffold: {route['scaffold_kind']} "
-                f"({route['n_nodes']} nodes, {route['steps']} propagation steps)\n\n"
-                "Top routes:\n"
-                f"{ranked}\n\n"
-                "현재 라우터는 답변 생성 모델이 아니라 요청을 분류하는 모델입니다. "
-                "오른쪽 그래프는 실제 FlyWire scaffold 위에서 계산된 모델 활성도를 보여줍니다."
+                f"🪰 FlyGPT v0.3 · {result.handler}\n\n"
+                f"{result.answer}\n\n"
+                f"Route: {route['route']} · {route['confidence']:.1%}\n"
+                f"Model: {model_label}"
             )
+
             return response_with_router(
                 answer=answer,
-                response_type="router",
-                data=None,
+                response_type="dispatch",
+                data=result.to_dict(),
                 route=route,
             )
 
