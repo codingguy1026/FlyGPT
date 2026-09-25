@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from connectome import FlyWireConnectome, NT_COLUMNS
 from dispatcher import dispatch
+from generator_runtime import GENERATIVE_ROUTES, GeneratorRuntime
 
 
 DATA_DIR = os.environ.get("FLYWIRE_DATA_DIR", "data/flywire_parts")
@@ -33,8 +34,8 @@ else:
 
 app = FastAPI(
     title="FlyGPT",
-    version="0.3.0",
-    description="Drosophila Connectome Chat Interface with Fly Router dispatching",
+    version="0.4.0",
+    description="Drosophila Connectome Chat Interface with routing, dispatching, and optional generation",
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -46,6 +47,8 @@ _connectome_lock = threading.Lock()
 _router: Any | None = None
 _router_lock = threading.Lock()
 _router_error: str | None = None
+
+_generator = GeneratorRuntime()
 
 
 class ChatRequest(BaseModel):
@@ -190,8 +193,9 @@ def health():
         "model_available": model_path.is_file(),
         "router_initialized": _router is not None,
         "router_error": _router_error,
-        "app_version": "0.3.0",
+        "app_version": "0.4.0",
         "dispatcher_enabled": True,
+        "generator": _generator.status(),
     }
 
 
@@ -335,17 +339,37 @@ def chat_endpoint(req: ChatRequest):
             result = dispatch(msg, route)
             model_label = route.get("model", Path(MODEL_PATH).name)
 
+            generation = None
+            final_answer = result.answer
+            mode_label = result.handler
+
+            if (
+                result.status == "completed"
+                and result.route in GENERATIVE_ROUTES
+            ):
+                generation = _generator.generate(msg, result.route)
+                if generation.used and generation.answer:
+                    final_answer = generation.answer
+                    mode_label = f"{result.route} · generated"
+                elif generation.error:
+                    mode_label = f"{result.handler} · fallback"
+
             answer = (
-                f"🪰 FlyGPT v0.3 · {result.handler}\n\n"
-                f"{result.answer}\n\n"
+                f"🪰 FlyGPT v0.4 · {mode_label}\n\n"
+                f"{final_answer}\n\n"
                 f"Route: {route['route']} · {route['confidence']:.1%}\n"
-                f"Model: {model_label}"
+                f"Router: {model_label}"
             )
+
+            data = {
+                "dispatch": result.to_dict(),
+                "generation": generation.to_dict() if generation is not None else None,
+            }
 
             return response_with_router(
                 answer=answer,
                 response_type="dispatch",
-                data=result.to_dict(),
+                data=data,
                 route=route,
             )
 
