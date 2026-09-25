@@ -163,7 +163,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Train FlyGPT's first connectome-inspired task router")
     parser.add_argument("--dataset", type=Path, default=Path("training/teacher_seed.jsonl"))
     parser.add_argument("--scaffold", type=Path, help="JSON scaffold built from FlyWire; omit only for smoke tests")
-    parser.add_argument("--out", type=Path, default=Path("artifacts/fly_router_v0_1.pt"))
+    parser.add_argument("--out", type=Path, default=Path("artifacts/fly_router_v0_2.pt"))
     parser.add_argument("--epochs", type=int, default=60)
     parser.add_argument("--lr", type=float, default=2e-3)
     parser.add_argument("--weight-decay", type=float, default=1e-4)
