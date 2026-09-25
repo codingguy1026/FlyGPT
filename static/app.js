@@ -1,3 +1,7 @@
+const appShell = document.getElementById('appShell');
+const brainToggle = document.getElementById('brainToggle');
+const brainClose = document.getElementById('brainClose');
+const brainPanel = document.getElementById('brainPanel');
 const chatMessages = document.getElementById('chatMessages');
 const chatForm = document.getElementById('chatForm');
 const userInput = document.getElementById('userInput');
@@ -22,6 +26,24 @@ let currentActivations = [];
 let traceTimer = null;
 let traceGeneration = 0;
 let hoveredNode = null;
+
+function setBrainOpen(open) {
+  appShell.classList.toggle('brain-open', open);
+  brainToggle.setAttribute('aria-expanded', String(open));
+  brainPanel.setAttribute('aria-hidden', String(!open));
+
+  if (open) {
+    requestAnimationFrame(() => resizeCanvas());
+  }
+}
+
+brainToggle.addEventListener('click', () => {
+  setBrainOpen(!appShell.classList.contains('brain-open'));
+});
+
+brainClose.addEventListener('click', () => {
+  setBrainOpen(false);
+});
 
 function appendMessage(sender, content) {
   const msgDiv = document.createElement('div');
@@ -426,3 +448,7 @@ chatForm.addEventListener('submit', async (event) => {
 });
 
 loadBrainGraph();
+
+if (window.matchMedia('(min-width: 1340px)').matches) {
+  setBrainOpen(true);
+}
