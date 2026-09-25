@@ -16,7 +16,7 @@ from connectome import FlyWireConnectome, NT_COLUMNS
 
 
 DATA_DIR = os.environ.get("FLYWIRE_DATA_DIR", "data/flywire_parts")
-MODEL_PATH = os.environ.get("FLYGPT_MODEL_PATH", "artifacts/fly_router_v0_1.pt")
+MODEL_PATH = os.environ.get("FLYGPT_MODEL_PATH", "artifacts/fly_router_v0_2.pt")
 
 app = FastAPI(
     title="FlyGPT",
@@ -310,7 +310,7 @@ def chat_endpoint(req: ChatRequest):
                 for item in route["top_routes"]
             )
             answer = (
-                "🪰 Fly Router v0.1\n\n"
+                "🪰 Fly Router v0.2\n\n"
                 f"Predicted route: {route['route']}\n"
                 f"Confidence: {route['confidence']:.1%}\n"
                 f"Scaffold: {route['scaffold_kind']} "
