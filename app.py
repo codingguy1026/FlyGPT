@@ -351,7 +351,7 @@ def chat_endpoint(req: ChatRequest):
                 if generation.used and generation.answer:
                     final_answer = generation.answer
                     mode_label = f"{result.route} · generated"
-                elif generation.error:
+                else:
                     mode_label = f"{result.handler} · fallback"
 
             answer = (
