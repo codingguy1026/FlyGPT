@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <div class="app-shell">
+  <div class="app-shell" id="appShell">
     <section class="chat-container">
       <header class="chat-header">
         <div class="brand">
@@ -17,7 +17,17 @@
             <div class="sub">FlyWire connectome + learned Fly Router</div>
           </div>
         </div>
-        <div class="status-badge">ONLINE</div>
+
+        <div class="header-actions">
+          <button
+            class="brain-toggle"
+            id="brainToggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="brainPanel"
+          >🧠 Brain</button>
+          <div class="status-badge">ONLINE</div>
+        </div>
       </header>
 
       <main class="chat-messages" id="chatMessages" aria-live="polite">
@@ -48,13 +58,16 @@
       </div>
     </section>
 
-    <aside class="brain-panel">
+    <aside class="brain-panel" id="brainPanel" aria-hidden="true">
       <header class="brain-header">
         <div>
           <div class="eyebrow">LIVE MODEL VIEW</div>
           <h2>FlyGraph Neural Map</h2>
         </div>
-        <div class="brain-status" id="brainStatus">LOADING</div>
+        <div class="brain-header-actions">
+          <div class="brain-status" id="brainStatus">LOADING</div>
+          <button class="brain-close" id="brainClose" type="button" aria-label="Brain 패널 닫기">×</button>
+        </div>
       </header>
 
       <div class="brain-stats">
@@ -84,8 +97,8 @@
       </section>
 
       <div class="brain-note">
-        그래프의 연결은 FlyWire scaffold에서 가져오며, 빛나는 정도는 모델의 내부 활성도입니다.
-        실제 생물학적 뉴런 발화 지도가 아니라 모델 계산을 시각화한 것입니다.
+        연결은 FlyWire scaffold 기반이고, 빛나는 정도는 FlyGPT 모델 내부 활성도입니다.
+        실제 생물학적 뉴런 발화 지도는 아닙니다.
       </div>
     </aside>
   </div>
