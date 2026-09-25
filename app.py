@@ -332,8 +332,9 @@ def chat_endpoint(req: ChatRequest):
                 f"• {item['route']}: {item['confidence']:.1%}"
                 for item in route["top_routes"]
             )
+            model_label = route.get("model", Path(MODEL_PATH).name)
             answer = (
-                "🪰 Fly Router v0.2\n\n"
+                f"🪰 Fly Router · {model_label}\n\n"
                 f"Predicted route: {route['route']}\n"
                 f"Confidence: {route['confidence']:.1%}\n"
                 f"Scaffold: {route['scaffold_kind']} "
