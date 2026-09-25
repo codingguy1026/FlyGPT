@@ -26,14 +26,28 @@ let currentActivations = [];
 let traceTimer = null;
 let traceGeneration = 0;
 let hoveredNode = null;
+let graphLoadStarted = false;
 
 function setBrainOpen(open) {
   appShell.classList.toggle('brain-open', open);
   brainToggle.setAttribute('aria-expanded', String(open));
   brainPanel.setAttribute('aria-hidden', String(!open));
+  brainPanel.hidden = !open;
 
   if (open) {
-    requestAnimationFrame(() => resizeCanvas());
+    if (!graphLoadStarted) {
+      graphLoadStarted = true;
+      loadBrainGraph();
+    }
+
+    requestAnimationFrame(() => {
+      resizeCanvas();
+
+      // On narrow screens the HUD lives below the chat.
+      if (window.matchMedia('(max-width: 1339px)').matches) {
+        brainPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
   }
 }
 
@@ -447,8 +461,5 @@ chatForm.addEventListener('submit', async (event) => {
   }
 });
 
-loadBrainGraph();
-
-if (window.matchMedia('(min-width: 1340px)').matches) {
-  setBrainOpen(true);
-}
+// Keep the original chat UI completely stable on first paint.
+setBrainOpen(false);
