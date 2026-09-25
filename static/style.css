@@ -1,15 +1,14 @@
 :root {
-  --bg: #071018;
-  --panel: #0f1a23;
-  --panel-2: #101e29;
-  --border: #203747;
-  --text: #e9f2f8;
-  --muted: #8fa4b4;
+  --bg: #0b131a;
+  --panel: #111b24;
+  --border: #203242;
+  --text: #e6edf3;
+  --muted: #8b949e;
   --accent: #5fd8ff;
   --accent-hover: #45c4ed;
   --warm: #ffdd57;
-  --user-bg: #1d3950;
-  --assistant-bg: #132431;
+  --user-bg: #1f364d;
+  --assistant-bg: #142230;
 }
 
 * {
@@ -18,42 +17,41 @@
 
 html,
 body {
-  min-height: 100%;
+  height: 100%;
 }
 
 body {
   margin: 0;
-  min-height: 100vh;
-  background:
-    radial-gradient(circle at 74% 18%, rgba(35, 104, 128, 0.16), transparent 32rem),
-    linear-gradient(160deg, #071018 0%, #09131c 45%, #061019 100%);
+  background: var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
+/* 기존 FlyGPT UI의 크기와 중심 배치를 그대로 유지한다. */
 .app-shell {
-  width: min(1500px, calc(100vw - 28px));
-  height: min(95vh, 980px);
-  margin: 2.5vh auto;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(390px, 0.58fr);
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
   gap: 14px;
-}
-
-.chat-container,
-.brain-panel {
-  background: rgba(15, 26, 35, 0.96);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  overflow: hidden;
-  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.34);
+  width: 100%;
+  height: 100%;
 }
 
 .chat-container {
-  min-width: 0;
+  width: 100%;
+  max-width: 900px;
   height: 100%;
+  max-height: 95vh;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
 .chat-header {
@@ -62,22 +60,23 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(16, 29, 40, 0.92);
-  backdrop-filter: blur(14px);
+  gap: 12px;
+  background: rgba(17, 27, 36, 0.95);
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .logo {
   font-size: 24px;
-  background: #173247;
+  background: #1c3144;
   padding: 8px;
-  border-radius: 11px;
-  border: 1px solid #28516b;
+  border-radius: 10px;
+  border: 1px solid var(--border);
 }
 
 h1,
@@ -100,19 +99,44 @@ h2 {
   margin-top: 2px;
 }
 
+.header-actions,
+.brain-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .status-badge,
 .brain-status {
   font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  border-radius: 999px;
-  padding: 5px 9px;
+  font-weight: 700;
+  border-radius: 20px;
+  padding: 4px 8px;
 }
 
 .status-badge {
-  background: #0c281e;
-  color: #56df75;
-  border: 1px solid #1f5138;
+  background: #0d281e;
+  color: #3fb950;
+  border: 1px solid #1b4731;
+}
+
+.brain-toggle {
+  border: 1px solid var(--border);
+  background: #142432;
+  color: #bcd3df;
+  border-radius: 9px;
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.brain-toggle:hover,
+.brain-toggle[aria-expanded="true"] {
+  border-color: #3d7995;
+  color: #dff7ff;
+  background: #173246;
 }
 
 .chat-messages {
@@ -122,13 +146,12 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  scrollbar-color: #294455 transparent;
 }
 
 .message {
   display: flex;
   gap: 12px;
-  max-width: 88%;
+  max-width: 85%;
   line-height: 1.5;
   font-size: 14px;
 }
@@ -142,12 +165,11 @@ h2 {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #1f3443;
+  background: #1f3242;
   display: grid;
   place-items: center;
   flex-shrink: 0;
   font-size: 14px;
-  border: 1px solid #294859;
 }
 
 .message .bubble {
@@ -174,7 +196,7 @@ h2 {
 .chat-input-area {
   padding: 16px 20px;
   border-top: 1px solid var(--border);
-  background: rgba(15, 26, 35, 0.96);
+  background: var(--panel);
 }
 
 #chatForm {
@@ -185,7 +207,7 @@ h2 {
 #userInput {
   flex: 1;
   min-width: 0;
-  background: #070e14;
+  background: #070d12;
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 12px 16px;
@@ -196,7 +218,6 @@ h2 {
 
 #userInput:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(95, 216, 255, 0.08);
 }
 
 #sendBtn {
@@ -205,20 +226,18 @@ h2 {
   border: none;
   border-radius: 10px;
   padding: 0 20px;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
-  transition: transform 0.15s, background 0.2s;
+  transition: background 0.2s;
 }
 
 #sendBtn:hover {
   background: var(--accent-hover);
-  transform: translateY(-1px);
 }
 
 #sendBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
 }
 
 .footer-note {
@@ -228,22 +247,32 @@ h2 {
   margin-top: 10px;
 }
 
+/* Brain HUD는 기본적으로 완전히 숨겨서 기존 UI를 절대 침범하지 않는다. */
 .brain-panel {
+  display: none;
+  width: 390px;
+  max-width: 390px;
+  height: 95vh;
   min-width: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
   padding: 16px;
   gap: 12px;
-  background:
-    linear-gradient(180deg, rgba(17, 33, 45, 0.98), rgba(10, 20, 29, 0.98));
+  flex-direction: column;
+  overflow: hidden;
+  background: linear-gradient(180deg, #11212d, #0a141d);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.app-shell.brain-open .brain-panel {
+  display: flex;
 }
 
 .brain-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .eyebrow {
@@ -284,6 +313,20 @@ h2 {
   border-color: #653035;
 }
 
+.brain-close {
+  border: 0;
+  background: transparent;
+  color: #9fb2be;
+  font-size: 23px;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+}
+
+.brain-close:hover {
+  color: white;
+}
+
 @keyframes pulse {
   from { opacity: 0.62; }
   to { opacity: 1; }
@@ -307,7 +350,7 @@ h2 {
 .brain-stage {
   position: relative;
   flex: 1;
-  min-height: 310px;
+  min-height: 260px;
   overflow: hidden;
   border-radius: 14px;
   border: 1px solid #203e4f;
@@ -323,7 +366,7 @@ h2 {
   display: block;
   width: 100%;
   height: 100%;
-  min-height: 310px;
+  min-height: 260px;
   touch-action: none;
 }
 
@@ -399,7 +442,7 @@ h2 {
 
 .route-confidence {
   font-size: 22px;
-  font-weight: 850;
+  font-weight: 800;
   color: var(--warm);
   font-variant-numeric: tabular-nums;
 }
@@ -448,57 +491,81 @@ h2 {
   line-height: 1.5;
 }
 
-@media (max-width: 980px) {
+/* 충분히 넓은 화면에서는 기존 900px 채팅 폭을 유지한 채 오른쪽에 붙인다. */
+@media (min-width: 1340px) {
+  .app-shell {
+    width: auto;
+    height: 95vh;
+  }
+
+  .chat-container {
+    width: 900px;
+    flex: 0 0 900px;
+    max-height: 95vh;
+  }
+
+  .brain-panel {
+    flex: 0 0 390px;
+  }
+}
+
+/* 좁은 화면에서는 Brain HUD를 아래로 내려서 채팅을 절대 가리지 않는다. */
+@media (max-width: 1339px) {
   body {
-    min-height: 100dvh;
+    align-items: flex-start;
+    overflow-y: auto;
   }
 
   .app-shell {
     width: 100%;
     height: auto;
-    min-height: 100dvh;
-    margin: 0;
-    padding: 10px;
-    grid-template-columns: 1fr;
-    gap: 10px;
+    min-height: 100%;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 2.5vh 0;
   }
 
   .chat-container {
-    height: 66dvh;
-    min-height: 520px;
+    width: min(900px, calc(100vw - 28px));
+    height: 95vh;
+    flex: 0 0 auto;
   }
 
   .brain-panel {
-    height: 46dvh;
-    min-height: 380px;
-  }
-
-  .brain-stage,
-  #brainCanvas {
-    min-height: 220px;
+    width: min(900px, calc(100vw - 28px));
+    max-width: 900px;
+    height: min(620px, 78vh);
+    flex: 0 0 auto;
   }
 }
 
 @media (max-width: 600px) {
-  .app-shell {
-    padding: 0;
-    gap: 0;
+  body {
+    align-items: stretch;
   }
 
-  .chat-container,
-  .brain-panel {
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
+  .app-shell {
+    gap: 0;
+    padding: 0;
   }
 
   .chat-container {
-    min-height: 64dvh;
+    width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    border: none;
   }
 
   .brain-panel {
-    min-height: 420px;
-    padding: 13px;
+    width: 100%;
+    max-width: none;
+    height: 72dvh;
+    min-height: 430px;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
   }
 
   .chat-header,
@@ -519,11 +586,16 @@ h2 {
     padding: 0 16px;
   }
 
-  h2 {
-    font-size: 15px;
+  .brain-toggle {
+    padding: 6px 8px;
   }
 
-  .route-confidence {
-    font-size: 19px;
+  .status-badge {
+    display: none;
+  }
+
+  .brain-stage,
+  #brainCanvas {
+    min-height: 230px;
   }
 }
