@@ -13,6 +13,8 @@ type Props = {
   open: boolean;
   onClose: () => void;
   router: RouterResult | null;
+  liveFrame: TraceFrame | null;
+  streaming: boolean;
 };
 
 function nodePosition(index: number, count: number) {
@@ -29,7 +31,13 @@ function nodePosition(index: number, count: number) {
   };
 }
 
-export default function BrainPanel({ open, onClose, router }: Props) {
+export default function BrainPanel({
+  open,
+  onClose,
+  router,
+  liveFrame,
+  streaming,
+}: Props) {
   const [graph, setGraph] = useState<GraphResponse | null>(null);
   const [error, setError] = useState("");
   const [frameIndex, setFrameIndex] = useState(-1);
@@ -67,8 +75,9 @@ export default function BrainPanel({ open, onClose, router }: Props) {
     return () => window.clearInterval(timer);
   }, [router]);
 
-  const activeFrame: TraceFrame | null =
+  const replayFrame: TraceFrame | null =
     frameIndex >= 0 ? router?.trace?.[frameIndex] ?? null : null;
+  const activeFrame: TraceFrame | null = liveFrame ?? replayFrame;
 
   const positions = useMemo(
     () =>
@@ -90,8 +99,14 @@ export default function BrainPanel({ open, onClose, router }: Props) {
           <h2>FlyGraph Neural Map</h2>
         </div>
         <div className="brainHeaderActions">
-          <div className="brainStatus">
-            {error ? "OFFLINE" : graph ? "READY" : "LOADING"}
+          <div className={streaming ? "brainStatus live" : "brainStatus"}>
+            {error
+              ? "OFFLINE"
+              : streaming
+                ? "LIVE"
+                : graph
+                  ? "READY"
+                  : "LOADING"}
           </div>
           <button
             className="iconButton"
@@ -174,6 +189,7 @@ export default function BrainPanel({ open, onClose, router }: Props) {
       <RoutePanel router={router} />
 
       <div className="brainNote">
+        v0.7에서는 route와 propagation frame을 서버 스트림으로 받습니다.
         연결은 FlyWire scaffold 기반이고 빛나는 정도는 FlyGPT 모델 내부
         활성도입니다. 실제 생물학적 뉴런 발화 지도는 아닙니다.
       </div>
