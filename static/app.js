@@ -7,6 +7,26 @@ const chatForm = document.getElementById('chatForm');
 const userInput = document.getElementById('userInput');
 const sendBtn = document.getElementById('sendBtn');
 
+function getMemorySessionId() {
+  try {
+    const key = 'flygpt-memory-session-v0.5';
+    let value = localStorage.getItem(key);
+
+    if (!value) {
+      value = typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      localStorage.setItem(key, value);
+    }
+
+    return value;
+  } catch {
+    return `ephemeral-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+}
+
+const memorySessionId = getMemorySessionId();
+
 const brainCanvas = document.getElementById('brainCanvas');
 const brainStage = document.getElementById('brainStage');
 const brainStatus = document.getElementById('brainStatus');
@@ -417,6 +437,7 @@ chatForm.addEventListener('submit', async (event) => {
       },
       body: JSON.stringify({
         message: text,
+        session_id: memorySessionId,
       }),
     });
 
