@@ -50,5 +50,39 @@ class GeneratorRuntimeTests(unittest.TestCase):
         self.assertNotIn("secret-value", repr(status))
 
 
+    def test_invalid_numeric_settings_fall_back_safely(self):
+        with patch.dict(
+            os.environ,
+            {
+                "FLYGPT_GENERATOR_URL": "https://example.invalid/v1/chat/completions",
+                "FLYGPT_GENERATOR_MODEL": "fly-model",
+                "FLYGPT_GENERATOR_TIMEOUT": "not-a-number",
+                "FLYGPT_GENERATOR_TEMPERATURE": "99",
+                "FLYGPT_GENERATOR_MAX_TOKENS": "1",
+            },
+            clear=True,
+        ):
+            runtime = GeneratorRuntime()
+
+        self.assertEqual(runtime.timeout, 45.0)
+        self.assertEqual(runtime.temperature, 2.0)
+        self.assertEqual(runtime.max_tokens, 32)
+
+    def test_memory_context_is_built_without_exposing_extra_messages(self):
+        with patch.dict(os.environ, {}, clear=True):
+            runtime = GeneratorRuntime()
+            messages = runtime._messages(
+                "계속 설명해줘",
+                "general",
+                [
+                    {"role": "user", "content": "앞에서 파리 뇌 구조를 물어봤어"},
+                    {"role": "assistant", "content": "FlyWire 그래프를 사용한다고 답했어"},
+                ],
+            )
+
+        self.assertEqual(messages[0]["role"], "system")
+        self.assertEqual(messages[-1], {"role": "user", "content": "계속 설명해줘"})
+        self.assertIn("앞에서 파리 뇌 구조", messages[1]["content"])
+
 if __name__ == "__main__":
     unittest.main()
