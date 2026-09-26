@@ -5,9 +5,12 @@ import BrainPanel from "./BrainPanel";
 import {
   clearMemory,
   getHealth,
-  sendChat,
+  getMemoryStatus,
+  sendChatStream,
   type HealthResponse,
+  type MemoryStatus,
   type RouterResult,
+  type TraceFrame,
 } from "@/lib/api";
 import { getMemorySessionId } from "@/lib/session";
 
@@ -21,8 +24,8 @@ const INITIAL_MESSAGE: Message = {
   id: "welcome",
   role: "assistant",
   content:
-    "안녕하세요! FlyGPT v0.6 Frontend Alpha입니다.\n" +
-    "FlyWire 라우터, 수식 fast-path, 로컬 대화 기억을 새 Next.js UI에서 사용할 수 있어요.",
+    "안녕하세요! FlyGPT v0.7 Live Brain입니다.\n" +
+    "라우터 전파 단계가 실시간으로 스트리밍되고, 오래된 대화는 memory capsule로 압축됩니다.",
 };
 
 function makeId(prefix: string) {
@@ -35,13 +38,26 @@ export default function FlyGPTApp() {
   const [sending, setSending] = useState(false);
   const [brainOpen, setBrainOpen] = useState(false);
   const [router, setRouter] = useState<RouterResult | null>(null);
+  const [liveFrame, setLiveFrame] = useState<TraceFrame | null>(null);
+  const [streamStage, setStreamStage] = useState("idle");
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [memoryStatus, setMemoryStatus] = useState<MemoryStatus | null>(null);
   const [healthError, setHealthError] = useState(false);
   const [sessionId, setSessionId] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
+  async function refreshMemoryStatus(id: string) {
+    try {
+      setMemoryStatus(await getMemoryStatus(id));
+    } catch {
+      // Memory status is supplemental. Chat should keep working.
+    }
+  }
+
   useEffect(() => {
-    setSessionId(getMemorySessionId());
+    const id = getMemorySessionId();
+    setSessionId(id);
+    refreshMemoryStatus(id);
 
     getHealth()
       .then((result) => {
@@ -73,6 +89,8 @@ export default function FlyGPTApp() {
 
     setInput("");
     setSending(true);
+    setLiveFrame(null);
+    setStreamStage("routing");
     setMessages((current) => [
       ...current,
       {
@@ -83,16 +101,43 @@ export default function FlyGPTApp() {
     ]);
 
     try {
-      const response = await sendChat(text, sessionId);
-      setRouter(response.router ?? null);
-      setMessages((current) => [
-        ...current,
-        {
-          id: makeId("assistant"),
-          role: "assistant",
-          content: response.answer,
-        },
-      ]);
+      await sendChatStream(text, sessionId, (event) => {
+        if (event.type === "route") {
+          setRouter(event.router);
+          setStreamStage("route");
+          return;
+        }
+
+        if (event.type === "brain_step") {
+          setLiveFrame(event.frame);
+          setStreamStage(event.frame.stage);
+          return;
+        }
+
+        if (event.type === "answer") {
+          setRouter(event.payload.router ?? null);
+          setMessages((current) => [
+            ...current,
+            {
+              id: makeId("assistant"),
+              role: "assistant",
+              content: event.payload.answer,
+            },
+          ]);
+          setStreamStage("answer");
+          return;
+        }
+
+        if (event.type === "error") {
+          throw new Error(event.detail);
+        }
+
+        if (event.type === "done") {
+          setStreamStage("done");
+        }
+      });
+
+      await refreshMemoryStatus(sessionId);
     } catch (reason: unknown) {
       const detail =
         reason instanceof Error ? reason.message : String(reason);
@@ -105,6 +150,7 @@ export default function FlyGPTApp() {
           content: `⚠️ 요청 실패\n${detail}`,
         },
       ]);
+      setStreamStage("error");
     } finally {
       setSending(false);
     }
@@ -114,7 +160,7 @@ export default function FlyGPTApp() {
     if (!sessionId) return;
 
     const confirmed = window.confirm(
-      "이 브라우저 세션의 FlyGPT 대화 기억을 지울까요?",
+      "이 브라우저 세션의 단기기억과 장기기억 capsule을 모두 지울까요?",
     );
     if (!confirmed) return;
 
@@ -125,10 +171,13 @@ export default function FlyGPTApp() {
         {
           id: makeId("memory-cleared"),
           role: "assistant",
-          content: `🧠 기억을 정리했습니다. DB에서 ${result.cleared}개 메시지를 삭제했어요.`,
+          content: `🧠 기억을 정리했습니다. DB에서 ${result.cleared}개 기록을 삭제했어요.`,
         },
       ]);
       setRouter(null);
+      setLiveFrame(null);
+      setStreamStage("idle");
+      await refreshMemoryStatus(sessionId);
     } catch (reason: unknown) {
       const detail =
         reason instanceof Error ? reason.message : String(reason);
@@ -143,6 +192,14 @@ export default function FlyGPTApp() {
     }
   }
 
+  const memoryLabel = memoryStatus
+    ? `${memoryStatus.messages} msgs · ${memoryStatus.capsules} capsules`
+    : health?.memory?.enabled
+      ? "ON"
+      : health
+        ? "OFF"
+        : "…";
+
   return (
     <main className={brainOpen ? "appShell brainOpen" : "appShell"}>
       <section className="chatPanel">
@@ -152,10 +209,10 @@ export default function FlyGPTApp() {
             <div className="brandText">
               <div className="titleRow">
                 <h1>FlyGPT</h1>
-                <span className="alphaBadge">v0.6 ALPHA</span>
+                <span className="alphaBadge">v0.7 LIVE</span>
               </div>
               <div className="subtitle">
-                FlyWire router + memory + Next.js frontend
+                streamed FlyGraph + compressed long-term memory
               </div>
             </div>
           </div>
@@ -165,7 +222,7 @@ export default function FlyGPTApp() {
               type="button"
               className="ghostButton memoryButton"
               onClick={handleClearMemory}
-              title="현재 세션 기억 지우기"
+              title="현재 세션의 단기/장기 기억 지우기"
             >
               🧠 Memory
             </button>
@@ -174,7 +231,7 @@ export default function FlyGPTApp() {
               className={brainOpen ? "ghostButton active" : "ghostButton"}
               onClick={() => setBrainOpen((value) => !value)}
             >
-              🧬 Brain
+              {sending ? "📡 Brain LIVE" : "🧬 Brain"}
             </button>
             <div className={online ? "status online" : "status offline"}>
               <span className="statusDot" />
@@ -194,17 +251,11 @@ export default function FlyGPTApp() {
           </div>
           <div>
             <span className="stripLabel">MEMORY</span>
-            <strong>{health?.memory?.enabled ? "ON" : health ? "OFF" : "…"}</strong>
+            <strong>{memoryLabel}</strong>
           </div>
           <div>
-            <span className="stripLabel">GENERATOR</span>
-            <strong>
-              {health?.generator?.configured
-                ? health.generator.model ?? "ON"
-                : health
-                  ? "FALLBACK"
-                  : "…"}
-            </strong>
+            <span className="stripLabel">STREAM</span>
+            <strong>{sending ? streamStage.toUpperCase() : health?.streaming_enabled ? "READY" : "…"}</strong>
           </div>
         </div>
 
@@ -228,7 +279,9 @@ export default function FlyGPTApp() {
                 <span className="thinkingDot" />
                 <span className="thinkingDot" />
                 <span className="thinkingDot" />
-                FlyGPT 처리 중
+                {streamStage === "routing"
+                  ? "라우터 깨우는 중"
+                  : `Live Brain · ${streamStage.replace("_", " ")}`}
               </div>
             </article>
           )}
@@ -250,11 +303,11 @@ export default function FlyGPTApp() {
               type="submit"
               disabled={sending || !input.trim() || !sessionId}
             >
-              {sending ? "…" : "전송"}
+              {sending ? "LIVE" : "전송"}
             </button>
           </form>
           <div className="footerLine">
-            <span>FlyGPT v0.6 Frontend Alpha</span>
+            <span>FlyGPT v0.7 · Live Brain + Long Memory</span>
             {router && (
               <span className="routeMini">
                 {router.route} {(router.confidence * 100).toFixed(1)}%
@@ -268,6 +321,8 @@ export default function FlyGPTApp() {
         open={brainOpen}
         onClose={() => setBrainOpen(false)}
         router={router}
+        liveFrame={liveFrame}
+        streaming={sending}
       />
     </main>
   );
