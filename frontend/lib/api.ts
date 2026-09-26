@@ -55,8 +55,42 @@ export type HealthResponse = {
   memory?: {
     enabled?: boolean;
     max_messages_per_session?: number;
+    capsule_batch_size?: number;
+    long_term_capsules?: boolean;
   };
+  streaming_enabled?: boolean;
 };
+
+export type MemoryStatus = {
+  messages: number;
+  capsules: number;
+  last_message_at?: number | null;
+  last_capsule_at?: number | null;
+  capsule_batch_size?: number;
+};
+
+export type ChatStreamEvent =
+  | {
+      type: "route";
+      router: RouterResult;
+    }
+  | {
+      type: "brain_step";
+      index: number;
+      total: number;
+      frame: TraceFrame;
+    }
+  | {
+      type: "answer";
+      payload: ChatResponse;
+    }
+  | {
+      type: "done";
+    }
+  | {
+      type: "error";
+      detail: string;
+    };
 
 async function jsonRequest<T>(
   input: RequestInfo | URL,
@@ -100,6 +134,65 @@ export function sendChat(
   });
 }
 
+export async function sendChatStream(
+  message: string,
+  sessionId: string,
+  onEvent: (event: ChatStreamEvent) => void,
+): Promise<void> {
+  const response = await fetch("/api/chat/stream", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      message,
+      session_id: sessionId,
+    }),
+  });
+
+  if (!response.ok) {
+    let detail = `HTTP ${response.status}`;
+    try {
+      const payload = await response.json();
+      if (payload?.detail) detail = String(payload.detail);
+    } catch {
+      // Keep HTTP status fallback.
+    }
+    throw new Error(detail);
+  }
+
+  if (!response.body) {
+    throw new Error("stream body is unavailable");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value ?? new Uint8Array(), {
+      stream: !done,
+    });
+
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      onEvent(JSON.parse(trimmed) as ChatStreamEvent);
+    }
+
+    if (done) break;
+  }
+
+  const tail = buffer.trim();
+  if (tail) {
+    onEvent(JSON.parse(tail) as ChatStreamEvent);
+  }
+}
+
 export function getHealth(): Promise<HealthResponse> {
   return jsonRequest<HealthResponse>("/api/health", {
     cache: "no-store",
@@ -124,5 +217,12 @@ export function clearMemory(sessionId: string): Promise<{
     body: JSON.stringify({
       session_id: sessionId,
     }),
+  });
+}
+
+export function getMemoryStatus(sessionId: string): Promise<MemoryStatus> {
+  const query = new URLSearchParams({ session_id: sessionId });
+  return jsonRequest<MemoryStatus>(`/api/memory/status?${query.toString()}`, {
+    cache: "no-store",
   });
 }
