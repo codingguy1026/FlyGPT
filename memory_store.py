@@ -123,9 +123,23 @@ class MemoryStore:
                 for token in _TOKEN_RE.findall(row["content"])
                 if token.lower() not in _STOPWORDS
             }
+            content_lower = row["content"].lower()
 
-            overlap = len(query_tokens & content_tokens)
-            score = float(overlap)
+            overlap = 0.0
+            for query_token in query_tokens:
+                if query_token in content_tokens:
+                    overlap += 1.0
+                    continue
+
+                # Korean particles/endings often stay attached to the token.
+                if query_token in content_lower or any(
+                    token.startswith(query_token) or query_token.startswith(token)
+                    for token in content_tokens
+                    if len(token) >= 2
+                ):
+                    overlap += 0.7
+
+            score = overlap
 
             if not query_tokens:
                 score = 0.1
@@ -138,7 +152,16 @@ class MemoryStore:
         scored.sort(key=lambda item: (item[0], item[1]["id"]), reverse=True)
 
         if query_tokens:
-            scored = [item for item in scored if item[0] > 0.15]
+            matched = [item for item in scored if item[0] > 0.15]
+            recall_words = ("아까", "전에", "지난", "마지막", "뭐였", "기억")
+            if matched:
+                scored = matched
+            elif any(word in query for word in recall_words):
+                # A vague recall request is better served by the latest messages
+                # than by pretending nothing was remembered.
+                scored = sorted(scored, key=lambda item: item[1]["id"], reverse=True)
+            else:
+                scored = []
 
         return [row for _, row in scored[: max(1, min(int(limit), 10))]]
 
