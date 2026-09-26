@@ -662,3 +662,20 @@ h2 {
     min-height: 300px;
   }
 }
+
+.brainStatus.live {
+  color: var(--warm);
+  border-color: rgba(255, 223, 109, 0.42);
+  background: rgba(255, 223, 109, 0.08);
+  box-shadow: 0 0 18px rgba(255, 223, 109, 0.08);
+  animation: livePulse 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes livePulse {
+  from {
+    opacity: 0.72;
+  }
+  to {
+    opacity: 1;
+  }
+}
