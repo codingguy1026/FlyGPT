@@ -33,6 +33,46 @@ class MemoryStoreTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertNotIn("FlyGPT", rows[0]["content"])
 
+
+    def test_eight_user_turns_create_long_term_capsule(self):
+        for index in range(8):
+            self.store.add(
+                "session-a",
+                "user",
+                f"프로젝트 메모 {index}: FlyGPT 기능 테스트",
+            )
+
+        capsules = self.store.capsules("session-a")
+        self.assertEqual(len(capsules), 1)
+        self.assertIn("FlyGPT", capsules[0]["summary"])
+        self.assertEqual(self.store.stats("session-a")["capsules"], 1)
+
+    def test_search_can_return_capsule(self):
+        for index in range(8):
+            text = (
+                "내 프로젝트 이름은 FlyGPT야"
+                if index == 0
+                else f"일반 대화 {index}"
+            )
+            self.store.add("session-a", "user", text)
+
+        hits = self.store.search(
+            "session-a",
+            "전에 말한 프로젝트 FlyGPT 기억해?",
+            limit=10,
+        )
+        self.assertTrue(
+            any(row.get("source") == "capsule" for row in hits)
+        )
+
+    def test_clear_removes_capsules_too(self):
+        for index in range(8):
+            self.store.add("session-a", "user", f"기억 {index}")
+
+        self.assertEqual(self.store.stats("session-a")["capsules"], 1)
+        self.store.clear("session-a")
+        self.assertEqual(self.store.stats("session-a")["capsules"], 0)
+
     def test_clear_removes_only_target_session(self):
         self.store.add("session-a", "user", "A")
         self.store.add("session-b", "user", "B")
