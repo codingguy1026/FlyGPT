@@ -6,6 +6,7 @@ const chatMessages = document.getElementById('chatMessages');
 const chatForm = document.getElementById('chatForm');
 const userInput = document.getElementById('userInput');
 const sendBtn = document.getElementById('sendBtn');
+const generatorBadge = document.getElementById('generatorBadge');
 
 function getMemorySessionId() {
   try {
@@ -26,6 +27,33 @@ function getMemorySessionId() {
 }
 
 const memorySessionId = getMemorySessionId();
+
+async function loadGeneratorStatus() {
+  if (!generatorBadge) return;
+
+  try {
+    const response = await fetch('/api/generator/status');
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || ('HTTP ' + response.status));
+    }
+
+    if (data.configured) {
+      generatorBadge.textContent = data.model ? ('GEN · ' + data.model) : 'GEN READY';
+      generatorBadge.dataset.state = 'ready';
+      generatorBadge.title = 'Generator: ' + (data.provider || 'configured');
+    } else {
+      generatorBadge.textContent = 'ROUTER ONLY';
+      generatorBadge.dataset.state = 'fallback';
+      generatorBadge.title = '생성 모델이 아직 연결되지 않았습니다.';
+    }
+  } catch (error) {
+    generatorBadge.textContent = 'GEN OFFLINE';
+    generatorBadge.dataset.state = 'error';
+    generatorBadge.title = error.message;
+  }
+}
 
 const brainCanvas = document.getElementById('brainCanvas');
 const brainStage = document.getElementById('brainStage');
@@ -484,3 +512,4 @@ chatForm.addEventListener('submit', async (event) => {
 
 // Keep the original chat UI completely stable on first paint.
 setBrainOpen(false);
+loadGeneratorStatus();
