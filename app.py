@@ -13,8 +13,9 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from connectome import FlyWireConnectome, NT_COLUMNS
-from dispatcher import dispatch
+from dispatcher import dispatch, dispatch_math_fast_path, is_math_fast_path
 from generator_runtime import GENERATIVE_ROUTES, GeneratorRuntime
+from memory_store import MemoryStore, format_recall
 
 
 DATA_DIR = os.environ.get("FLYWIRE_DATA_DIR", "data/flywire_parts")
@@ -34,8 +35,8 @@ else:
 
 app = FastAPI(
     title="FlyGPT",
-    version="0.4.0",
-    description="Drosophila Connectome Chat Interface with routing, dispatching, and optional generation",
+    version="0.5.0",
+    description="Drosophila Connectome Chat Interface with routing, generation, and local conversation memory",
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -49,10 +50,16 @@ _router_lock = threading.Lock()
 _router_error: str | None = None
 
 _generator = GeneratorRuntime()
+_memory = MemoryStore(os.environ.get("FLYGPT_MEMORY_PATH", "data/flygpt_memory.sqlite3"))
 
 
 class ChatRequest(BaseModel):
     message: str
+    session_id: str | None = None
+
+
+class MemoryRequest(BaseModel):
+    session_id: str
 
 
 def get_connectome() -> FlyWireConnectome:
@@ -146,6 +153,7 @@ def response_with_router(
     response_type: str,
     data: Any,
     route: dict[str, Any] | None,
+    session_id: str | None = None,
 ) -> dict[str, Any]:
     payload = {
         "answer": answer,
@@ -154,6 +162,10 @@ def response_with_router(
     }
     if route is not None:
         payload["router"] = route
+
+    if session_id:
+        _memory.add(session_id, "assistant", answer)
+
     return payload
 
 
@@ -193,9 +205,28 @@ def health():
         "model_available": model_path.is_file(),
         "router_initialized": _router is not None,
         "router_error": _router_error,
-        "app_version": "0.4.0",
+        "app_version": "0.5.0",
         "dispatcher_enabled": True,
         "generator": _generator.status(),
+        "memory": {
+            "enabled": True,
+            "path": str(_memory.path),
+            "max_messages_per_session": 200,
+        },
+    }
+
+
+@app.get("/api/memory/status")
+def memory_status(session_id: str):
+    return _memory.stats(session_id.strip()[:128])
+
+
+@app.post("/api/memory/clear")
+def memory_clear(req: MemoryRequest):
+    session_id = req.session_id.strip()[:128]
+    return {
+        "cleared": _memory.clear(session_id),
+        "session_id_present": bool(session_id),
     }
 
 
@@ -206,11 +237,37 @@ def chat_endpoint(req: ChatRequest):
     if not msg:
         raise HTTPException(status_code=400, detail="메시지가 비어 있습니다.")
 
+    session_id = (req.session_id or "").strip()[:128] or None
+    memory_context = _memory.recent(session_id, limit=12) if session_id else []
+    if session_id:
+        _memory.add(session_id, "user", msg)
+
     lower = msg.lower()
     root_ids = extract_root_ids(msg)
     route = predict_route(msg)
 
     try:
+        if is_math_fast_path(msg):
+            result = dispatch_math_fast_path(msg)
+            router_note = (
+                f"Router raw: {route['route']} · {route['confidence']:.1%}"
+                if route is not None
+                else "Router raw: unavailable"
+            )
+            answer = (
+                "🪰 FlyGPT v0.5 · math fast-path\n\n"
+                f"{result.answer}\n\n"
+                "Decision: math fast-path\n"
+                f"{router_note}"
+            )
+            return response_with_router(
+                answer=answer,
+                response_type="math_fast_path",
+                data=result.to_dict(),
+                route=route,
+                session_id=session_id,
+            )
+
         if "통계" in msg or "stats" in lower or "statistics" in lower:
             stats = get_connectome().stats()
             answer = (
@@ -227,6 +284,7 @@ def chat_endpoint(req: ChatRequest):
                 response_type="stats",
                 data=stats,
                 route=route,
+                session_id=session_id,
             )
 
         if (
@@ -253,6 +311,7 @@ def chat_endpoint(req: ChatRequest):
                 response_type="top_connections",
                 data=rows,
                 route=route,
+                session_id=session_id,
             )
 
         if len(root_ids) >= 2:
@@ -285,6 +344,7 @@ def chat_endpoint(req: ChatRequest):
                 response_type="pair",
                 data=pair,
                 route=route,
+                session_id=session_id,
             )
 
         if len(root_ids) == 1:
@@ -333,6 +393,7 @@ def chat_endpoint(req: ChatRequest):
                 response_type="neuron",
                 data=result,
                 route=route,
+                session_id=session_id,
             )
 
         if route is not None:
@@ -340,14 +401,28 @@ def chat_endpoint(req: ChatRequest):
             model_label = route.get("model", Path(MODEL_PATH).name)
 
             generation = None
+            memory_hits = None
             final_answer = result.answer
             mode_label = result.handler
 
-            if (
+            if result.route == "memory" and session_id:
+                memory_hits = _memory.search(
+                    session_id,
+                    msg,
+                    limit=5,
+                    exclude_content=msg,
+                )
+                final_answer = format_recall(memory_hits)
+                mode_label = "memory · recall"
+            elif (
                 result.status == "completed"
                 and result.route in GENERATIVE_ROUTES
             ):
-                generation = _generator.generate(msg, result.route)
+                generation = _generator.generate(
+                    msg,
+                    result.route,
+                    memory_context=memory_context,
+                )
                 if generation.used and generation.answer:
                     final_answer = generation.answer
                     mode_label = f"{result.route} · generated"
@@ -355,7 +430,7 @@ def chat_endpoint(req: ChatRequest):
                     mode_label = f"{result.handler} · fallback"
 
             answer = (
-                f"🪰 FlyGPT v0.4 · {mode_label}\n\n"
+                f"🪰 FlyGPT v0.5 · {mode_label}\n\n"
                 f"{final_answer}\n\n"
                 f"Route: {route['route']} · {route['confidence']:.1%}\n"
                 f"Router: {model_label}"
@@ -364,6 +439,7 @@ def chat_endpoint(req: ChatRequest):
             data = {
                 "dispatch": result.to_dict(),
                 "generation": generation.to_dict() if generation is not None else None,
+                "memory_hits": memory_hits,
             }
 
             return response_with_router(
@@ -371,6 +447,7 @@ def chat_endpoint(req: ChatRequest):
                 response_type="dispatch",
                 data=data,
                 route=route,
+                session_id=session_id,
             )
 
         answer = (
@@ -387,6 +464,7 @@ def chat_endpoint(req: ChatRequest):
             response_type="help",
             data=None,
             route=None,
+            session_id=session_id,
         )
 
     except FileNotFoundError as exc:
