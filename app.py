@@ -405,7 +405,7 @@ def chat_endpoint(req: ChatRequest):
             final_answer = result.answer
             mode_label = result.handler
 
-            if result.route == "memory" and session_id:
+            if result.route == "memory" and result.status != "uncertain" and session_id:
                 memory_hits = _memory.search(
                     session_id,
                     msg,
