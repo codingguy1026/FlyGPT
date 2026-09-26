@@ -6,6 +6,7 @@ import json
 import math
 import random
 import re
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -21,14 +22,28 @@ def stable_bucket(token: str, size: int) -> int:
     return int.from_bytes(digest, "little") % size
 
 
-def vectorize(text: str, size: int) -> torch.Tensor:
+def vectorize(text: str, size: int, version: str = "v1") -> torch.Tensor:
     vec = torch.zeros(size, dtype=torch.float32)
     tokens = [t.lower() for t in TOKEN_RE.findall(text)]
+
     for token in tokens:
         vec[stable_bucket("w:" + token, size)] += 1.0
+
         if len(token) >= 2:
             for i in range(len(token) - 1):
                 vec[stable_bucket("b:" + token[i : i + 2], size)] += 0.35
+
+        if version == "v2":
+            # Decomposed Hangul features let related forms such as
+            # "반가워" and "반갑다" share more sub-character structure.
+            decomposed = unicodedata.normalize("NFKD", token)
+            for i in range(len(decomposed) - 1):
+                vec[stable_bucket("j2:" + decomposed[i : i + 2], size)] += 0.18
+            for i in range(len(decomposed) - 2):
+                vec[stable_bucket("j3:" + decomposed[i : i + 3], size)] += 0.08
+        elif version != "v1":
+            raise ValueError(f"Unknown vectorizer version: {version}")
+
     norm = torch.linalg.vector_norm(vec)
     if norm > 0:
         vec /= norm
@@ -146,9 +161,14 @@ class FlyGraphRouter(nn.Module):
         return self.output(h)
 
 
-def batchify(examples: Iterable[Example], route_to_idx: dict[str, int], vocab_size: int) -> tuple[torch.Tensor, torch.Tensor]:
+def batchify(
+    examples: Iterable[Example],
+    route_to_idx: dict[str, int],
+    vocab_size: int,
+    vectorizer_version: str = "v1",
+) -> tuple[torch.Tensor, torch.Tensor]:
     rows = list(examples)
-    x = torch.stack([vectorize(ex.text, vocab_size) for ex in rows])
+    x = torch.stack([vectorize(ex.text, vocab_size, vectorizer_version) for ex in rows])
     y = torch.tensor([route_to_idx[ex.route] for ex in rows], dtype=torch.long)
     return x, y
 
@@ -172,6 +192,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--val-ratio", type=float, default=0.25)
     parser.add_argument("--synthetic-nodes", type=int, default=96)
+    parser.add_argument("--vectorizer-version", choices=("v1", "v2"), default="v1")
     args = parser.parse_args()
 
     random.seed(args.seed)
@@ -185,8 +206,8 @@ def main() -> None:
     n_nodes, src, dst, base, scaffold_meta = load_scaffold(args.scaffold, args.synthetic_nodes, args.seed)
     model = FlyGraphRouter(args.vocab_size, n_nodes, len(routes), src, dst, base, args.steps)
 
-    train_x, train_y = batchify(train, route_to_idx, args.vocab_size)
-    val_x, val_y = batchify(val, route_to_idx, args.vocab_size)
+    train_x, train_y = batchify(train, route_to_idx, args.vocab_size, args.vectorizer_version)
+    val_x, val_y = batchify(val, route_to_idx, args.vocab_size, args.vectorizer_version)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
@@ -229,6 +250,7 @@ def main() -> None:
             "teacher_dataset": str(args.dataset),
             "best_val_accuracy": best_val,
             "seed": args.seed,
+            "vectorizer_version": args.vectorizer_version,
         },
         args.out,
     )
