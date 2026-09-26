@@ -27,6 +27,7 @@ class FlyRouterRuntime:
         self.n_nodes = int(checkpoint["n_nodes"])
         self.steps = int(checkpoint["steps"])
         self.best_val_accuracy = float(checkpoint.get("best_val_accuracy", 0.0))
+        self.vectorizer_version = str(checkpoint.get("vectorizer_version", "v1"))
         self.scaffold_meta = dict(checkpoint.get("scaffold_meta", {}))
 
         self.src = checkpoint["src"].to(dtype=torch.long, device="cpu")
@@ -101,7 +102,7 @@ class FlyRouterRuntime:
 
     def predict(self, text: str, *, top_k: int = 3) -> dict[str, Any]:
         torch = self._torch
-        x = self._vectorize(text, self.vocab_size).unsqueeze(0)
+        x = self._vectorize(text, self.vocab_size, self.vectorizer_version).unsqueeze(0)
 
         with torch.no_grad():
             h = torch.tanh(self.model.encoder(x))
@@ -144,5 +145,6 @@ class FlyRouterRuntime:
             "steps": self.steps,
             "best_val_accuracy": self.best_val_accuracy,
             "scaffold_kind": self.scaffold_meta.get("kind", "unknown"),
+            "vectorizer_version": self.vectorizer_version,
             "trace": trace,
         }
