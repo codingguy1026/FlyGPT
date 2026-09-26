@@ -33,7 +33,7 @@ def vectorize(text: str, size: int, version: str = "v1") -> torch.Tensor:
             for i in range(len(token) - 1):
                 vec[stable_bucket("b:" + token[i : i + 2], size)] += 0.35
 
-        if version == "v2":
+        if version in ("v2", "v3"):
             # Decomposed Hangul features let related forms such as
             # "반가워" and "반갑다" share more sub-character structure.
             decomposed = unicodedata.normalize("NFKD", token)
@@ -41,7 +41,14 @@ def vectorize(text: str, size: int, version: str = "v1") -> torch.Tensor:
                 vec[stable_bucket("j2:" + decomposed[i : i + 2], size)] += 0.18
             for i in range(len(decomposed) - 2):
                 vec[stable_bucket("j3:" + decomposed[i : i + 3], size)] += 0.08
-        elif version != "v1":
+
+        if version == "v3":
+            # Syllable/character unigrams add a smaller shared feature for
+            # short colloquial variants such as "땡스" -> "땡큐" without
+            # hard-coding either phrase to a route.
+            for char in token:
+                vec[stable_bucket("c:" + char, size)] += 0.22
+        elif version not in ("v1", "v2"):
             raise ValueError(f"Unknown vectorizer version: {version}")
 
     norm = torch.linalg.vector_norm(vec)
@@ -192,7 +199,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--val-ratio", type=float, default=0.25)
     parser.add_argument("--synthetic-nodes", type=int, default=96)
-    parser.add_argument("--vectorizer-version", choices=("v1", "v2"), default="v1")
+    parser.add_argument("--vectorizer-version", choices=("v1", "v2", "v3"), default="v1")
     args = parser.parse_args()
 
     random.seed(args.seed)
