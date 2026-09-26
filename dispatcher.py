@@ -332,7 +332,14 @@ def _pending_handler(route: str) -> tuple[str, str]:
 def is_math_fast_path(message: str) -> bool:
     """Return True for short expressions that are obviously arithmetic."""
 
-    raw = message.strip().rstrip("?").strip()
+    raw = message.strip()
+    raw = re.sub(
+        r"\s*(?:은|는)?\s*(?:얼마(?:야|인가|지)?|몇(?:이야|인가)?)?\s*\?\s*$",
+        "",
+        raw,
+    ).strip()
+    raw = raw.rstrip("?").strip()
+
     if not raw or len(raw) > 120:
         return False
 
