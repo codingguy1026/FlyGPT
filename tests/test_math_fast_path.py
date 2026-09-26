@@ -16,6 +16,10 @@ class MathFastPathTests(unittest.TestCase):
         result = dispatch_math_fast_path("(8+4)*3")
         self.assertIn("36", result.answer)
 
+    def test_korean_math_suffix(self):
+        self.assertTrue(is_math_fast_path("11*11은?"))
+        self.assertTrue(is_math_fast_path("(8+4)*3은 얼마야?"))
+
     def test_date_is_not_math_fast_path(self):
         self.assertFalse(is_math_fast_path("2026-09-26"))
 
