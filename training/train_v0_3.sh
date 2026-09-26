@@ -7,9 +7,13 @@ SCAFFOLD="training/flywire_scaffold.json"
 OUT="artifacts/fly_router_v0_3.pt"
 
 if [[ ! -f "$SCAFFOLD" ]]; then
-  echo "Missing $SCAFFOLD"
-  echo "Build it first with training/build_scaffold.py using your local FlyWire parts."
-  exit 1
+  echo "No scaffold found; building one from local FlyWire parts..."
+  python training/build_scaffold.py \
+    --data-dir data/flywire_parts \
+    --out "$SCAFFOLD" \
+    --nodes 256 \
+    --edges 4096 \
+    --sample-rows 200000
 fi
 
 python training/train_router.py \
