@@ -1,0 +1,664 @@
+:root {
+  --bg: #071018;
+  --panel: #0d1821;
+  --panel-2: #111f2b;
+  --panel-3: #142735;
+  --border: #203747;
+  --border-soft: rgba(120, 190, 220, 0.12);
+  --text: #e8f1f6;
+  --muted: #7f96a5;
+  --accent: #67d8ff;
+  --accent-strong: #9ce7ff;
+  --warm: #ffdf6d;
+  --good: #66e085;
+  --danger: #ff7b8d;
+  --user: #1d3c57;
+  --assistant: #122431;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 50% -20%, rgba(60, 157, 205, 0.16), transparent 42%),
+    linear-gradient(180deg, #071018, #050b10);
+  font-family:
+    Inter,
+    ui-sans-serif,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+}
+
+.appShell {
+  width: min(1460px, 100%);
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 22px;
+  display: grid;
+  grid-template-columns: minmax(0, 920px);
+  justify-content: center;
+  gap: 14px;
+}
+
+.appShell.brainOpen {
+  grid-template-columns: minmax(0, 920px) minmax(330px, 410px);
+}
+
+.chatPanel,
+.brainPanel {
+  border: 1px solid var(--border);
+  background: rgba(13, 24, 33, 0.96);
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(12px);
+}
+
+.chatPanel {
+  min-height: calc(100dvh - 44px);
+  border-radius: 22px;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+}
+
+.chatHeader {
+  min-height: 84px;
+  padding: 17px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.brand,
+.headerActions,
+.titleRow,
+.brainHeader,
+.brainHeaderActions,
+.routeCardTop,
+.routeRowHead,
+.footerLine {
+  display: flex;
+  align-items: center;
+}
+
+.brand {
+  gap: 12px;
+  min-width: 0;
+}
+
+.logo {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid #29495c;
+  border-radius: 14px;
+  font-size: 23px;
+  background: linear-gradient(145deg, #173448, #102330);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.brandText {
+  min-width: 0;
+}
+
+.titleRow {
+  gap: 9px;
+}
+
+h1,
+h2 {
+  margin: 0;
+}
+
+h1 {
+  font-size: 21px;
+  letter-spacing: -0.03em;
+}
+
+h2 {
+  font-size: 17px;
+}
+
+.alphaBadge {
+  padding: 3px 7px;
+  border: 1px solid #31576c;
+  border-radius: 999px;
+  color: var(--accent-strong);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  background: rgba(55, 153, 193, 0.1);
+}
+
+.subtitle {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.headerActions {
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.ghostButton,
+.iconButton {
+  border: 1px solid var(--border);
+  background: #102331;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+
+.ghostButton {
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: #b9ced9;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ghostButton:hover,
+.ghostButton.active {
+  background: #153247;
+  border-color: #4281a0;
+  color: #e5f9ff;
+}
+
+.ghostButton:active {
+  transform: scale(0.97);
+}
+
+.status {
+  padding: 7px 9px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  font-weight: 800;
+  border: 1px solid var(--border);
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.status.online {
+  color: var(--good);
+  border-color: rgba(83, 197, 114, 0.28);
+  background: rgba(35, 130, 70, 0.09);
+}
+
+.status.offline {
+  color: var(--danger);
+}
+
+.systemStrip {
+  padding: 9px 20px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  border-bottom: 1px solid var(--border-soft);
+  background: rgba(8, 18, 25, 0.75);
+}
+
+.systemStrip > div {
+  min-width: 0;
+}
+
+.stripLabel {
+  display: block;
+  color: #557181;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.systemStrip strong {
+  display: block;
+  margin-top: 2px;
+  color: #9eb4c1;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.messages {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 17px;
+  scroll-behavior: smooth;
+}
+
+.message {
+  max-width: 86%;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.message.user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  border: 1px solid var(--border-soft);
+  background: #122a3a;
+  font-size: 14px;
+}
+
+.bubble {
+  padding: 13px 15px;
+  border: 1px solid var(--border-soft);
+  border-radius: 15px;
+  background: var(--assistant);
+  color: #dbe8ef;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.58;
+  font-size: 13px;
+}
+
+.message.user .bubble {
+  background: var(--user);
+  color: #f2f8fb;
+  border-color: rgba(111, 188, 230, 0.15);
+  border-top-right-radius: 5px;
+}
+
+.message.assistant .bubble {
+  border-top-left-radius: 5px;
+}
+
+.loadingBubble {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+}
+
+.thinkingDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: bounce 0.9s infinite ease-in-out;
+}
+
+.thinkingDot:nth-child(2) {
+  animation-delay: 0.12s;
+}
+
+.thinkingDot:nth-child(3) {
+  animation-delay: 0.24s;
+  margin-right: 3px;
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(1px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+.composerArea {
+  padding: 15px 20px 14px;
+  border-top: 1px solid var(--border-soft);
+  background: rgba(10, 20, 28, 0.93);
+}
+
+.composer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 9px;
+}
+
+.composer input {
+  min-width: 0;
+  padding: 13px 15px;
+  border: 1px solid #244255;
+  border-radius: 12px;
+  outline: none;
+  color: var(--text);
+  background: #071118;
+}
+
+.composer input:focus {
+  border-color: #4daacf;
+  box-shadow: 0 0 0 3px rgba(67, 170, 212, 0.08);
+}
+
+.composer button {
+  min-width: 72px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 12px;
+  color: #041219;
+  background: linear-gradient(180deg, #77e0ff, #55c7ed);
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.composer button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.footerLine {
+  min-height: 20px;
+  margin-top: 7px;
+  justify-content: center;
+  gap: 10px;
+  color: #607887;
+  font-size: 9px;
+}
+
+.routeMini {
+  color: #9ccfe3;
+}
+
+.brainPanel {
+  min-height: calc(100dvh - 44px);
+  padding: 16px;
+  border-radius: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(56, 155, 198, 0.13), transparent 35%),
+    rgba(9, 20, 28, 0.97);
+}
+
+.brainHeader {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.brainHeaderActions {
+  gap: 7px;
+}
+
+.eyebrow {
+  color: #5d7a8a;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.brainStatus {
+  padding: 4px 7px;
+  color: #88d8ef;
+  border: 1px solid #28566a;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 850;
+  background: rgba(38, 123, 155, 0.09);
+}
+
+.iconButton {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  color: #91aab7;
+  font-size: 18px;
+}
+
+.brainStats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  color: #7f9aa9;
+  font-size: 9px;
+}
+
+.brainStats span {
+  padding: 7px;
+  text-align: center;
+  border: 1px solid var(--border-soft);
+  border-radius: 9px;
+  background: rgba(16, 37, 49, 0.66);
+}
+
+.brainStage {
+  position: relative;
+  min-height: 360px;
+  flex: 1 1 auto;
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at center, rgba(53, 136, 176, 0.08), transparent 60%),
+    #07131b;
+}
+
+.brainSvg {
+  width: 100%;
+  height: 100%;
+  min-height: 360px;
+}
+
+.brainEdge {
+  stroke: #67d8ff;
+  stroke-width: 0.13;
+}
+
+.brainNode {
+  fill: #63d7ff;
+  opacity: 0.72;
+  transition: r 0.22s ease;
+}
+
+.brainNode.active {
+  fill: var(--warm);
+  opacity: 1;
+  filter: drop-shadow(0 0 1.5px #ffdf6d);
+}
+
+.brainEmpty {
+  height: 100%;
+  min-height: 360px;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  color: #688493;
+  text-align: center;
+  white-space: pre-wrap;
+  font-size: 11px;
+}
+
+.stageChip {
+  position: absolute;
+  left: 9px;
+  bottom: 9px;
+  padding: 5px 8px;
+  border: 1px solid #2a4c5d;
+  border-radius: 999px;
+  color: #95b4c3;
+  background: rgba(5, 14, 20, 0.78);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.routeCard {
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 13px;
+  background: rgba(14, 32, 43, 0.72);
+}
+
+.routeCardTop {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.routeName {
+  margin-top: 3px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.routeConfidence {
+  color: var(--warm);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.routeBars {
+  display: grid;
+  gap: 7px;
+}
+
+.routePlaceholder,
+.brainNote {
+  color: #647f8f;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.routeRow {
+  display: grid;
+  gap: 4px;
+}
+
+.routeRowHead {
+  justify-content: space-between;
+  color: #91a9b6;
+  font-size: 9px;
+}
+
+.routeTrack {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #102733;
+}
+
+.routeFill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #53c8ed, #ffdf6d);
+  transition: width 0.28s ease;
+}
+
+@media (max-width: 1180px) {
+  .appShell.brainOpen {
+    grid-template-columns: minmax(0, 920px);
+  }
+
+  .brainPanel {
+    min-height: 650px;
+  }
+}
+
+@media (max-width: 700px) {
+  .appShell {
+    min-height: 100dvh;
+    padding: 0;
+  }
+
+  .chatPanel,
+  .brainPanel {
+    min-height: 100dvh;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+
+  .chatHeader {
+    min-height: 75px;
+    padding: 13px 14px;
+  }
+
+  .memoryButton,
+  .status {
+    display: none;
+  }
+
+  .systemStrip {
+    padding: 8px 14px;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .messages {
+    padding: 15px 13px;
+  }
+
+  .message {
+    max-width: 95%;
+  }
+
+  .bubble {
+    padding: 12px 13px;
+    font-size: 12.5px;
+  }
+
+  .composerArea {
+    padding: 11px 12px 10px;
+  }
+
+  .subtitle {
+    max-width: 180px;
+  }
+
+  .brainPanel {
+    padding: 14px;
+  }
+
+  .brainStage,
+  .brainSvg,
+  .brainEmpty {
+    min-height: 300px;
+  }
+}
