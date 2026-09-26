@@ -13,7 +13,7 @@ from typing import Iterable
 import torch
 from torch import nn
 
-TOKEN_RE = re.compile(r"[가-힣A-Za-z0-9_]+")
+TOKEN_RE = re.compile(r"[가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9_]+")
 
 
 def stable_bucket(token: str, size: int) -> int:
