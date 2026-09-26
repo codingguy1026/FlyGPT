@@ -68,3 +68,39 @@
 {"input":"고마워","route":"general","teacher_answer":"감사에 대한 일상 대화입니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3"}
 {"input":"잘 자","route":"general","teacher_answer":"일상적인 작별 인사입니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3"}
 {"input":"좋은 아침","route":"general","teacher_answer":"일상적인 인사입니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3"}
+{"input":"만나서 반가워","route":"general","teacher_answer":"일상적인 인사입니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"오랜만이네","route":"general","teacher_answer":"일상적인 친근한 대화입니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"잘 지냈어?","route":"general","teacher_answer":"안부를 묻는 일상 대화입니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"안뇽","route":"general","teacher_answer":"가벼운 인사입니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"뭐 하고 있어?","route":"general","teacher_answer":"일상적인 잡담입니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"감사해","route":"general","teacher_answer":"감사 표현에 대한 일상 대화입니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"26 곱하기 7은?","route":"math","teacher_answer":"182","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"225의 제곱근 구해줘","route":"math","teacher_answer":"15","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"6x+4=40이면 x는?","route":"math","teacher_answer":"6","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"18의 제곱 계산해줘","route":"math","teacher_answer":"324","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"7의 세제곱은 얼마야","route":"math","teacher_answer":"343","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"84 나누기 12 계산해줘","route":"math","teacher_answer":"7","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"파이썬에서 파일 읽는 기본 방법 알려줘","route":"code","teacher_answer":"open 또는 pathlib을 사용할 수 있습니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"npm 패키지 설치 명령 뭐야","route":"code","teacher_answer":"npm install을 사용합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"git에서 현재 상태 확인하는 명령","route":"code","teacher_answer":"git status를 사용합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"JavaScript에서 배열에 값 추가하는 법","route":"code","teacher_answer":"push 등을 사용할 수 있습니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"FastAPI에 GET 엔드포인트 만드는 법","route":"code","teacher_answer":"app.get 데코레이터를 사용할 수 있습니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"CSS flex로 가운데 정렬하는 방법","route":"code","teacher_answer":"Flexbox 정렬 속성을 사용할 수 있습니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"아까 추천해준 방법 다시 말해줘","route":"memory","teacher_answer":"이전 대화의 추천 내용을 회상해야 합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"내가 방금 정한 이름 기억나?","route":"memory","teacher_answer":"직전 대화의 이름을 확인해야 합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"전에 우리가 고른 설정 뭐였지","route":"memory","teacher_answer":"이전 선택 내용을 기억에서 확인해야 합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"지난번 작업한 부분 다시 알려줘","route":"memory","teacher_answer":"이전 작업 진행 내용을 회상해야 합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"조금 전에 보낸 오류가 뭐였어","route":"memory","teacher_answer":"직전 오류 메시지를 기억에서 확인해야 합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"내가 앞에서 선택한 브랜치 이름 뭐야","route":"memory","teacher_answer":"이전 선택 기록을 확인해야 합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"이 내용 요지만 짧게 알려줘","route":"summarize","teacher_answer":"주어진 내용의 요지를 짧게 요약해야 합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"아래 문단 핵심 세 가지만 뽑아줘","route":"summarize","teacher_answer":"제공된 문단의 핵심을 세 가지로 요약해야 합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"이 로그를 간단히 정리해줘","route":"summarize","teacher_answer":"제공된 로그의 핵심을 정리해야 합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"긴 설명을 두 문장으로 압축해줘","route":"summarize","teacher_answer":"주어진 설명을 두 문장으로 압축해야 합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"이 글에서 결론만 짧게 정리","route":"summarize","teacher_answer":"글의 결론을 중심으로 요약해야 합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"붙여넣은 텍스트 한눈에 보이게 요약해줘","route":"summarize","teacher_answer":"제공된 텍스트를 간결하게 요약해야 합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"현재 최신 Python 릴리스 찾아줘","route":"research","teacher_answer":"최신 외부 정보를 확인해야 합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"오늘 나온 기술 뉴스 검색해줘","route":"research","teacher_answer":"오늘의 외부 뉴스를 조사해야 합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"공식 사이트에서 현재 가격 확인해줘","route":"research","teacher_answer":"현재 외부 가격 정보를 확인해야 합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"이 프로젝트 최근 릴리스 노트 찾아봐","route":"research","teacher_answer":"최근 릴리스 정보를 외부에서 조사해야 합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"지금 서버 장애 공지 있는지 찾아줘","route":"research","teacher_answer":"현재 서비스 상태를 외부에서 확인해야 합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
+{"input":"이 논문의 공식 출처를 검색해줘","route":"research","teacher_answer":"논문의 외부 공식 출처를 찾아야 합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.1"}
