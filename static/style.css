@@ -108,11 +108,40 @@ h2 {
 }
 
 .status-badge,
-.brain-status {
+.brain-status,
+.generator-badge {
   font-size: 10px;
   font-weight: 700;
   border-radius: 20px;
   padding: 4px 8px;
+}
+
+.generator-badge {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #b3c4cf;
+  background: #13242f;
+  border: 1px solid #284453;
+}
+
+.generator-badge[data-state="ready"] {
+  color: #9eeaff;
+  background: #102b38;
+  border-color: #255a70;
+}
+
+.generator-badge[data-state="fallback"] {
+  color: #d6bf72;
+  background: #2a2514;
+  border-color: #5f5220;
+}
+
+.generator-badge[data-state="error"] {
+  color: #ff9f9f;
+  background: #31191c;
+  border-color: #653035;
 }
 
 .status-badge {
