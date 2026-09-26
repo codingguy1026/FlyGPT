@@ -18,6 +18,7 @@ from generator_runtime import GENERATIVE_ROUTES, GeneratorRuntime
 from memory_store import MemoryStore, format_recall
 
 
+APP_VERSION = "0.7.0"
 DATA_DIR = os.environ.get("FLYWIRE_DATA_DIR", "data/flywire_parts")
 
 _model_override = os.environ.get("FLYGPT_MODEL_PATH")
@@ -39,7 +40,7 @@ else:
 
 app = FastAPI(
     title="FlyGPT",
-    version="0.5.0",
+    version=APP_VERSION,
     description="Drosophila Connectome Chat Interface with routing, generation, and local conversation memory",
 )
 
@@ -209,7 +210,7 @@ def health():
         "model_available": model_path.is_file(),
         "router_initialized": _router is not None,
         "router_error": _router_error,
-        "app_version": "0.5.0",
+        "app_version": APP_VERSION,
         "dispatcher_enabled": True,
         "generator": _generator.status(),
         "memory": {
@@ -218,6 +219,11 @@ def health():
             "max_messages_per_session": 200,
         },
     }
+
+
+@app.get("/api/generator/status")
+def generator_status():
+    return _generator.status()
 
 
 @app.get("/api/memory/status")
@@ -259,7 +265,7 @@ def chat_endpoint(req: ChatRequest):
                 else "Router raw: unavailable"
             )
             answer = (
-                "🪰 FlyGPT v0.5 · math fast-path\n\n"
+                "🪰 FlyGPT v0.7 · math fast-path\n\n"
                 f"{result.answer}\n\n"
                 "Decision: math fast-path\n"
                 f"{router_note}"
@@ -434,7 +440,7 @@ def chat_endpoint(req: ChatRequest):
                     mode_label = f"{result.handler} · fallback"
 
             answer = (
-                f"🪰 FlyGPT v0.5 · {mode_label}\n\n"
+                f"🪰 FlyGPT v0.7 · {mode_label}\n\n"
                 f"{final_answer}\n\n"
                 f"Route: {route['route']} · {route['confidence']:.1%}\n"
                 f"Router: {model_label}"
