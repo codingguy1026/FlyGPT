@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import json
 import os
 import re
 import threading
@@ -7,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -35,8 +37,8 @@ else:
 
 app = FastAPI(
     title="FlyGPT",
-    version="0.5.0",
-    description="Drosophila Connectome Chat Interface with routing, generation, and local conversation memory",
+    version="0.7.0",
+    description="Drosophila Connectome Chat Interface with live router streaming and compressed memory",
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -205,13 +207,16 @@ def health():
         "model_available": model_path.is_file(),
         "router_initialized": _router is not None,
         "router_error": _router_error,
-        "app_version": "0.5.0",
+        "app_version": "0.7.0",
         "dispatcher_enabled": True,
+        "streaming_enabled": True,
         "generator": _generator.status(),
         "memory": {
             "enabled": True,
             "path": str(_memory.path),
             "max_messages_per_session": 200,
+            "capsule_batch_size": 8,
+            "long_term_capsules": True,
         },
     }
 
@@ -228,6 +233,69 @@ def memory_clear(req: MemoryRequest):
         "cleared": _memory.clear(session_id),
         "session_id_present": bool(session_id),
     }
+
+
+@app.post("/api/chat/stream")
+async def chat_stream_endpoint(req: ChatRequest):
+    msg = req.message.strip()
+    if not msg:
+        raise HTTPException(status_code=400, detail="메시지가 비어 있습니다.")
+
+    async def event_stream():
+        try:
+            route = predict_route(msg)
+
+            if route is not None:
+                route_event = {
+                    "type": "route",
+                    "router": {
+                        key: value
+                        for key, value in route.items()
+                        if key != "trace"
+                    },
+                }
+                yield json.dumps(route_event, ensure_ascii=False) + "\n"
+
+                trace = route.get("trace") or []
+                for index, frame in enumerate(trace):
+                    yield json.dumps(
+                        {
+                            "type": "brain_step",
+                            "index": index,
+                            "total": len(trace),
+                            "frame": frame,
+                        },
+                        ensure_ascii=False,
+                    ) + "\n"
+                    await asyncio.sleep(0.18)
+
+            result = chat_endpoint(req)
+            yield json.dumps(
+                {
+                    "type": "answer",
+                    "payload": result,
+                },
+                ensure_ascii=False,
+            ) + "\n"
+            yield json.dumps({"type": "done"}, ensure_ascii=False) + "\n"
+
+        except Exception as exc:
+            yield json.dumps(
+                {
+                    "type": "error",
+                    "detail": f"{type(exc).__name__}: {exc}",
+                },
+                ensure_ascii=False,
+            ) + "\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="application/x-ndjson",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @app.post("/api/chat")
@@ -255,7 +323,7 @@ def chat_endpoint(req: ChatRequest):
                 else "Router raw: unavailable"
             )
             answer = (
-                "🪰 FlyGPT v0.5 · math fast-path\n\n"
+                "🪰 FlyGPT v0.7 · math fast-path\n\n"
                 f"{result.answer}\n\n"
                 "Decision: math fast-path\n"
                 f"{router_note}"
@@ -430,7 +498,7 @@ def chat_endpoint(req: ChatRequest):
                     mode_label = f"{result.handler} · fallback"
 
             answer = (
-                f"🪰 FlyGPT v0.5 · {mode_label}\n\n"
+                f"🪰 FlyGPT v0.7 · {mode_label}\n\n"
                 f"{final_answer}\n\n"
                 f"Route: {route['route']} · {route['confidence']:.1%}\n"
                 f"Router: {model_label}"
