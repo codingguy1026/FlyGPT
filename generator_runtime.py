@@ -82,7 +82,13 @@ class GeneratorRuntime:
 
         return common + route_prompts.get(route, route_prompts["general"])
 
-    def generate(self, message: str, route: str) -> GenerationResult:
+    def generate(
+        self,
+        message: str,
+        route: str,
+        *,
+        memory_context: list[dict[str, Any]] | None = None,
+    ) -> GenerationResult:
         if route not in GENERATIVE_ROUTES:
             return GenerationResult(
                 used=False,
@@ -99,18 +105,46 @@ class GeneratorRuntime:
                 answer=None,
             )
 
+        messages: list[dict[str, str]] = [
+            {
+                "role": "system",
+                "content": self._system_prompt(route),
+            }
+        ]
+
+        if memory_context:
+            context_lines = []
+            for item in memory_context[-8:]:
+                role = str(item.get("role", "user"))
+                content = str(item.get("content", "")).strip()
+                if not content:
+                    continue
+                if len(content) > 700:
+                    content = content[:697] + "..."
+                context_lines.append(f"{role}: {content}")
+
+            if context_lines:
+                messages.append(
+                    {
+                        "role": "system",
+                        "content": (
+                            "Recent conversation context from this FlyGPT browser session:\n"
+                            + "\n".join(context_lines)
+                            + "\nUse it only when relevant to the current request."
+                        ),
+                    }
+                )
+
+        messages.append(
+            {
+                "role": "user",
+                "content": message,
+            }
+        )
+
         body = {
             "model": self.model,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": self._system_prompt(route),
-                },
-                {
-                    "role": "user",
-                    "content": message,
-                },
-            ],
+            "messages": messages,
             "temperature": 0.35,
         }
 
