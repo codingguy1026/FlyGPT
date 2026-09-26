@@ -189,7 +189,10 @@ def main() -> None:
     val_x, val_y = batchify(val, route_to_idx, args.vocab_size)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    loss_fn = nn.CrossEntropyLoss()
+
+    class_counts = torch.bincount(train_y, minlength=len(routes)).to(dtype=torch.float32)
+    class_weights = class_counts.sum() / (len(routes) * class_counts.clamp_min(1.0))
+    loss_fn = nn.CrossEntropyLoss(weight=class_weights)
 
     best_state = None
     best_val = -1.0
