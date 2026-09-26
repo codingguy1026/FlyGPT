@@ -329,6 +329,41 @@ def _pending_handler(route: str) -> tuple[str, str]:
     )
 
 
+def is_math_fast_path(message: str) -> bool:
+    """Return True for short expressions that are obviously arithmetic."""
+
+    raw = message.strip().rstrip("?").strip()
+    if not raw or len(raw) > 120:
+        return False
+
+    normalized = _normalize_math(raw).replace(" ", "")
+
+    # Avoid treating common ISO-like dates as subtraction.
+    if re.fullmatch(r"\d{4}-\d{1,2}-\d{1,2}", normalized):
+        return False
+
+    if not re.fullmatch(r"[0-9.()+\-*/%]+", normalized):
+        return False
+
+    # A lone number is not enough. Require an actual arithmetic operator.
+    return bool(re.search(r"[+*/%]|\*\*|(?<!^)-", normalized))
+
+
+def dispatch_math_fast_path(message: str) -> DispatchResult:
+    if not is_math_fast_path(message):
+        raise ValueError("message is not eligible for math fast-path")
+
+    handler_name, answer = _math_handler(message)
+    return DispatchResult(
+        route="math",
+        handler="math_fast_path",
+        status="completed",
+        answer=answer,
+        confidence=1.0,
+        margin=1.0,
+    )
+
+
 def dispatch(message: str, route_info: dict[str, Any]) -> DispatchResult:
     route = str(route_info.get("route", "general"))
     confidence = float(route_info.get("confidence", 0.0))
