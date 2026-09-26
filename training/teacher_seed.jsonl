@@ -58,3 +58,13 @@
 {"input":"코드 예시는 빼고 설명 부분만 짧게 정리해줘","route":"summarize","teacher_answer":"설명 부분의 핵심만 압축해 요약해야 합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.2"}
 {"input":"내가 전에 한 말은 무시하고 이 문단만 요약해줘","route":"summarize","teacher_answer":"이전 기억이 아니라 현재 문단만 요약해야 합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.2"}
 {"input":"검색 결과를 새로 찾지 말고 아래 텍스트만 한 문장으로 줄여줘","route":"summarize","teacher_answer":"주어진 텍스트만 한 문장으로 요약해야 합니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.2"}
+{"input":"안녕","route":"general","teacher_answer":"안녕! 반가워.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3"}
+{"input":"안녕하세요","route":"general","teacher_answer":"안녕하세요! 반가워요.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3"}
+{"input":"ㅎㅇ","route":"general","teacher_answer":"가벼운 인사입니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3"}
+{"input":"하이","route":"general","teacher_answer":"가벼운 인사입니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3"}
+{"input":"반가워","route":"general","teacher_answer":"일상적인 인사입니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3"}
+{"input":"뭐해?","route":"general","teacher_answer":"일상적인 대화입니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3"}
+{"input":"ㅋㅋㅋㅋ","route":"general","teacher_answer":"일상적인 반응입니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3"}
+{"input":"고마워","route":"general","teacher_answer":"감사에 대한 일상 대화입니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3"}
+{"input":"잘 자","route":"general","teacher_answer":"일상적인 작별 인사입니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3"}
+{"input":"좋은 아침","route":"general","teacher_answer":"일상적인 인사입니다.","teacher":"GPT-5.6 Sol","dataset_version":"v0.3"}
