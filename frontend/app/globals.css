@@ -662,3 +662,81 @@ h2 {
     min-height: 300px;
   }
 }
+
+
+/* v0.7 Next.js frontend additions */
+.messageContent {
+  white-space: pre-wrap;
+}
+
+.messageMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(120, 190, 220, 0.1);
+}
+
+.messageMetaChip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 21px;
+  padding: 2px 7px;
+  border: 1px solid #2a4352;
+  border-radius: 999px;
+  background: rgba(4, 14, 20, 0.38);
+  color: #829aa8;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.messageMetaChip.good {
+  color: #8ee7a5;
+  border-color: rgba(102, 224, 133, 0.3);
+}
+
+.messageMetaChip.info {
+  color: var(--accent-strong);
+  border-color: rgba(103, 216, 255, 0.3);
+}
+
+.messageMetaChip.warn {
+  color: var(--warm);
+  border-color: rgba(255, 223, 109, 0.3);
+}
+
+.quickPrompts {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.quickPrompts::-webkit-scrollbar {
+  display: none;
+}
+
+.quickPrompts button {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border: 1px solid #234154;
+  border-radius: 999px;
+  color: #9bb1bd;
+  background: #0a171f;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.quickPrompts button:hover {
+  color: #e4f8ff;
+  border-color: #4281a0;
+  background: #102635;
+}
+
+.quickPrompts button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
