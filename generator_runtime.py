@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 import urllib.error
 import urllib.request
@@ -10,6 +11,24 @@ from typing import Any
 
 
 GENERATIVE_ROUTES = {"general", "code", "summarize", "math"}
+
+
+_INTERNAL_META_RE = re.compile(
+    r"(?:🪰\s*)?FlyGPT\s+v\d+(?:\.\d+)*\s*·\s*[A-Za-z0-9_. -]+",
+    re.IGNORECASE,
+)
+
+
+def _clean_assistant_memory(content: str) -> str:
+    """Strip stale internal UI/router labels before feeding chat memory to the LLM."""
+    cleaned = _INTERNAL_META_RE.sub("", content)
+    kept_lines = []
+    for line in cleaned.splitlines():
+        stripped = line.strip()
+        if re.match(r"^(?:Router raw|Decision|route|confidence|handler)\s*:", stripped, re.IGNORECASE):
+            continue
+        kept_lines.append(line)
+    return "\n".join(kept_lines).strip()
 
 
 def _env_float(name: str, default: float, *, minimum: float, maximum: float) -> float:
@@ -118,6 +137,9 @@ class GeneratorRuntime:
             "Do not claim that you searched the web or remembered prior chats unless "
             "that information was explicitly provided in the current request or "
             "conversation context. "
+            "Never print internal router metadata, confidence-gate labels, model names, "
+            "or FlyGPT version labels in the answer unless the user explicitly asks "
+            "about those internals. "
         )
 
         route_prompts = {
@@ -163,6 +185,8 @@ class GeneratorRuntime:
             for item in memory_context[-8:]:
                 role = str(item.get("role", "user"))
                 content = str(item.get("content", "")).strip()
+                if role == "assistant":
+                    content = _clean_assistant_memory(content)
                 if not content:
                     continue
                 if len(content) > 700:
