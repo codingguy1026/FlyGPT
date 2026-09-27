@@ -26,6 +26,7 @@ if _model_override:
     MODEL_PATH = _model_override
 else:
     _model_candidates = (
+        "artifacts/fly_router_v0_3_4.pt",
         "artifacts/fly_router_v0_3_3.pt",
         "artifacts/fly_router_v0_3_2.pt",
         "artifacts/fly_router_v0_3_1.pt",
