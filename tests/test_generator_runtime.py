@@ -2,7 +2,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-from generator_runtime import GeneratorRuntime
+from generator_runtime import GeneratorRuntime, _clean_assistant_memory
 
 
 class GeneratorRuntimeTests(unittest.TestCase):
@@ -26,11 +26,25 @@ class GeneratorRuntimeTests(unittest.TestCase):
             clear=True,
         ):
             runtime = GeneratorRuntime()
-            result = runtime.generate("17 × 23은?", "math")
+            result = runtime.generate("어제 말한 거 기억나?", "memory")
 
         self.assertTrue(runtime.configured)
         self.assertFalse(result.used)
         self.assertIsNone(result.error)
+
+    def test_stale_internal_metadata_is_removed_from_assistant_memory(self):
+        content = (
+            "안녕하세요! 🪰 FlyGPT v0.5 · confidence_gate 질문을 더 자세히 말해 주세요.\n"
+            "Router raw: general · 92.9%\n"
+            "Decision: confidence_gate"
+        )
+        cleaned = _clean_assistant_memory(content)
+
+        self.assertIn("안녕하세요!", cleaned)
+        self.assertNotIn("v0.5", cleaned)
+        self.assertNotIn("confidence_gate", cleaned)
+        self.assertNotIn("Router raw", cleaned)
+        self.assertNotIn("Decision:", cleaned)
 
     def test_status_does_not_expose_api_key(self):
         with patch.dict(
