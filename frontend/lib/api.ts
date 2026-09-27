@@ -16,10 +16,31 @@ export type RouterResult = {
   trace?: TraceFrame[];
 };
 
+export type GenerationResult = {
+  used?: boolean;
+  provider?: string;
+  model?: string | null;
+  answer?: string | null;
+  error?: string | null;
+  finish_reason?: string | null;
+  latency_ms?: number | null;
+};
+
+export type ChatData = {
+  generation?: GenerationResult | null;
+  dispatch?: unknown;
+  memory_hits?: unknown;
+  ui_meta?: {
+    mode?: string;
+    router_model?: string;
+    app_version?: string;
+  };
+};
+
 export type ChatResponse = {
   answer: string;
   type: string;
-  data: unknown;
+  data?: ChatData | null;
   router?: RouterResult;
 };
 
