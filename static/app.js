@@ -7,6 +7,9 @@ const chatForm = document.getElementById('chatForm');
 const userInput = document.getElementById('userInput');
 const sendBtn = document.getElementById('sendBtn');
 const generatorBadge = document.getElementById('generatorBadge');
+const routerBadge = document.getElementById('routerBadge');
+const memoryBadge = document.getElementById('memoryBadge');
+const quickPrompts = document.getElementById('quickPrompts');
 
 function getMemorySessionId() {
   try {
@@ -27,6 +30,44 @@ function getMemorySessionId() {
 }
 
 const memorySessionId = getMemorySessionId();
+
+async function loadSystemStatus() {
+  try {
+    const response = await fetch('/api/health');
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || ('HTTP ' + response.status));
+    }
+
+    if (routerBadge) {
+      if (data.model_available) {
+        const modelName = String(data.model_path || '').split('/').pop() || 'router';
+        routerBadge.textContent = 'BRAIN · ' + modelName.replace('fly_router_', '').replace('.pt', '');
+        routerBadge.dataset.state = data.router_error ? 'error' : 'ready';
+        routerBadge.title = data.router_error || ('Router: ' + modelName);
+      } else {
+        routerBadge.textContent = 'BRAIN MISSING';
+        routerBadge.dataset.state = 'error';
+      }
+    }
+
+    if (memoryBadge) {
+      memoryBadge.textContent = data.memory?.enabled ? 'MEMORY ON' : 'MEMORY OFF';
+      memoryBadge.dataset.state = data.memory?.enabled ? 'ready' : 'fallback';
+    }
+  } catch (error) {
+    if (routerBadge) {
+      routerBadge.textContent = 'BRAIN OFFLINE';
+      routerBadge.dataset.state = 'error';
+      routerBadge.title = error.message;
+    }
+    if (memoryBadge) {
+      memoryBadge.textContent = 'MEM UNKNOWN';
+      memoryBadge.dataset.state = 'error';
+    }
+  }
+}
 
 async function loadGeneratorStatus() {
   if (!generatorBadge) return;
@@ -107,7 +148,7 @@ brainClose.addEventListener('click', () => {
   setBrainOpen(false);
 });
 
-function appendMessage(sender, content) {
+function appendMessage(sender, content, meta = null) {
   const msgDiv = document.createElement('div');
   msgDiv.className = `message ${sender}`;
 
@@ -117,7 +158,29 @@ function appendMessage(sender, content) {
 
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
-  bubble.textContent = content;
+
+  const contentNode = document.createElement('div');
+  contentNode.className = 'message-content';
+  contentNode.textContent = content;
+  bubble.appendChild(contentNode);
+
+  if (meta && sender === 'assistant') {
+    const metaRow = document.createElement('div');
+    metaRow.className = 'message-meta';
+
+    (meta.items || []).forEach((item) => {
+      if (!item?.text) return;
+      const chip = document.createElement('span');
+      chip.className = 'message-meta-chip';
+      if (item.state) chip.dataset.state = item.state;
+      chip.textContent = item.text;
+      metaRow.appendChild(chip);
+    });
+
+    if (metaRow.childElementCount) {
+      bubble.appendChild(metaRow);
+    }
+  }
 
   msgDiv.appendChild(avatar);
   msgDiv.appendChild(bubble);
@@ -488,7 +551,43 @@ chatForm.addEventListener('submit', async (event) => {
       return;
     }
 
-    appendMessage('assistant', data.answer);
+    const metaItems = [];
+
+    if (data.router) {
+      metaItems.push({
+        text: `${data.router.route} · ${(data.router.confidence * 100).toFixed(1)}%`,
+        state: data.router.confidence >= 0.55 ? 'ready' : 'warning',
+      });
+
+      if (data.router.model) {
+        metaItems.push({
+          text: String(data.router.model).replace('fly_router_', '').replace('.pt', ''),
+          state: 'neutral',
+        });
+      }
+    }
+
+    const generation = data.data?.generation;
+    if (generation?.used) {
+      metaItems.push({
+        text: `GEN · ${generation.model || generation.provider}`,
+        state: 'generated',
+      });
+
+      if (generation.latency_ms != null) {
+        metaItems.push({
+          text: `${generation.latency_ms} ms`,
+          state: 'neutral',
+        });
+      }
+    } else if (generation && !generation.used) {
+      metaItems.push({
+        text: 'fallback',
+        state: 'warning',
+      });
+    }
+
+    appendMessage('assistant', data.answer, { items: metaItems });
 
     if (data.router) {
       renderRoute(data.router);
@@ -510,6 +609,16 @@ chatForm.addEventListener('submit', async (event) => {
   }
 });
 
+quickPrompts?.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-prompt]');
+  if (!button) return;
+
+  userInput.value = button.dataset.prompt || '';
+  userInput.focus();
+});
+
+
 // Keep the original chat UI completely stable on first paint.
 setBrainOpen(false);
+loadSystemStatus();
 loadGeneratorStatus();
