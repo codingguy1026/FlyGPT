@@ -1,5 +1,11 @@
 const SESSION_KEY = "flygpt-memory-session-v0.5";
 
+function makeSessionId(): string {
+  return typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : "session-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+}
+
 export function getMemorySessionId(): string {
   if (typeof window === "undefined") {
     return "";
@@ -11,14 +17,24 @@ export function getMemorySessionId(): string {
       return existing;
     }
 
-    const value =
-      typeof crypto.randomUUID === "function"
-        ? crypto.randomUUID()
-        : `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
+    const value = makeSessionId();
     window.localStorage.setItem(SESSION_KEY, value);
     return value;
   } catch {
-    return `ephemeral-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    return "ephemeral-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+  }
+}
+
+export function createMemorySessionId(): string {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  try {
+    const value = makeSessionId();
+    window.localStorage.setItem(SESSION_KEY, value);
+    return value;
+  } catch {
+    return "ephemeral-" + Date.now() + "-" + Math.random().toString(16).slice(2);
   }
 }
