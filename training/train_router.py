@@ -27,27 +27,67 @@ def vectorize(text: str, size: int, version: str = "v1") -> torch.Tensor:
     tokens = [t.lower() for t in TOKEN_RE.findall(text)]
 
     for token in tokens:
-        vec[stable_bucket("w:" + token, size)] += 1.0
+        token_len = len(token)
 
-        if len(token) >= 2:
-            for i in range(len(token) - 1):
-                vec[stable_bucket("b:" + token[i : i + 2], size)] += 0.35
+        if version == "v4":
+            # Very short unseen words are fragile when the whole-token hash is
+            # allowed to dominate. Reduce that feature and lean more heavily on
+            # reusable character/jamo structure. Longer tokens keep the old
+            # whole-word strength.
+            if token_len <= 2:
+                word_weight = 0.42
+                bigram_weight = 0.50
+                char_weight = 0.42
+                jamo1_weight = 0.24
+                jamo2_weight = 0.24
+                jamo3_weight = 0.12
+            elif token_len == 3:
+                word_weight = 0.68
+                bigram_weight = 0.42
+                char_weight = 0.32
+                jamo1_weight = 0.18
+                jamo2_weight = 0.21
+                jamo3_weight = 0.10
+            else:
+                word_weight = 1.0
+                bigram_weight = 0.35
+                char_weight = 0.22
+                jamo1_weight = 0.10
+                jamo2_weight = 0.18
+                jamo3_weight = 0.08
+        else:
+            word_weight = 1.0
+            bigram_weight = 0.35
+            char_weight = 0.22
+            jamo1_weight = 0.0
+            jamo2_weight = 0.18
+            jamo3_weight = 0.08
 
-        if version in ("v2", "v3"):
+        vec[stable_bucket("w:" + token, size)] += word_weight
+
+        if token_len >= 2:
+            for i in range(token_len - 1):
+                vec[stable_bucket("b:" + token[i : i + 2], size)] += bigram_weight
+
+        if version in ("v2", "v3", "v4"):
             # Decomposed Hangul features let related forms such as
             # "반가워" and "반갑다" share more sub-character structure.
             decomposed = unicodedata.normalize("NFKD", token)
-            for i in range(len(decomposed) - 1):
-                vec[stable_bucket("j2:" + decomposed[i : i + 2], size)] += 0.18
-            for i in range(len(decomposed) - 2):
-                vec[stable_bucket("j3:" + decomposed[i : i + 3], size)] += 0.08
 
-        if version == "v3":
-            # Syllable/character unigrams add a smaller shared feature for
-            # short colloquial variants such as "땡스" -> "땡큐" without
-            # hard-coding either phrase to a route.
+            if version == "v4":
+                for char in decomposed:
+                    vec[stable_bucket("j1:" + char, size)] += jamo1_weight
+
+            for i in range(len(decomposed) - 1):
+                vec[stable_bucket("j2:" + decomposed[i : i + 2], size)] += jamo2_weight
+            for i in range(len(decomposed) - 2):
+                vec[stable_bucket("j3:" + decomposed[i : i + 3], size)] += jamo3_weight
+
+        if version in ("v3", "v4"):
+            # Syllable/character unigrams let colloquial variants share signal
+            # without mapping any literal phrase directly to a route.
             for char in token:
-                vec[stable_bucket("c:" + char, size)] += 0.22
+                vec[stable_bucket("c:" + char, size)] += char_weight
         elif version not in ("v1", "v2"):
             raise ValueError(f"Unknown vectorizer version: {version}")
 
@@ -199,7 +239,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--val-ratio", type=float, default=0.25)
     parser.add_argument("--synthetic-nodes", type=int, default=96)
-    parser.add_argument("--vectorizer-version", choices=("v1", "v2", "v3"), default="v1")
+    parser.add_argument("--vectorizer-version", choices=("v1", "v2", "v3", "v4"), default="v1")
     args = parser.parse_args()
 
     random.seed(args.seed)
