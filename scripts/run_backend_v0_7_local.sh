@@ -15,4 +15,17 @@ echo "Generator: $FLYGPT_GENERATOR_PROVIDER / $FLYGPT_GENERATOR_MODEL"
 echo "URL: $FLYGPT_GENERATOR_URL"
 echo
 
-python -m uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+if [[ -x ".venv/bin/python" ]]; then
+  PYTHON=".venv/bin/python"
+else
+  PYTHON="${PYTHON:-python}"
+fi
+
+if ! "$PYTHON" -c "import uvicorn" >/dev/null 2>&1; then
+  echo "❌ uvicorn is not installed for: $PYTHON"
+  echo "Install project dependencies first, or create .venv."
+  exit 1
+fi
+
+echo "Python: $PYTHON"
+exec "$PYTHON" -m uvicorn app:app --host 0.0.0.0 --port 8000 --reload
