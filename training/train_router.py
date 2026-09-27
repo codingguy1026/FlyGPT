@@ -29,7 +29,7 @@ def vectorize(text: str, size: int, version: str = "v1") -> torch.Tensor:
     for token in tokens:
         token_len = len(token)
 
-        if version == "v4":
+        if version in ("v4", "v5"):
             # Very short unseen words are fragile when the whole-token hash is
             # allowed to dominate. Reduce that feature and lean more heavily on
             # reusable character/jamo structure. Longer tokens keep the old
@@ -69,12 +69,18 @@ def vectorize(text: str, size: int, version: str = "v1") -> torch.Tensor:
             for i in range(token_len - 1):
                 vec[stable_bucket("b:" + token[i : i + 2], size)] += bigram_weight
 
-        if version in ("v2", "v3", "v4"):
+        use_jamo = version in ("v2", "v3", "v4")
+        if version == "v5":
+            # v5 keeps Hangul decomposition where it is meaningful, but does
+            # not run Latin/code tokens through the jamo feature namespace.
+            use_jamo = bool(re.search(r"[가-힣ㄱ-ㅎㅏ-ㅣ]", token))
+
+        if use_jamo:
             # Decomposed Hangul features let related forms such as
             # "반가워" and "반갑다" share more sub-character structure.
             decomposed = unicodedata.normalize("NFKD", token)
 
-            if version == "v4":
+            if version in ("v4", "v5"):
                 for char in decomposed:
                     vec[stable_bucket("j1:" + char, size)] += jamo1_weight
 
@@ -83,13 +89,20 @@ def vectorize(text: str, size: int, version: str = "v1") -> torch.Tensor:
             for i in range(len(decomposed) - 2):
                 vec[stable_bucket("j3:" + decomposed[i : i + 3], size)] += jamo3_weight
 
-        if version in ("v3", "v4"):
+        if version in ("v3", "v4", "v5"):
             # Syllable/character unigrams let colloquial variants share signal
             # without mapping any literal phrase directly to a route.
             for char in token:
                 vec[stable_bucket("c:" + char, size)] += char_weight
         elif version not in ("v1", "v2"):
             raise ValueError(f"Unknown vectorizer version: {version}")
+
+    if version == "v5":
+        # Add phrase context. This lets the router distinguish the same word
+        # used in different intents, e.g. "공식 사이트" (research) from
+        # "넓이 공식" (math), without hard-coding either route.
+        for left, right in zip(tokens, tokens[1:]):
+            vec[stable_bucket(f"wb:{left}|{right}", size)] += 0.60
 
     norm = torch.linalg.vector_norm(vec)
     if norm > 0:
@@ -239,7 +252,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--val-ratio", type=float, default=0.25)
     parser.add_argument("--synthetic-nodes", type=int, default=96)
-    parser.add_argument("--vectorizer-version", choices=("v1", "v2", "v3", "v4"), default="v1")
+    parser.add_argument("--vectorizer-version", choices=("v1", "v2", "v3", "v4", "v5"), default="v1")
     args = parser.parse_args()
 
     random.seed(args.seed)
