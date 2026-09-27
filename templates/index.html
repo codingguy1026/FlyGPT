@@ -19,7 +19,11 @@
         </div>
 
         <div class="header-actions">
-          <div class="generator-badge" id="generatorBadge">GEN CHECK</div>
+          <div class="system-badges" aria-label="FlyGPT system status">
+            <div class="system-badge" id="routerBadge">ROUTER CHECK</div>
+            <div class="generator-badge" id="generatorBadge">GEN CHECK</div>
+            <div class="system-badge" id="memoryBadge">MEM CHECK</div>
+          </div>
           <button
             class="brain-toggle"
             id="brainToggle"
@@ -45,6 +49,12 @@
       </main>
 
       <div class="chat-input-area">
+        <div class="quick-prompts" id="quickPrompts" aria-label="빠른 테스트">
+          <button type="button" data-prompt="땡큐">땡큐</button>
+          <button type="button" data-prompt="17 × 23은?">17 × 23</button>
+          <button type="button" data-prompt="파이썬 리스트 정렬 알려줘">Python</button>
+          <button type="button" data-prompt="내가 방금 뭐라고 했지?">Memory</button>
+        </div>
         <form id="chatForm">
           <input
             type="text"
