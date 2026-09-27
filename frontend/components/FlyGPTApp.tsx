@@ -27,8 +27,8 @@ const INITIAL_MESSAGE: Message = {
   id: "welcome",
   role: "assistant",
   content:
-    "안녕하세요! FlyGPT v0.7 Frontend Alpha입니다.\n" +
-    "FlyWire 라우터 + 로컬 기억 + 생성기 상태를 한 화면에서 보고, 라우팅 결과까지 확인할 수 있어요.",
+    "안녕하세요! 무엇을 같이 풀어볼까요?\n" +
+    "질문은 FlyWire 기반 라우터를 거쳐 가장 알맞은 처리 경로로 전달됩니다.",
 };
 
 function makeId(prefix: string) {
@@ -188,20 +188,27 @@ export default function FlyGPTApp() {
     }
   }
 
+  const quickPrompts = [
+    ["✦", "일반", "왜 하늘은 파란색이야?"],
+    ["∑", "수학", "삼각형 넓이는 어떻게 구해?"],
+    ["</>", "코드", "파이썬 리스트 정렬 알려줘"],
+    ["↺", "기억", "내가 방금 뭐라고 했지?"],
+  ];
+
   return (
     <main className={brainOpen ? "appShell brainOpen" : "appShell"}>
       <section className="chatPanel">
         <header className="chatHeader">
           <div className="brand">
-            <div className="logo">🪰</div>
+            <div className="logo" aria-hidden="true">
+              <span className="logoGlyph">🪰</span>
+            </div>
             <div className="brandText">
               <div className="titleRow">
                 <h1>FlyGPT</h1>
-                <span className="alphaBadge">v0.7 ALPHA</span>
+                <span className="alphaBadge">LAB · v0.7</span>
               </div>
-              <div className="subtitle">
-                FlyWire router + memory + generator + Next.js
-              </div>
+              <div className="subtitle">Connectome-routed AI workspace</div>
             </div>
           </div>
 
@@ -212,130 +219,163 @@ export default function FlyGPTApp() {
               onClick={handleClearMemory}
               title="현재 세션 기억 지우기"
             >
-              🧠 Memory
+              <span aria-hidden="true">↺</span>
+              Memory
             </button>
             <button
               type="button"
               className={brainOpen ? "ghostButton active" : "ghostButton"}
               onClick={() => setBrainOpen((value) => !value)}
             >
-              🧬 Brain
+              <span aria-hidden="true">◉</span>
+              Brain
             </button>
             <div className={online ? "status online" : "status offline"}>
               <span className="statusDot" />
-              {online ? "ONLINE" : healthError ? "OFFLINE" : "CHECKING"}
+              {online ? "Live" : healthError ? "Offline" : "Checking"}
             </div>
           </div>
         </header>
 
-        <div className="systemStrip">
-          <div>
-            <span className="stripLabel">BACKEND</span>
-            <strong>{health?.app_version ?? "…"}</strong>
+        <div className="systemStrip" aria-label="시스템 상태">
+          <div className="systemChip">
+            <span className="systemIcon">↯</span>
+            <span className="systemText">
+              <small>BACKEND</small>
+              <strong>{health?.app_version ?? "…"}</strong>
+            </span>
           </div>
-          <div>
-            <span className="stripLabel">ROUTER</span>
-            <strong>{modelLabel}</strong>
+          <div className="systemChip">
+            <span className="systemIcon">◈</span>
+            <span className="systemText">
+              <small>ROUTER</small>
+              <strong>{modelLabel}</strong>
+            </span>
           </div>
-          <div>
-            <span className="stripLabel">MEMORY</span>
-            <strong>{health?.memory?.enabled ? "ON" : health ? "OFF" : "…"}</strong>
+          <div className="systemChip">
+            <span className="systemIcon">◇</span>
+            <span className="systemText">
+              <small>MEMORY</small>
+              <strong>{health?.memory?.enabled ? "Ready" : health ? "Off" : "…"}</strong>
+            </span>
           </div>
-          <div>
-            <span className="stripLabel">GENERATOR</span>
-            <strong>
-              {health?.generator?.configured
-                ? health.generator.model ?? "ON"
-                : health
-                  ? "FALLBACK"
-                  : "…"}
-            </strong>
+          <div className="systemChip">
+            <span className="systemIcon">✦</span>
+            <span className="systemText">
+              <small>GENERATOR</small>
+              <strong>
+                {health?.generator?.configured
+                  ? health.generator.model ?? "Ready"
+                  : health
+                    ? "Fallback"
+                    : "…"}
+              </strong>
+            </span>
           </div>
         </div>
 
         <section className="messages" aria-live="polite">
-          {messages.map((message) => (
-            <article
-              key={message.id}
-              className={`message ${message.role}`}
-            >
-              <div className="avatar">
-                {message.role === "assistant" ? "🪰" : "👤"}
-              </div>
-              <div className="bubble">
-                <div className="messageContent">{message.content}</div>
-                {message.meta && message.meta.length > 0 && (
-                  <div className="messageMeta">
-                    {message.meta.map((item, index) => (
-                      <span
-                        className={`messageMetaChip ${item.tone ?? "muted"}`}
-                        key={`${message.id}-meta-${index}`}
-                      >
-                        {item.text}
-                      </span>
-                    ))}
+          <div className="conversation">
+            {messages.map((message) => (
+              <article key={message.id} className={`message ${message.role}`}>
+                <div className="avatar" aria-hidden="true">
+                  {message.role === "assistant" ? "🪰" : "Y"}
+                </div>
+                <div className="messageBody">
+                  <div className="messageRole">
+                    {message.role === "assistant" ? "FlyGPT" : "You"}
                   </div>
-                )}
-              </div>
-            </article>
-          ))}
+                  <div className="bubble">
+                    <div className="messageContent">{message.content}</div>
+                    {message.meta && message.meta.length > 0 && (
+                      <div className="messageMeta">
+                        {message.meta.map((item, index) => (
+                          <span
+                            className={`messageMetaChip ${item.tone ?? "muted"}`}
+                            key={`${message.id}-meta-${index}`}
+                          >
+                            {item.text}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </article>
+            ))}
 
-          {sending && (
-            <article className="message assistant">
-              <div className="avatar">🪰</div>
-              <div className="bubble loadingBubble">
-                <span className="thinkingDot" />
-                <span className="thinkingDot" />
-                <span className="thinkingDot" />
-                FlyGPT 처리 중
-              </div>
-            </article>
-          )}
+            {sending && (
+              <article className="message assistant">
+                <div className="avatar" aria-hidden="true">🪰</div>
+                <div className="messageBody">
+                  <div className="messageRole">FlyGPT</div>
+                  <div className="bubble loadingBubble">
+                    <span className="thinkingDot" />
+                    <span className="thinkingDot" />
+                    <span className="thinkingDot" />
+                    <span className="thinkingText">Routing through the fly brain</span>
+                  </div>
+                </div>
+              </article>
+            )}
 
-          <div ref={bottomRef} />
+            <div ref={bottomRef} />
+          </div>
         </section>
 
         <footer className="composerArea">
-          <div className="quickPrompts" aria-label="빠른 테스트">
-            {[
-              ["땡큐", "땡큐"],
-              ["17 × 23", "17 × 23은?"],
-              ["Python", "파이썬 리스트 정렬 알려줘"],
-              ["Memory", "내가 방금 뭐라고 했지?"],
-            ].map(([label, prompt]) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => setInput(prompt)}
+          <div className="composerInner">
+            <div className="quickPrompts" aria-label="빠른 테스트">
+              {quickPrompts.map(([icon, label, prompt]) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setInput(prompt)}
+                  disabled={sending}
+                >
+                  <span>{icon}</span>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <form className="composer" onSubmit={handleSubmit}>
+              <textarea
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    event.currentTarget.form?.requestSubmit();
+                  }
+                }}
+                placeholder="FlyGPT에게 메시지 보내기"
+                autoComplete="off"
                 disabled={sending}
+                aria-label="FlyGPT 메시지"
+                rows={1}
+              />
+              <button
+                className="sendButton"
+                type="submit"
+                disabled={sending || !input.trim() || !sessionId}
+                aria-label="메시지 보내기"
               >
-                {label}
+                {sending ? "…" : "↑"}
               </button>
-            ))}
-          </div>
-          <form className="composer" onSubmit={handleSubmit}>
-            <input
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              placeholder="FlyGPT에게 물어보기..."
-              autoComplete="off"
-              disabled={sending}
-              aria-label="FlyGPT 메시지"
-            />
-            <button
-              type="submit"
-              disabled={sending || !input.trim() || !sessionId}
-            >
-              {sending ? "…" : "전송"}
-            </button>
-          </form>
-          <div className="footerLine">
-            <span>FlyGPT v0.7 Frontend Alpha</span>
-            {router && (
-              <span className="routeMini">
-                {router.route} {(router.confidence * 100).toFixed(1)}%
-              </span>
-            )}
+            </form>
+
+            <div className="footerLine">
+              <span>Enter 전송 · Shift + Enter 줄바꿈</span>
+              {router ? (
+                <span className="routeMini">
+                  <i />
+                  {router.route} {(router.confidence * 100).toFixed(1)}%
+                </span>
+              ) : (
+                <span>local session</span>
+              )}
+            </div>
           </div>
         </footer>
       </section>
