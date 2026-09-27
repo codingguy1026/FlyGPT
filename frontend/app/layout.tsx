@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FlyGPT v0.6",
-  description: "FlyWire connectome router experiment",
+  title: "FlyGPT v0.7",
+  description: "Connectome-routed AI workspace",
 };
 
 export default function RootLayout({
