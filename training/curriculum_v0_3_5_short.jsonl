@@ -1,0 +1,76 @@
+{"input":"ㅎㅇ","route":"general","teacher_answer":"v0.3.5 short-form curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"ㅎㅇㅎㅇ","route":"general","teacher_answer":"v0.3.5 short-form curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"ㅇㅇ","route":"general","teacher_answer":"v0.3.5 short-form curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"ㄱㅅ","route":"general","teacher_answer":"v0.3.5 short-form curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"ㅂㅂ","route":"general","teacher_answer":"v0.3.5 short-form curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"굿밤","route":"general","teacher_answer":"v0.3.5 short-form curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"굿모닝","route":"general","teacher_answer":"v0.3.5 short-form curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"오키","route":"general","teacher_answer":"v0.3.5 short-form curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"헐","route":"general","teacher_answer":"v0.3.5 short-form curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"대박","route":"general","teacher_answer":"v0.3.5 short-form curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"ㅋㅋ","route":"general","teacher_answer":"v0.3.5 short-form curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"ㅋㅋㅋ","route":"general","teacher_answer":"v0.3.5 short-form curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"미안","route":"general","teacher_answer":"v0.3.5 short-form curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"축하해","route":"general","teacher_answer":"v0.3.5 short-form curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"반가워","route":"general","teacher_answer":"v0.3.5 short-form curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"고마웡ㅋ","route":"general","teacher_answer":"v0.3.5 short-form curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"2+2","route":"math","teacher_answer":"v0.3.5 short-form curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"7*8","route":"math","teacher_answer":"v0.3.5 short-form curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"2^8","route":"math","teacher_answer":"v0.3.5 short-form curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"sqrt 64","route":"math","teacher_answer":"v0.3.5 short-form curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"루트 49","route":"math","teacher_answer":"v0.3.5 short-form curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"원 넓이?","route":"math","teacher_answer":"v0.3.5 short-form curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"삼각형 넓이?","route":"math","teacher_answer":"v0.3.5 short-form curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"평균 구해줘","route":"math","teacher_answer":"v0.3.5 short-form curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"확률 계산","route":"math","teacher_answer":"v0.3.5 short-form curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"분산 뜻","route":"math","teacher_answer":"v0.3.5 short-form curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"x+3=8","route":"math","teacher_answer":"v0.3.5 short-form curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"90도의 절반?","route":"math","teacher_answer":"v0.3.5 short-form curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"git status","route":"code","teacher_answer":"v0.3.5 short-form curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"git pull","route":"code","teacher_answer":"v0.3.5 short-form curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"npm install","route":"code","teacher_answer":"v0.3.5 short-form curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"npm run dev","route":"code","teacher_answer":"v0.3.5 short-form curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"css flex","route":"code","teacher_answer":"v0.3.5 short-form curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"css grid","route":"code","teacher_answer":"v0.3.5 short-form curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"python list","route":"code","teacher_answer":"v0.3.5 short-form curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"python dict","route":"code","teacher_answer":"v0.3.5 short-form curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"react state","route":"code","teacher_answer":"v0.3.5 short-form curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"sql join","route":"code","teacher_answer":"v0.3.5 short-form curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"fastapi get","route":"code","teacher_answer":"v0.3.5 short-form curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"js json","route":"code","teacher_answer":"v0.3.5 short-form curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"아까?","route":"memory","teacher_answer":"v0.3.5 short-form curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"기억나?","route":"memory","teacher_answer":"v0.3.5 short-form curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"방금 뭐?","route":"memory","teacher_answer":"v0.3.5 short-form curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"전에 뭐였지?","route":"memory","teacher_answer":"v0.3.5 short-form curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"아까 값?","route":"memory","teacher_answer":"v0.3.5 short-form curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"방금 숫자?","route":"memory","teacher_answer":"v0.3.5 short-form curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"전에 파일?","route":"memory","teacher_answer":"v0.3.5 short-form curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"아까 모델?","route":"memory","teacher_answer":"v0.3.5 short-form curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"직전 내용?","route":"memory","teacher_answer":"v0.3.5 short-form curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"이전 설정?","route":"memory","teacher_answer":"v0.3.5 short-form curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"아까 명령?","route":"memory","teacher_answer":"v0.3.5 short-form curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"전에 선택?","route":"memory","teacher_answer":"v0.3.5 short-form curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"요약","route":"summarize","teacher_answer":"v0.3.5 short-form curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"요약해줘","route":"summarize","teacher_answer":"v0.3.5 short-form curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"줄여줘","route":"summarize","teacher_answer":"v0.3.5 short-form curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"핵심만","route":"summarize","teacher_answer":"v0.3.5 short-form curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"한줄요약","route":"summarize","teacher_answer":"v0.3.5 short-form curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"요지만","route":"summarize","teacher_answer":"v0.3.5 short-form curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"짧게 정리","route":"summarize","teacher_answer":"v0.3.5 short-form curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"결론만","route":"summarize","teacher_answer":"v0.3.5 short-form curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"세줄요약","route":"summarize","teacher_answer":"v0.3.5 short-form curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"압축해줘","route":"summarize","teacher_answer":"v0.3.5 short-form curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"로그 요약","route":"summarize","teacher_answer":"v0.3.5 short-form curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"문단 요약","route":"summarize","teacher_answer":"v0.3.5 short-form curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"최신 버전?","route":"research","teacher_answer":"v0.3.5 short-form curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"검색해줘","route":"research","teacher_answer":"v0.3.5 short-form curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"오늘 날씨","route":"research","teacher_answer":"v0.3.5 short-form curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"현재 환율","route":"research","teacher_answer":"v0.3.5 short-form curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"최근 뉴스","route":"research","teacher_answer":"v0.3.5 short-form curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"공식 확인","route":"research","teacher_answer":"v0.3.5 short-form curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"오늘 경기","route":"research","teacher_answer":"v0.3.5 short-form curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"현재 가격","route":"research","teacher_answer":"v0.3.5 short-form curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"최신 공지","route":"research","teacher_answer":"v0.3.5 short-form curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"지금 상태","route":"research","teacher_answer":"v0.3.5 short-form curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"최근 릴리스","route":"research","teacher_answer":"v0.3.5 short-form curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
+{"input":"오늘 기준","route":"research","teacher_answer":"v0.3.5 short-form curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.5"}
