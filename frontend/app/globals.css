@@ -113,6 +113,10 @@ textarea:focus-visible {
   padding-left: 17px;
 }
 
+.sidebarBrand .flyMark.compact {
+  transform: scale(1.28);
+}
+
 .newChatButton {
   min-height: 54px;
   padding: 0 18px;
