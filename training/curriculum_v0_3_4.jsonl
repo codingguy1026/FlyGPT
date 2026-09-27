@@ -1,0 +1,144 @@
+{"input":"좋은 저녁이야","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"좋은 오후","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"오랜만이다","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"나 왔어","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"잘 지냈니?","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"오늘 기분 어때?","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"뭐 하고 놀까","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"심심하다","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"ㅋㅋ 개웃기네","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"헐 대박","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"오케이 알겠어","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"응 맞아","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"아니 그건 아닌듯","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"미안해","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"괜찮아","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"축하해줘","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"너 이름이 뭐야?","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"너는 뭐 할 수 있어?","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"쉽게 설명해줘","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"예시 하나 들어줘","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"왜 하늘은 파란색이야?","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"물은 왜 얼어?","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"지구는 왜 둥글어?","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"대한민국 수도는 어디야?","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"태양계 행성은 몇 개야?","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"고양이는 왜 골골거려?","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"오늘도 힘내자","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"잘 다녀와","route":"general","teacher_answer":"v0.3.4 curriculum example for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"삼각형 넓이는 어떻게 구해?","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"삼각형의 넓이 공식 알려줘","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"원의 넓이는 어떻게 계산해?","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"원의 둘레 공식이 뭐야?","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"직사각형 넓이 구하는 법","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"사다리꼴 넓이 공식 알려줘","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"피타고라스 정리를 설명해줘","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"직각삼각형 빗변은 어떻게 구해?","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"이차방정식 푸는 법 알려줘","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"연립방정식은 어떻게 풀어?","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"일차함수 기울기가 뭐야?","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"함수의 절편이 뭐야?","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"분수끼리 더하는 방법 알려줘","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"소수 곱셈은 어떻게 해?","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"백분율 계산하는 법","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"평균은 어떻게 구해?","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"분산이 뭐야?","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"표준편차는 어떻게 계산해?","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"확률 구하는 방법 알려줘","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"경우의 수는 어떻게 세?","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"각도의 합은 어떻게 구해?","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"삼각형 내각의 합이 왜 180도야?","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"루트가 뭔지 설명해줘","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"지수법칙 알려줘","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"13의 제곱은 얼마야?","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"144의 제곱근은?","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"x 더하기 7이 20일 때 x는?","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"2의 10제곱은?","route":"math","teacher_answer":"v0.3.4 curriculum example for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"파이썬 반복문 알려줘","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"파이썬 딕셔너리 쓰는 법","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"파이썬 함수 만드는 법","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"파이썬 예외처리 어떻게 해?","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"자바스크립트 함수 예시 보여줘","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"자바스크립트 배열 map 설명해줘","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"TypeScript 타입 선언 어떻게 해?","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"React 컴포넌트 만드는 법","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"React useEffect가 뭐야?","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"Next.js에서 API 호출하는 법","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"FastAPI 라우터 만드는 법","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"FastAPI에서 JSON 받는 법","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"CSS 가운데 정렬 어떻게 해?","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"CSS grid와 flex 차이 알려줘","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"HTML 버튼 만드는 법","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"SQL JOIN 설명해줘","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"git commit 하는 법","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"git pull이 뭐야?","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"브랜치 합치는 법 알려줘","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"npm install은 뭐 하는 명령어야?","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"이 파이썬 오류 고쳐줘","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"코드가 왜 실행이 안 돼?","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"함수 리팩토링해줘","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"이 코드 더 짧게 만들어줘","route":"code","teacher_answer":"v0.3.4 curriculum example for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"아까 내가 뭐라고 했어?","route":"memory","teacher_answer":"v0.3.4 curriculum example for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"방금 내가 한 말 기억해?","route":"memory","teacher_answer":"v0.3.4 curriculum example for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"내가 전에 말한 이름 뭐였지?","route":"memory","teacher_answer":"v0.3.4 curriculum example for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"조금 전에 고른 옵션 기억나?","route":"memory","teacher_answer":"v0.3.4 curriculum example for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"전에 추천한 방법 다시 말해줘","route":"memory","teacher_answer":"v0.3.4 curriculum example for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"아까 알려준 명령어 다시 보여줘","route":"memory","teacher_answer":"v0.3.4 curriculum example for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"내가 마지막으로 물어본 게 뭐야?","route":"memory","teacher_answer":"v0.3.4 curriculum example for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"이전 대화에서 정한 값이 뭐였지?","route":"memory","teacher_answer":"v0.3.4 curriculum example for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"우리가 아까 어디까지 했지?","route":"memory","teacher_answer":"v0.3.4 curriculum example for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"전에 작업하던 파일 이름 기억해?","route":"memory","teacher_answer":"v0.3.4 curriculum example for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"내가 방금 준 숫자 다시 말해봐","route":"memory","teacher_answer":"v0.3.4 curriculum example for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"조금 전에 나온 오류가 뭐였지?","route":"memory","teacher_answer":"v0.3.4 curriculum example for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"아까 선택한 모델 뭐였지?","route":"memory","teacher_answer":"v0.3.4 curriculum example for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"전에 말한 브랜치 이름 기억나?","route":"memory","teacher_answer":"v0.3.4 curriculum example for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"우리 직전에 무슨 얘기했어?","route":"memory","teacher_answer":"v0.3.4 curriculum example for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"앞에서 정한 계획 다시 알려줘","route":"memory","teacher_answer":"v0.3.4 curriculum example for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"지난 메시지 내용 기억해?","route":"memory","teacher_answer":"v0.3.4 curriculum example for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"내가 이전에 말한 설정값 뭐야?","route":"memory","teacher_answer":"v0.3.4 curriculum example for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"아까 네가 한 답 다시 요약해줘","route":"memory","teacher_answer":"v0.3.4 curriculum example for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"방금 전 답변에서 핵심이 뭐였어?","route":"memory","teacher_answer":"v0.3.4 curriculum example for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"이 글 한 문장으로 요약해줘","route":"summarize","teacher_answer":"v0.3.4 curriculum example for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"아래 내용을 세 줄로 줄여줘","route":"summarize","teacher_answer":"v0.3.4 curriculum example for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"이 문단 핵심만 뽑아줘","route":"summarize","teacher_answer":"v0.3.4 curriculum example for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"이 로그를 짧게 정리해줘","route":"summarize","teacher_answer":"v0.3.4 curriculum example for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"긴 글 요점만 알려줘","route":"summarize","teacher_answer":"v0.3.4 curriculum example for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"이 대화의 핵심 세 개만 정리해줘","route":"summarize","teacher_answer":"v0.3.4 curriculum example for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"붙여넣은 글을 요약해줘","route":"summarize","teacher_answer":"v0.3.4 curriculum example for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"이 설명을 짧게 압축해줘","route":"summarize","teacher_answer":"v0.3.4 curriculum example for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"이 에러 로그에서 중요한 부분만 요약해줘","route":"summarize","teacher_answer":"v0.3.4 curriculum example for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"다음 기사 내용을 두 문장으로 줄여줘","route":"summarize","teacher_answer":"v0.3.4 curriculum example for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"이 목록을 핵심만 정리해줘","route":"summarize","teacher_answer":"v0.3.4 curriculum example for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"이 문서 결론만 알려줘","route":"summarize","teacher_answer":"v0.3.4 curriculum example for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"앞의 내용을 간단히 정리하면?","route":"summarize","teacher_answer":"v0.3.4 curriculum example for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"이 텍스트의 요지가 뭐야?","route":"summarize","teacher_answer":"v0.3.4 curriculum example for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"긴 설명을 초등학생도 알게 짧게 요약해줘","route":"summarize","teacher_answer":"v0.3.4 curriculum example for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"이 회의록 핵심만 뽑아줘","route":"summarize","teacher_answer":"v0.3.4 curriculum example for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"다음 내용을 불릿 세 개로 요약해줘","route":"summarize","teacher_answer":"v0.3.4 curriculum example for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"이 코드 오류 설명을 한 줄로 줄여줘","route":"summarize","teacher_answer":"v0.3.4 curriculum example for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"이 문장을 더 짧게 요약해줘","route":"summarize","teacher_answer":"v0.3.4 curriculum example for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"이 내용에서 결론만 뽑아줘","route":"summarize","teacher_answer":"v0.3.4 curriculum example for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"오늘 환율 얼마야?","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"지금 날씨 알려줘","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"오늘 야구 경기 결과 찾아줘","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"현재 서비스 장애 있는지 확인해줘","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"최신 Python 버전이 뭐야?","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"최근 Node.js 릴리스 찾아줘","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"이번 주 AI 뉴스 알려줘","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"오늘 나온 기술 뉴스 찾아봐","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"이 회사 최신 공지 확인해줘","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"공식 홈페이지에서 현재 가격 찾아줘","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"최신 지원 버전 확인해줘","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"최근 업데이트 내역 찾아줘","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"지금 주가 얼마야?","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"오늘 원달러 환율 확인해줘","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"현재 서버 상태 페이지 확인해줘","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"최근 논문 원문 찾아줘","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"이번 달 출시된 제품 찾아줘","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"오늘 발표된 공지 있나?","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"최신 통계 자료 찾아줘","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"지금 온라인에서 확인해줘","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"공식 출처로 최신 정보를 찾아줘","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"최근 변경된 정책 내용 확인해줘","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"오늘 기준으로 알려줘","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
+{"input":"현재 판매 가격 검색해줘","route":"research","teacher_answer":"v0.3.4 curriculum example for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.4"}
