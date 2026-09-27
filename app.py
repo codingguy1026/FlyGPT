@@ -439,17 +439,19 @@ def chat_endpoint(req: ChatRequest):
                 else:
                     mode_label = f"{result.handler} · fallback"
 
-            answer = (
-                f"🪰 FlyGPT v0.7 · {mode_label}\n\n"
-                f"{final_answer}\n\n"
-                f"Route: {route['route']} · {route['confidence']:.1%}\n"
-                f"Router: {model_label}"
-            )
+            # Keep the chat bubble focused on the answer. The frontend renders
+            # route/model/generation details as compact metadata chips.
+            answer = final_answer
 
             data = {
                 "dispatch": result.to_dict(),
                 "generation": generation.to_dict() if generation is not None else None,
                 "memory_hits": memory_hits,
+                "ui_meta": {
+                    "mode": mode_label,
+                    "router_model": model_label,
+                    "app_version": APP_VERSION,
+                },
             }
 
             return response_with_router(
