@@ -11,18 +11,24 @@ import {
 } from "@/lib/api";
 import { getMemorySessionId } from "@/lib/session";
 
+type MessageMeta = {
+  text: string;
+  tone?: "good" | "info" | "warn" | "muted";
+};
+
 type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  meta?: MessageMeta[];
 };
 
 const INITIAL_MESSAGE: Message = {
   id: "welcome",
   role: "assistant",
   content:
-    "안녕하세요! FlyGPT v0.6 Frontend Alpha입니다.\n" +
-    "FlyWire 라우터, 수식 fast-path, 로컬 대화 기억을 새 Next.js UI에서 사용할 수 있어요.",
+    "안녕하세요! FlyGPT v0.7 Frontend Alpha입니다.\n" +
+    "FlyWire 라우터 + 로컬 기억 + 생성기 상태를 한 화면에서 보고, 라우팅 결과까지 확인할 수 있어요.",
 };
 
 function makeId(prefix: string) {
@@ -85,12 +91,51 @@ export default function FlyGPTApp() {
     try {
       const response = await sendChat(text, sessionId);
       setRouter(response.router ?? null);
+      const meta: MessageMeta[] = [];
+
+      if (response.router) {
+        meta.push({
+          text: `${response.router.route} · ${(response.router.confidence * 100).toFixed(1)}%`,
+          tone: response.router.confidence >= 0.55 ? "good" : "warn",
+        });
+
+        if (response.router.model) {
+          meta.push({
+            text: response.router.model
+              .replace("fly_router_", "")
+              .replace(".pt", ""),
+            tone: "muted",
+          });
+        }
+      }
+
+      const generation = response.data?.generation;
+      if (generation?.used) {
+        meta.push({
+          text: `GEN · ${generation.model ?? generation.provider ?? "ready"}`,
+          tone: "info",
+        });
+
+        if (generation.latency_ms != null) {
+          meta.push({
+            text: `${generation.latency_ms} ms`,
+            tone: "muted",
+          });
+        }
+      } else if (generation && !generation.used) {
+        meta.push({
+          text: "fallback",
+          tone: "warn",
+        });
+      }
+
       setMessages((current) => [
         ...current,
         {
           id: makeId("assistant"),
           role: "assistant",
           content: response.answer,
+          meta,
         },
       ]);
     } catch (reason: unknown) {
@@ -152,7 +197,7 @@ export default function FlyGPTApp() {
             <div className="brandText">
               <div className="titleRow">
                 <h1>FlyGPT</h1>
-                <span className="alphaBadge">v0.6 ALPHA</span>
+                <span className="alphaBadge">v0.7 ALPHA</span>
               </div>
               <div className="subtitle">
                 FlyWire router + memory + Next.js frontend
@@ -217,7 +262,21 @@ export default function FlyGPTApp() {
               <div className="avatar">
                 {message.role === "assistant" ? "🪰" : "👤"}
               </div>
-              <div className="bubble">{message.content}</div>
+              <div className="bubble">
+                <div className="messageContent">{message.content}</div>
+                {message.meta && message.meta.length > 0 && (
+                  <div className="messageMeta">
+                    {message.meta.map((item, index) => (
+                      <span
+                        className={`messageMetaChip ${item.tone ?? "muted"}`}
+                        key={`${message.id}-meta-${index}`}
+                      >
+                        {item.text}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </article>
           ))}
 
@@ -237,6 +296,23 @@ export default function FlyGPTApp() {
         </section>
 
         <footer className="composerArea">
+          <div className="quickPrompts" aria-label="빠른 테스트">
+            {[
+              ["땡큐", "땡큐"],
+              ["17 × 23", "17 × 23은?"],
+              ["Python", "파이썬 리스트 정렬 알려줘"],
+              ["Memory", "내가 방금 뭐라고 했지?"],
+            ].map(([label, prompt]) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => setInput(prompt)}
+                disabled={sending}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <form className="composer" onSubmit={handleSubmit}>
             <input
               value={input}
@@ -254,7 +330,7 @@ export default function FlyGPTApp() {
             </button>
           </form>
           <div className="footerLine">
-            <span>FlyGPT v0.6 Frontend Alpha</span>
+            <span>FlyGPT v0.7 Frontend Alpha</span>
             {router && (
               <span className="routeMini">
                 {router.route} {(router.confidence * 100).toFixed(1)}%
