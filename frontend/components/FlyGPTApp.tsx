@@ -200,7 +200,7 @@ export default function FlyGPTApp() {
                 <span className="alphaBadge">v0.7 ALPHA</span>
               </div>
               <div className="subtitle">
-                FlyWire router + memory + Next.js frontend
+                FlyWire router + memory + generator + Next.js
               </div>
             </div>
           </div>
