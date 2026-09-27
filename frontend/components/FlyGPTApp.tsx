@@ -293,7 +293,7 @@ export default function FlyGPTApp() {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [brainOpen, setBrainOpen] = useState(false);
-  const [customizerOpen, setCustomizerOpen] = useState(true);
+  const [customizerOpen, setCustomizerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [router, setRouter] = useState<RouterResult | null>(null);
@@ -304,6 +304,7 @@ export default function FlyGPTApp() {
   const [preset, setPreset] = useState("default");
   const [accent, setAccent] = useState(ACCENTS[0]);
   const [avatarBackground, setAvatarBackground] = useState(BACKGROUNDS[0]);
+  const [avatarReady, setAvatarReady] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -325,6 +326,11 @@ export default function FlyGPTApp() {
       // Keep defaults when local preferences cannot be read.
     }
 
+    if (window.innerWidth >= 1100) {
+      setCustomizerOpen(true);
+    }
+    setAvatarReady(true);
+
     getHealth()
       .then((result) => {
         setHealth(result);
@@ -336,6 +342,8 @@ export default function FlyGPTApp() {
   }, []);
 
   useEffect(() => {
+    if (!avatarReady) return;
+
     try {
       window.localStorage.setItem(
         "flygpt-avatar-v0.7",
@@ -344,7 +352,7 @@ export default function FlyGPTApp() {
     } catch {
       // Cosmetic preference persistence is optional.
     }
-  }, [preset, accent, avatarBackground]);
+  }, [preset, accent, avatarBackground, avatarReady]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
