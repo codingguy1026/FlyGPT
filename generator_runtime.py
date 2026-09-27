@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 
-GENERATIVE_ROUTES = {"general", "code", "summarize"}
+GENERATIVE_ROUTES = {"general", "code", "summarize", "math"}
 
 
 def _env_float(name: str, default: float, *, minimum: float, maximum: float) -> float:
@@ -129,6 +129,12 @@ class GeneratorRuntime:
                 "The router selected CODE. Give practical programming help. "
                 "Prefer a small correct example over a huge code dump. "
                 "Mention assumptions when the request is underspecified."
+            ),
+            "math": (
+                "The router selected MATH. Solve the problem carefully and explain "
+                "the key reasoning in a compact way. For exact arithmetic, verify "
+                "the calculation before answering. If the problem is underspecified, "
+                "say what information is missing instead of guessing."
             ),
             "summarize": (
                 "The router selected SUMMARIZE. Summarize only material present in "
