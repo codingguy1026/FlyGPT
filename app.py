@@ -13,13 +13,38 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from connectome import FlyWireConnectome, NT_COLUMNS
+from dispatcher import dispatch, dispatch_math_fast_path, is_math_fast_path
+from generator_runtime import GENERATIVE_ROUTES, GeneratorRuntime
+from memory_store import MemoryStore, format_recall
 
 
+APP_VERSION = "0.7.0"
 DATA_DIR = os.environ.get("FLYWIRE_DATA_DIR", "data/flywire_parts")
+
+_model_override = os.environ.get("FLYGPT_MODEL_PATH")
+if _model_override:
+    MODEL_PATH = _model_override
+else:
+    _model_candidates = (
+        "artifacts/fly_router_v0_3_6.pt",
+        "artifacts/fly_router_v0_3_5.pt",
+        "artifacts/fly_router_v0_3_4.pt",
+        "artifacts/fly_router_v0_3_3.pt",
+        "artifacts/fly_router_v0_3_2.pt",
+        "artifacts/fly_router_v0_3_1.pt",
+        "artifacts/fly_router_v0_3.pt",
+        "artifacts/fly_router_v0_2.pt",
+        "artifacts/fly_router_v0_1.pt",
+    )
+    MODEL_PATH = next(
+        (path for path in _model_candidates if Path(path).is_file()),
+        _model_candidates[0],
+    )
 
 app = FastAPI(
     title="FlyGPT",
-    description="Drosophila Connectome Chat Interface",
+    version=APP_VERSION,
+    description="Drosophila Connectome Chat Interface with routing, generation, and local conversation memory",
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -28,9 +53,21 @@ templates = Jinja2Templates(directory="templates")
 _connectome: FlyWireConnectome | None = None
 _connectome_lock = threading.Lock()
 
+_router: Any | None = None
+_router_lock = threading.Lock()
+_router_error: str | None = None
+
+_generator = GeneratorRuntime()
+_memory = MemoryStore(os.environ.get("FLYGPT_MEMORY_PATH", "data/flygpt_memory.sqlite3"))
+
 
 class ChatRequest(BaseModel):
     message: str
+    session_id: str | None = None
+
+
+class MemoryRequest(BaseModel):
+    session_id: str
 
 
 def get_connectome() -> FlyWireConnectome:
@@ -40,6 +77,45 @@ def get_connectome() -> FlyWireConnectome:
         if _connectome is None:
             _connectome = FlyWireConnectome(DATA_DIR)
         return _connectome
+
+
+def get_router() -> Any | None:
+    global _router, _router_error
+
+    if _router is not None:
+        return _router
+
+    model_path = Path(MODEL_PATH)
+    if not model_path.is_file():
+        return None
+
+    with _router_lock:
+        if _router is not None:
+            return _router
+
+        try:
+            from router_runtime import FlyRouterRuntime
+
+            _router = FlyRouterRuntime(model_path)
+            _router_error = None
+        except Exception as exc:
+            _router_error = f"{type(exc).__name__}: {exc}"
+            return None
+
+    return _router
+
+
+def predict_route(text: str) -> dict[str, Any] | None:
+    router = get_router()
+    if router is None:
+        return None
+
+    try:
+        return router.predict(text)
+    except Exception as exc:
+        global _router_error
+        _router_error = f"{type(exc).__name__}: {exc}"
+        return None
 
 
 def extract_root_ids(text: str) -> list[int]:
@@ -79,14 +155,51 @@ def format_partner(row: dict[str, Any], index: int) -> str:
     )
 
 
+def response_with_router(
+    *,
+    answer: str,
+    response_type: str,
+    data: Any,
+    route: dict[str, Any] | None,
+    session_id: str | None = None,
+) -> dict[str, Any]:
+    payload = {
+        "answer": answer,
+        "type": response_type,
+        "data": data,
+    }
+    if route is not None:
+        payload["router"] = route
+
+    if session_id:
+        _memory.add(session_id, "assistant", answer)
+
+    return payload
+
+
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+    )
+
+
+@app.get("/api/router/graph")
+def router_graph():
+    router = get_router()
+    if router is None:
+        raise HTTPException(
+            status_code=503,
+            detail=_router_error or f"Fly router model not found: {MODEL_PATH}",
+        )
+    return router.graph()
 
 
 @app.get("/api/health")
 def health():
     data_path = Path(DATA_DIR)
+    model_path = Path(MODEL_PATH)
     has_parquet = data_path.is_file() or (
         data_path.is_dir() and any(data_path.glob("*.parquet"))
     )
@@ -96,6 +209,37 @@ def health():
         "data_dir": str(data_path),
         "data_available": has_parquet,
         "connectome_initialized": _connectome is not None,
+        "model_path": str(model_path),
+        "model_available": model_path.is_file(),
+        "router_initialized": _router is not None,
+        "router_error": _router_error,
+        "app_version": APP_VERSION,
+        "dispatcher_enabled": True,
+        "generator": _generator.status(),
+        "memory": {
+            "enabled": True,
+            "path": str(_memory.path),
+            "max_messages_per_session": 200,
+        },
+    }
+
+
+@app.get("/api/generator/status")
+def generator_status():
+    return _generator.status()
+
+
+@app.get("/api/memory/status")
+def memory_status(session_id: str):
+    return _memory.stats(session_id.strip()[:128])
+
+
+@app.post("/api/memory/clear")
+def memory_clear(req: MemoryRequest):
+    session_id = req.session_id.strip()[:128]
+    return {
+        "cleared": _memory.clear(session_id),
+        "session_id_present": bool(session_id),
     }
 
 
@@ -106,14 +250,39 @@ def chat_endpoint(req: ChatRequest):
     if not msg:
         raise HTTPException(status_code=400, detail="메시지가 비어 있습니다.")
 
+    session_id = (req.session_id or "").strip()[:128] or None
+    memory_context = _memory.recent(session_id, limit=12) if session_id else []
+    if session_id:
+        _memory.add(session_id, "user", msg)
+
     lower = msg.lower()
     root_ids = extract_root_ids(msg)
+    route = predict_route(msg)
 
     try:
-        connectome = get_connectome()
+        if is_math_fast_path(msg):
+            result = dispatch_math_fast_path(msg)
+            router_note = (
+                f"Router raw: {route['route']} · {route['confidence']:.1%}"
+                if route is not None
+                else "Router raw: unavailable"
+            )
+            answer = (
+                "🪰 FlyGPT v0.7 · math fast-path\n\n"
+                f"{result.answer}\n\n"
+                "Decision: math fast-path\n"
+                f"{router_note}"
+            )
+            return response_with_router(
+                answer=answer,
+                response_type="math_fast_path",
+                data=result.to_dict(),
+                route=route,
+                session_id=session_id,
+            )
 
         if "통계" in msg or "stats" in lower or "statistics" in lower:
-            stats = connectome.stats()
+            stats = get_connectome().stats()
             answer = (
                 "📊 FlyWire v783 Dataset Statistics\n\n"
                 f"Rows: {stats['rows']:,}\n"
@@ -123,7 +292,13 @@ def chat_endpoint(req: ChatRequest):
                 f"Synapses: {stats['synapses']:,}\n"
                 f"Parquet parts: {stats['parts']}"
             )
-            return {"answer": answer, "type": "stats", "data": stats}
+            return response_with_router(
+                answer=answer,
+                response_type="stats",
+                data=stats,
+                route=route,
+                session_id=session_id,
+            )
 
         if (
             "가장 강한 연결" in msg
@@ -131,7 +306,7 @@ def chat_endpoint(req: ChatRequest):
             or re.search(r"\btop\b", lower)
         ):
             limit = extract_limit(msg, 10)
-            rows = connectome.top_connections(limit=limit)
+            rows = get_connectome().top_connections(limit=limit)
 
             sections = [f"🔗 Top {len(rows)} Strongest Connections"]
 
@@ -144,15 +319,17 @@ def chat_endpoint(req: ChatRequest):
                     f"   Dominant NT: {nt} ({probability:.3f})"
                 )
 
-            return {
-                "answer": "\n\n".join(sections),
-                "type": "top_connections",
-                "data": rows,
-            }
+            return response_with_router(
+                answer="\n\n".join(sections),
+                response_type="top_connections",
+                data=rows,
+                route=route,
+                session_id=session_id,
+            )
 
         if len(root_ids) >= 2:
             pre_id, post_id = root_ids[:2]
-            pair = connectome.pair(pre_id, post_id)
+            pair = get_connectome().pair(pre_id, post_id)
 
             if pair["syn_count"] == 0:
                 answer = f"⚠️ {pre_id} → {post_id} 연결을 찾지 못했습니다."
@@ -175,7 +352,13 @@ def chat_endpoint(req: ChatRequest):
 
                 answer = "\n".join(lines)
 
-            return {"answer": answer, "type": "pair", "data": pair}
+            return response_with_router(
+                answer=answer,
+                response_type="pair",
+                data=pair,
+                route=route,
+                session_id=session_id,
+            )
 
         if len(root_ids) == 1:
             root_id = root_ids[0]
@@ -188,7 +371,7 @@ def chat_endpoint(req: ChatRequest):
             else:
                 direction = "both"
 
-            result = connectome.neuron(
+            result = get_connectome().neuron(
                 root_id,
                 direction=direction,
                 limit=limit,
@@ -218,31 +401,93 @@ def chat_endpoint(req: ChatRequest):
                     input_lines.append("No inputs found.")
                 sections.append("\n".join(input_lines))
 
-            return {
-                "answer": "\n\n".join(sections),
-                "type": "neuron",
-                "data": result,
+            return response_with_router(
+                answer="\n\n".join(sections),
+                response_type="neuron",
+                data=result,
+                route=route,
+                session_id=session_id,
+            )
+
+        if route is not None:
+            result = dispatch(msg, route)
+            model_label = route.get("model", Path(MODEL_PATH).name)
+
+            generation = None
+            memory_hits = None
+            final_answer = result.answer
+            mode_label = result.handler
+
+            if result.route == "memory" and result.status != "uncertain" and session_id:
+                memory_hits = _memory.search(
+                    session_id,
+                    msg,
+                    limit=5,
+                    exclude_content=msg,
+                )
+                final_answer = format_recall(memory_hits)
+                mode_label = "memory · recall"
+            elif (
+                result.status == "completed"
+                and result.route in GENERATIVE_ROUTES
+            ):
+                generation = _generator.generate(
+                    msg,
+                    result.route,
+                    memory_context=memory_context,
+                )
+                if generation.used and generation.answer:
+                    final_answer = generation.answer
+                    mode_label = f"{result.route} · generated"
+                else:
+                    mode_label = f"{result.handler} · fallback"
+
+            # Keep the chat bubble focused on the answer. The frontend renders
+            # route/model/generation details as compact metadata chips.
+            answer = final_answer
+
+            data = {
+                "dispatch": result.to_dict(),
+                "generation": generation.to_dict() if generation is not None else None,
+                "memory_hits": memory_hits,
+                "ui_meta": {
+                    "mode": mode_label,
+                    "router_model": model_label,
+                    "app_version": APP_VERSION,
+                },
             }
 
-        return {
-            "answer": (
-                "❓ 이렇게 물어볼 수 있습니다:\n\n"
-                "데이터 통계 보여줘\n"
-                "가장 강한 연결 10개 보여줘\n"
-                "뉴런 720575940000000000 보여줘\n"
-                "뉴런 720575940000000000의 출력 연결 5개\n"
-                "720575940000000000 -> 720575940111111111 연결"
-            ),
-            "type": "help",
-            "data": None,
-        }
+            return response_with_router(
+                answer=answer,
+                response_type="dispatch",
+                data=data,
+                route=route,
+                session_id=session_id,
+            )
+
+        answer = (
+            "❓ FlyGPT 라우터 모델을 찾지 못했습니다.\n\n"
+            f"Expected model: {MODEL_PATH}\n\n"
+            "커넥톰 질의는 계속 사용할 수 있습니다:\n"
+            "데이터 통계 보여줘\n"
+            "가장 강한 연결 10개 보여줘\n"
+            "뉴런 720575940627737365의 출력 연결 5개\n"
+            "720575940627737365 -> 720575940628914436 연결"
+        )
+        return response_with_router(
+            answer=answer,
+            response_type="help",
+            data=None,
+            route=None,
+            session_id=session_id,
+        )
 
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(
             status_code=500,
-            detail=f"Connectome query failed: {exc}",
+            detail=f"FlyGPT request failed: {exc}",
         ) from exc
 
 

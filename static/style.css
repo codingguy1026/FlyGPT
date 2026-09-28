@@ -6,6 +6,7 @@
   --muted: #8b949e;
   --accent: #5fd8ff;
   --accent-hover: #45c4ed;
+  --warm: #ffdd57;
   --user-bg: #1f364d;
   --assistant-bg: #142230;
 }
@@ -29,6 +30,16 @@ body {
   align-items: center;
 }
 
+/* 기존 FlyGPT UI의 크기와 중심 배치를 그대로 유지한다. */
+.app-shell {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  height: 100%;
+}
+
 .chat-container {
   width: 100%;
   max-width: 900px;
@@ -49,6 +60,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   background: rgba(17, 27, 36, 0.95);
 }
 
@@ -56,6 +68,7 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .logo {
@@ -66,9 +79,18 @@ body {
   border: 1px solid var(--border);
 }
 
+h1,
+h2 {
+  margin: 0;
+}
+
 h1 {
   font-size: 18px;
-  margin: 0;
+}
+
+h2 {
+  margin-top: 3px;
+  font-size: 17px;
 }
 
 .sub {
@@ -77,14 +99,73 @@ h1 {
   margin-top: 2px;
 }
 
-.status-badge {
+.header-actions,
+.brain-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.status-badge,
+.brain-status,
+.generator-badge {
   font-size: 10px;
   font-weight: 700;
+  border-radius: 20px;
+  padding: 4px 8px;
+}
+
+.generator-badge {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #b3c4cf;
+  background: #13242f;
+  border: 1px solid #284453;
+}
+
+.generator-badge[data-state="ready"] {
+  color: #9eeaff;
+  background: #102b38;
+  border-color: #255a70;
+}
+
+.generator-badge[data-state="fallback"] {
+  color: #d6bf72;
+  background: #2a2514;
+  border-color: #5f5220;
+}
+
+.generator-badge[data-state="error"] {
+  color: #ff9f9f;
+  background: #31191c;
+  border-color: #653035;
+}
+
+.status-badge {
   background: #0d281e;
   color: #3fb950;
   border: 1px solid #1b4731;
-  padding: 4px 8px;
-  border-radius: 20px;
+}
+
+.brain-toggle {
+  border: 1px solid var(--border);
+  background: #142432;
+  color: #bcd3df;
+  border-radius: 9px;
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.brain-toggle:hover,
+.brain-toggle[aria-expanded="true"] {
+  border-color: #3d7995;
+  color: #dff7ff;
+  background: #173246;
 }
 
 .chat-messages {
@@ -195,16 +276,329 @@ h1 {
   margin-top: 10px;
 }
 
+/* Brain HUD는 기본적으로 완전히 숨겨서 기존 UI를 절대 침범하지 않는다. */
+.brain-panel {
+  display: none;
+  width: 390px;
+  max-width: 390px;
+  height: 95vh;
+  min-width: 0;
+  padding: 16px;
+  gap: 12px;
+  flex-direction: column;
+  overflow: hidden;
+  background: linear-gradient(180deg, #11212d, #0a141d);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.brain-panel[hidden] {
+  display: none !important;
+}
+
+.app-shell.brain-open .brain-panel:not([hidden]) {
+  display: flex;
+}
+
+.brain-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.eyebrow {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.brain-status {
+  color: #b3c4cf;
+  background: #13242f;
+  border: 1px solid #284453;
+}
+
+.brain-status[data-state="ready"] {
+  color: #63e582;
+  background: #0d281e;
+  border-color: #1f5138;
+}
+
+.brain-status[data-state="thinking"] {
+  color: var(--warm);
+  background: #2d2810;
+  border-color: #5b4c14;
+  animation: pulse 0.9s ease-in-out infinite alternate;
+}
+
+.brain-status[data-state="active"] {
+  color: #9eeaff;
+  background: #102b38;
+  border-color: #255a70;
+}
+
+.brain-status[data-state="error"] {
+  color: #ff9f9f;
+  background: #31191c;
+  border-color: #653035;
+}
+
+.brain-close {
+  border: 0;
+  background: transparent;
+  color: #9fb2be;
+  font-size: 23px;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+}
+
+.brain-close:hover {
+  color: white;
+}
+
+@keyframes pulse {
+  from { opacity: 0.62; }
+  to { opacity: 1; }
+}
+
+.brain-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.brain-stats span {
+  padding: 5px 8px;
+  border: 1px solid #263f4e;
+  border-radius: 7px;
+  color: #9fb4c2;
+  font-size: 10px;
+  background: rgba(8, 17, 24, 0.55);
+}
+
+.brain-stage {
+  position: relative;
+  flex: 1;
+  min-height: 260px;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid #203e4f;
+  background:
+    linear-gradient(rgba(95, 216, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(95, 216, 255, 0.025) 1px, transparent 1px),
+    radial-gradient(circle at 50% 48%, rgba(31, 103, 130, 0.17), transparent 64%),
+    #071019;
+  background-size: 22px 22px, 22px 22px, auto, auto;
+}
+
+#brainCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 260px;
+  touch-action: none;
+}
+
+.brain-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  text-align: center;
+  white-space: pre-wrap;
+  color: var(--muted);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.brain-empty[hidden] {
+  display: none;
+}
+
+.stage-chip {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  border: 1px solid #2a5064;
+  border-radius: 999px;
+  background: rgba(6, 18, 26, 0.82);
+  color: #9cdff1;
+  padding: 5px 9px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.brain-tooltip {
+  position: absolute;
+  z-index: 4;
+  width: 195px;
+  padding: 8px 10px;
+  background: rgba(5, 14, 20, 0.96);
+  border: 1px solid #386378;
+  border-radius: 8px;
+  color: #dcecf3;
+  font-size: 10px;
+  line-height: 1.55;
+  pointer-events: none;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+  word-break: break-all;
+}
+
+.route-card {
+  border: 1px solid #284555;
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(8, 18, 25, 0.72);
+}
+
+.route-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.route-name {
+  margin-top: 4px;
+  font-size: 17px;
+  font-weight: 800;
+  text-transform: lowercase;
+}
+
+.route-confidence {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--warm);
+  font-variant-numeric: tabular-nums;
+}
+
+.route-bars {
+  margin-top: 11px;
+  display: grid;
+  gap: 8px;
+}
+
+.route-placeholder {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.route-row {
+  display: grid;
+  gap: 4px;
+}
+
+.route-row-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #b9cbd5;
+  font-size: 10px;
+}
+
+.route-track {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #142934;
+}
+
+.route-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #4dbddf, #ffdd57);
+  transition: width 0.35s ease;
+}
+
+.brain-note {
+  color: #748c9b;
+  font-size: 9.5px;
+  line-height: 1.5;
+}
+
+/* 충분히 넓은 화면에서는 기존 900px 채팅 폭을 유지한 채 오른쪽에 붙인다. */
+@media (min-width: 1340px) {
+  .app-shell {
+    width: auto;
+    height: 95vh;
+  }
+
+  .chat-container {
+    width: 900px;
+    flex: 0 0 900px;
+    max-height: 95vh;
+  }
+
+  .brain-panel {
+    flex: 0 0 390px;
+  }
+}
+
+/* 좁은 화면에서는 Brain HUD를 아래로 내려서 채팅을 절대 가리지 않는다. */
+@media (max-width: 1339px) {
+  body {
+    align-items: flex-start;
+    overflow-y: auto;
+  }
+
+  .app-shell {
+    width: 100%;
+    height: auto;
+    min-height: 100%;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 2.5vh 0;
+  }
+
+  .chat-container {
+    width: min(900px, calc(100vw - 28px));
+    height: 95vh;
+    flex: 0 0 auto;
+  }
+
+  .brain-panel {
+    width: min(900px, calc(100vw - 28px));
+    max-width: 900px;
+    height: min(620px, 78vh);
+    flex: 0 0 auto;
+  }
+}
+
 @media (max-width: 600px) {
   body {
     align-items: stretch;
   }
 
+  .app-shell {
+    gap: 0;
+    padding: 0;
+  }
+
   .chat-container {
+    width: 100%;
     height: 100dvh;
     max-height: 100dvh;
     border-radius: 0;
     border: none;
+  }
+
+  .brain-panel {
+    width: 100%;
+    max-width: none;
+    height: 72dvh;
+    min-height: 430px;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
   }
 
   .chat-header,
@@ -223,5 +617,167 @@ h1 {
 
   #sendBtn {
     padding: 0 16px;
+  }
+
+  .brain-toggle {
+    padding: 6px 8px;
+  }
+
+  .status-badge {
+    display: none;
+  }
+
+  .brain-stage,
+  #brainCanvas {
+    min-height: 230px;
+  }
+}
+
+
+/* FlyGPT v0.7 frontend polish */
+.system-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.system-badge {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 20px;
+  padding: 4px 8px;
+  color: #b3c4cf;
+  background: #13242f;
+  border: 1px solid #284453;
+}
+
+.system-badge[data-state="ready"] {
+  color: #9eeaff;
+  background: #102b38;
+  border-color: #255a70;
+}
+
+.system-badge[data-state="fallback"] {
+  color: #d6bf72;
+  background: #2a2514;
+  border-color: #5f5220;
+}
+
+.system-badge[data-state="error"] {
+  color: #ff9f9f;
+  background: #31191c;
+  border-color: #653035;
+}
+
+.quick-prompts {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+  scrollbar-width: none;
+}
+
+.quick-prompts::-webkit-scrollbar {
+  display: none;
+}
+
+.quick-prompts button {
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  background: #0d1821;
+  color: #aebfca;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.quick-prompts button:hover {
+  color: #e9f8ff;
+  border-color: #3d7995;
+  background: #142837;
+}
+
+.message-content {
+  white-space: pre-wrap;
+}
+
+.message-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(139, 148, 158, 0.16);
+}
+
+.message-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 21px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid #2a3c49;
+  background: rgba(8, 17, 24, 0.5);
+  color: #8fa4b1;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.message-meta-chip[data-state="ready"] {
+  color: #8fe7a7;
+  border-color: #28563b;
+}
+
+.message-meta-chip[data-state="generated"] {
+  color: #9eeaff;
+  border-color: #255a70;
+}
+
+.message-meta-chip[data-state="warning"] {
+  color: #e8cd76;
+  border-color: #5f5220;
+}
+
+@media (max-width: 760px) {
+  .chat-header {
+    align-items: flex-start;
+  }
+
+  .header-actions {
+    align-items: flex-end;
+    flex-direction: column-reverse;
+  }
+
+  .system-badges {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .system-badge,
+  .generator-badge {
+    max-width: 112px;
+    font-size: 9px;
+  }
+
+  .message {
+    max-width: 94%;
+  }
+
+  .chat-messages {
+    padding: 14px;
+  }
+
+  .chat-input-area {
+    padding: 12px 14px;
+  }
+
+  #sendBtn {
+    padding: 0 15px;
   }
 }

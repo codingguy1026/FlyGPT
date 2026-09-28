@@ -1,0 +1,48 @@
+{"input":"굿모닝ㅋㅋ","route":"general"}
+{"input":"나 다시 왔다","route":"general"}
+{"input":"와 진짜 신기하다","route":"general"}
+{"input":"알았엉","route":"general"}
+{"input":"고맙구만","route":"general"}
+{"input":"왜 바다는 짜?","route":"general"}
+{"input":"달은 왜 모양이 바뀌어 보여?","route":"general"}
+{"input":"너 뭐하는 AI야?","route":"general"}
+{"input":"삼각형의 면적 구하는 방법은?","route":"math"}
+{"input":"원 면적 공식 좀","route":"math"}
+{"input":"빗변 길이 구하는 공식 알려줘","route":"math"}
+{"input":"평균값 계산법 알려줘","route":"math"}
+{"input":"확률 계산은 어떻게 하지?","route":"math"}
+{"input":"x의 제곱이 49면 x는?","route":"math"}
+{"input":"분수 나누는 방법 알려줘","route":"math"}
+{"input":"표준편차 뜻 설명해줘","route":"math"}
+{"input":"Python에서 파일 저장하는 법","route":"code"}
+{"input":"JS에서 객체 복사 어떻게 해?","route":"code"}
+{"input":"React에서 버튼 클릭 처리","route":"code"}
+{"input":"git에서 최근 커밋 보는 법","route":"code"}
+{"input":"FastAPI 쿼리 파라미터 받는 법","route":"code"}
+{"input":"CSS 반응형 만드는 법","route":"code"}
+{"input":"SQL에서 중복 제거하는 법","route":"code"}
+{"input":"TypeScript interface 예시","route":"code"}
+{"input":"내가 아까 선택한 거 뭐였더라?","route":"memory"}
+{"input":"직전에 말한 숫자 기억나?","route":"memory"}
+{"input":"전에 네가 추천했던 명령 뭐야?","route":"memory"}
+{"input":"아까 작업하던 버전 기억해?","route":"memory"}
+{"input":"우리 방금 전까지 뭐 했지?","route":"memory"}
+{"input":"내가 조금 전 말한 모델 이름 뭐야?","route":"memory"}
+{"input":"앞에서 정한 계획 기억나?","route":"memory"}
+{"input":"이전 답변 다시 떠올려봐","route":"memory"}
+{"input":"이 글 핵심 두 개만","route":"summarize"}
+{"input":"다음 문단을 한 줄로 줄여줘","route":"summarize"}
+{"input":"이 에러 메시지 요약해봐","route":"summarize"}
+{"input":"이 설명의 요점만 뽑아줘","route":"summarize"}
+{"input":"내용을 아주 짧게 압축해줘","route":"summarize"}
+{"input":"이 회의 내용 결론만 정리해줘","route":"summarize"}
+{"input":"아래 텍스트 세 문장 요약","route":"summarize"}
+{"input":"붙여넣은 로그 핵심만","route":"summarize"}
+{"input":"오늘 최신 환율 찾아줘","route":"research"}
+{"input":"지금 서비스 정상인지 확인해줘","route":"research"}
+{"input":"이번 주 최신 릴리스 확인해줘","route":"research"}
+{"input":"현재 가격 공식 사이트에서 찾아줘","route":"research"}
+{"input":"최근 발표된 논문 찾아줘","route":"research"}
+{"input":"오늘 경기 결과 검색해줘","route":"research"}
+{"input":"최신 보안 공지 확인해줘","route":"research"}
+{"input":"지금 기준 최신 버전 뭐야?","route":"research"}

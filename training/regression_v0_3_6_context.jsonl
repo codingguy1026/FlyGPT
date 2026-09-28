@@ -1,0 +1,36 @@
+{"input":"나 다시 왔다","route":"general"}
+{"input":"와 진짜 신기하다","route":"general"}
+{"input":"오랜만에 다시 왔네","route":"general"}
+{"input":"좋아 다음 거 해보자","route":"general"}
+{"input":"원 면적 공식 좀","route":"math"}
+{"input":"빗변 길이 구하는 공식 알려줘","route":"math"}
+{"input":"표준편차 뜻 설명해줘","route":"math"}
+{"input":"원의 둘레 공식 뭐야","route":"math"}
+{"input":"근의 공식 설명해줘","route":"math"}
+{"input":"기울기 뜻이 뭐야","route":"math"}
+{"input":"삼각형 넓이 공식?","route":"math"}
+{"input":"분산 개념 알려줘","route":"math"}
+{"input":"이 에러 메시지 원인 알려줘","route":"code"}
+{"input":"git 명령어 추천해줘","route":"code"}
+{"input":"React 오류 고쳐줘","route":"code"}
+{"input":"Python 문법 설명해줘","route":"code"}
+{"input":"아까 에러 뭐였지","route":"memory"}
+{"input":"직전 명령 기억나","route":"memory"}
+{"input":"전에 정한 공식 뭐였더라","route":"memory"}
+{"input":"아까 고른 파일명 뭐야","route":"memory"}
+{"input":"이 에러 메시지 요약해봐","route":"summarize"}
+{"input":"코드 설명을 한 줄로 줄여줘","route":"summarize"}
+{"input":"수학 풀이 핵심만 요약해줘","route":"summarize"}
+{"input":"오류 로그 결론만 정리","route":"summarize"}
+{"input":"공식 사이트에서 최신 버전 찾아줘","route":"research"}
+{"input":"공식 홈페이지 현재 가격 확인해줘","route":"research"}
+{"input":"최근 공식 발표 검색해줘","route":"research"}
+{"input":"오늘 공식 공지 확인해줘","route":"research"}
+{"input":"땡큐","route":"general"}
+{"input":"ty","route":"general"}
+{"input":"잘자용","route":"general"}
+{"input":"삼각형의 면적 구하는 방법은?","route":"math"}
+{"input":"git log","route":"code"}
+{"input":"아까 뭐였더라","route":"memory"}
+{"input":"한줄로","route":"summarize"}
+{"input":"최신판?","route":"research"}

@@ -6,6 +6,7 @@ import json
 import math
 import random
 import re
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -13,7 +14,7 @@ from typing import Iterable
 import torch
 from torch import nn
 
-TOKEN_RE = re.compile(r"[가-힣A-Za-z0-9_]+")
+TOKEN_RE = re.compile(r"[가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9_]+")
 
 
 def stable_bucket(token: str, size: int) -> int:
@@ -21,14 +22,88 @@ def stable_bucket(token: str, size: int) -> int:
     return int.from_bytes(digest, "little") % size
 
 
-def vectorize(text: str, size: int) -> torch.Tensor:
+def vectorize(text: str, size: int, version: str = "v1") -> torch.Tensor:
     vec = torch.zeros(size, dtype=torch.float32)
     tokens = [t.lower() for t in TOKEN_RE.findall(text)]
+
     for token in tokens:
-        vec[stable_bucket("w:" + token, size)] += 1.0
-        if len(token) >= 2:
-            for i in range(len(token) - 1):
-                vec[stable_bucket("b:" + token[i : i + 2], size)] += 0.35
+        token_len = len(token)
+
+        if version in ("v4", "v5"):
+            # Very short unseen words are fragile when the whole-token hash is
+            # allowed to dominate. Reduce that feature and lean more heavily on
+            # reusable character/jamo structure. Longer tokens keep the old
+            # whole-word strength.
+            if token_len <= 2:
+                word_weight = 0.42
+                bigram_weight = 0.50
+                char_weight = 0.42
+                jamo1_weight = 0.24
+                jamo2_weight = 0.24
+                jamo3_weight = 0.12
+            elif token_len == 3:
+                word_weight = 0.68
+                bigram_weight = 0.42
+                char_weight = 0.32
+                jamo1_weight = 0.18
+                jamo2_weight = 0.21
+                jamo3_weight = 0.10
+            else:
+                word_weight = 1.0
+                bigram_weight = 0.35
+                char_weight = 0.22
+                jamo1_weight = 0.10
+                jamo2_weight = 0.18
+                jamo3_weight = 0.08
+        else:
+            word_weight = 1.0
+            bigram_weight = 0.35
+            char_weight = 0.22
+            jamo1_weight = 0.0
+            jamo2_weight = 0.18
+            jamo3_weight = 0.08
+
+        vec[stable_bucket("w:" + token, size)] += word_weight
+
+        if token_len >= 2:
+            for i in range(token_len - 1):
+                vec[stable_bucket("b:" + token[i : i + 2], size)] += bigram_weight
+
+        use_jamo = version in ("v2", "v3", "v4")
+        if version == "v5":
+            # v5 keeps Hangul decomposition where it is meaningful, but does
+            # not run Latin/code tokens through the jamo feature namespace.
+            use_jamo = bool(re.search(r"[가-힣ㄱ-ㅎㅏ-ㅣ]", token))
+
+        if use_jamo:
+            # Decomposed Hangul features let related forms such as
+            # "반가워" and "반갑다" share more sub-character structure.
+            decomposed = unicodedata.normalize("NFKD", token)
+
+            if version in ("v4", "v5"):
+                for char in decomposed:
+                    vec[stable_bucket("j1:" + char, size)] += jamo1_weight
+
+            for i in range(len(decomposed) - 1):
+                vec[stable_bucket("j2:" + decomposed[i : i + 2], size)] += jamo2_weight
+            for i in range(len(decomposed) - 2):
+                vec[stable_bucket("j3:" + decomposed[i : i + 3], size)] += jamo3_weight
+
+        if version in ("v3", "v4", "v5"):
+            # Syllable/character unigrams let colloquial variants share signal
+            # without mapping any literal phrase directly to a route.
+            for char in token:
+                vec[stable_bucket("c:" + char, size)] += char_weight
+        elif version not in ("v1", "v2"):
+            raise ValueError(f"Unknown vectorizer version: {version}")
+
+    if version == "v5":
+        # Add phrase context. This lets the router distinguish the same word
+        # used in different intents, e.g. "공식 사이트" (research) from
+        # "넓이 공식" (math), without hard-coding either route.
+        for left, right in zip(tokens, tokens[1:]):
+            vec[stable_bucket(f"wb:{left}|{right}", size)] += 0.60
+
     norm = torch.linalg.vector_norm(vec)
     if norm > 0:
         vec /= norm
@@ -146,9 +221,14 @@ class FlyGraphRouter(nn.Module):
         return self.output(h)
 
 
-def batchify(examples: Iterable[Example], route_to_idx: dict[str, int], vocab_size: int) -> tuple[torch.Tensor, torch.Tensor]:
+def batchify(
+    examples: Iterable[Example],
+    route_to_idx: dict[str, int],
+    vocab_size: int,
+    vectorizer_version: str = "v1",
+) -> tuple[torch.Tensor, torch.Tensor]:
     rows = list(examples)
-    x = torch.stack([vectorize(ex.text, vocab_size) for ex in rows])
+    x = torch.stack([vectorize(ex.text, vocab_size, vectorizer_version) for ex in rows])
     y = torch.tensor([route_to_idx[ex.route] for ex in rows], dtype=torch.long)
     return x, y
 
@@ -163,7 +243,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Train FlyGPT's first connectome-inspired task router")
     parser.add_argument("--dataset", type=Path, default=Path("training/teacher_seed.jsonl"))
     parser.add_argument("--scaffold", type=Path, help="JSON scaffold built from FlyWire; omit only for smoke tests")
-    parser.add_argument("--out", type=Path, default=Path("artifacts/fly_router_v0_1.pt"))
+    parser.add_argument("--out", type=Path, default=Path("artifacts/fly_router_v0_2.pt"))
     parser.add_argument("--epochs", type=int, default=60)
     parser.add_argument("--lr", type=float, default=2e-3)
     parser.add_argument("--weight-decay", type=float, default=1e-4)
@@ -172,6 +252,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--val-ratio", type=float, default=0.25)
     parser.add_argument("--synthetic-nodes", type=int, default=96)
+    parser.add_argument("--vectorizer-version", choices=("v1", "v2", "v3", "v4", "v5"), default="v1")
     args = parser.parse_args()
 
     random.seed(args.seed)
@@ -185,11 +266,14 @@ def main() -> None:
     n_nodes, src, dst, base, scaffold_meta = load_scaffold(args.scaffold, args.synthetic_nodes, args.seed)
     model = FlyGraphRouter(args.vocab_size, n_nodes, len(routes), src, dst, base, args.steps)
 
-    train_x, train_y = batchify(train, route_to_idx, args.vocab_size)
-    val_x, val_y = batchify(val, route_to_idx, args.vocab_size)
+    train_x, train_y = batchify(train, route_to_idx, args.vocab_size, args.vectorizer_version)
+    val_x, val_y = batchify(val, route_to_idx, args.vocab_size, args.vectorizer_version)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    loss_fn = nn.CrossEntropyLoss()
+
+    class_counts = torch.bincount(train_y, minlength=len(routes)).to(dtype=torch.float32)
+    class_weights = class_counts.sum() / (len(routes) * class_counts.clamp_min(1.0))
+    loss_fn = nn.CrossEntropyLoss(weight=class_weights)
 
     best_state = None
     best_val = -1.0
@@ -226,6 +310,7 @@ def main() -> None:
             "teacher_dataset": str(args.dataset),
             "best_val_accuracy": best_val,
             "seed": args.seed,
+            "vectorizer_version": args.vectorizer_version,
         },
         args.out,
     )

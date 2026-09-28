@@ -1,0 +1,36 @@
+{"input":"땡큐","route":"general"}
+{"input":"ty","route":"general"}
+{"input":"잘자용","route":"general"}
+{"input":"오키도키","route":"general"}
+{"input":"반갑슈","route":"general"}
+{"input":"감삼다","route":"general"}
+{"input":"sqrt121","route":"math"}
+{"input":"원둘레?","route":"math"}
+{"input":"분수 덧셈?","route":"math"}
+{"input":"9^2","route":"math"}
+{"input":"기울기?","route":"math"}
+{"input":"삼각형 면적?","route":"math"}
+{"input":"git log","route":"code"}
+{"input":"npm build","route":"code"}
+{"input":"python tuple","route":"code"}
+{"input":"react props","route":"code"}
+{"input":"css center","route":"code"}
+{"input":"sql group by","route":"code"}
+{"input":"아까 뭐였더라","route":"memory"}
+{"input":"방금 값 뭐지","route":"memory"}
+{"input":"전에 한 말?","route":"memory"}
+{"input":"직전 명령?","route":"memory"}
+{"input":"아까 파일명?","route":"memory"}
+{"input":"이전 모델?","route":"memory"}
+{"input":"한줄로","route":"summarize"}
+{"input":"요점만","route":"summarize"}
+{"input":"짧게 줄여","route":"summarize"}
+{"input":"핵심 정리","route":"summarize"}
+{"input":"두줄요약","route":"summarize"}
+{"input":"결론 요약","route":"summarize"}
+{"input":"최신판?","route":"research"}
+{"input":"지금 환율","route":"research"}
+{"input":"오늘 뉴스","route":"research"}
+{"input":"공식 사이트?","route":"research"}
+{"input":"최근 업데이트?","route":"research"}
+{"input":"현재 장애?","route":"research"}

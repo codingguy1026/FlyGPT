@@ -54,6 +54,47 @@ You can also keep the data anywhere else and point FlyGPT at it with:
 export FLYWIRE_DATA_DIR=/path/to/flywire_parts
 ```
 
+## FlyGPT v0.7 answer generation
+
+The FlyWire-inspired router decides whether a request is `general`, `code`,
+`summarize`, `math`, `memory`, or `research`. For generative routes,
+FlyGPT v0.7 can forward the request to any OpenAI-compatible
+`/v1/chat/completions` endpoint.
+
+Copy the example configuration and fill in the provider you want to use:
+
+```bash
+cp .env.example .env
+```
+
+The server reads environment variables, so export the values before starting
+Uvicorn. For example, a local Ollama server that exposes its OpenAI-compatible
+endpoint can be configured with:
+
+```bash
+export FLYGPT_GENERATOR_URL=http://127.0.0.1:11434/v1/chat/completions
+export FLYGPT_GENERATOR_MODEL=llama3.2:3b
+export FLYGPT_GENERATOR_PROVIDER=ollama
+```
+
+Hosted providers use the same URL/model fields and can additionally set:
+
+```bash
+export FLYGPT_GENERATOR_API_KEY=your-key-here
+```
+
+Do not commit real API keys. If no generator is configured, FlyGPT stays in
+router/fallback mode instead of failing.
+
+Generator status is available at:
+
+```text
+GET /api/generator/status
+```
+
+The browser header shows `ROUTER ONLY` when no answer model is connected and
+the configured model name when generation is ready.
+
 ## CLI
 
 Dataset statistics:

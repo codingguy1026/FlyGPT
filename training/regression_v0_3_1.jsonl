@@ -1,0 +1,30 @@
+{"input":"반갑네ㅋㅋ","route":"general"}
+{"input":"안녕하슈","route":"general"}
+{"input":"뭐하고있음?","route":"general"}
+{"input":"땡큐","route":"general"}
+{"input":"잘자용","route":"general"}
+{"input":"32 곱하기 11 계산해줘","route":"math"}
+{"input":"196의 제곱근은?","route":"math"}
+{"input":"4x+3=27에서 x 구해줘","route":"math"}
+{"input":"13의 제곱 얼마야","route":"math"}
+{"input":"9의 세제곱 계산","route":"math"}
+{"input":"파이썬에서 리스트 뒤에 값 넣는 법","route":"code"}
+{"input":"git 마지막 커밋 확인 명령 알려줘","route":"code"}
+{"input":"JavaScript에서 객체를 JSON 문자열로 바꾸려면?","route":"code"}
+{"input":"FastAPI에서 POST 라우트 만드는 법","route":"code"}
+{"input":"CSS grid 기본 사용법 알려줘","route":"code"}
+{"input":"내가 아까 말한 파일 이름 뭐였지","route":"memory"}
+{"input":"방금 정한 값 다시 알려줘","route":"memory"}
+{"input":"전에 선택했던 방법 기억나?","route":"memory"}
+{"input":"우리 마지막으로 어디까지 했어","route":"memory"}
+{"input":"내가 조금 전에 보낸 명령 다시 보여줘","route":"memory"}
+{"input":"이 문장을 한 줄로 줄여줘","route":"summarize"}
+{"input":"아래 글 중요한 부분만 정리해줘","route":"summarize"}
+{"input":"내용이 긴데 세 문장으로 압축해줘","route":"summarize"}
+{"input":"붙여넣은 에러 로그 요점만 알려줘","route":"summarize"}
+{"input":"이 설명 핵심만 간단히 정리","route":"summarize"}
+{"input":"지금 최신 Node 버전 확인해줘","route":"research"}
+{"input":"오늘 환율 검색해봐","route":"research"}
+{"input":"이 회사 최근 발표 찾아줘","route":"research"}
+{"input":"공식 문서에서 최신 지원 버전 확인해줘","route":"research"}
+{"input":"현재 서비스 상태 검색해줘","route":"research"}
