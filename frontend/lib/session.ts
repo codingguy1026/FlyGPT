@@ -38,3 +38,16 @@ export function createMemorySessionId(): string {
     return "ephemeral-" + Date.now() + "-" + Math.random().toString(16).slice(2);
   }
 }
+
+
+export function setMemorySessionId(sessionId: string): void {
+  if (typeof window === "undefined" || !sessionId) {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(SESSION_KEY, sessionId);
+  } catch {
+    // Session persistence is best-effort.
+  }
+}
