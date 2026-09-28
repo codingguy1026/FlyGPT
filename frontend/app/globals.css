@@ -1688,198 +1688,212 @@ textarea:focus-visible {
 }
 
 
-/* FlyGraph real brain microscope view */
-.brainViewTabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  padding: 4px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: rgba(255,255,255,.56);
-}
-
-.brainViewTabs button {
-  min-height: 34px;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  color: #8a91a1;
-  background: transparent;
+/* FlyGraph live activation sparkle */
+.brainSparkButton {
+  height: 29px;
+  padding: 0 9px;
+  border: 1px solid rgba(var(--accent-rgb), .14);
+  border-radius: 999px;
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), .055);
   cursor: pointer;
-  font-size: 7.5px;
+  font-size: 6.5px;
   font-weight: 900;
-  letter-spacing: .11em;
+  letter-spacing: .08em;
+  transition:
+    transform .16s ease,
+    background .16s ease,
+    box-shadow .16s ease;
 }
 
-.brainViewTabs button:hover {
-  color: var(--accent);
-  background: rgba(var(--accent-rgb), .045);
+.brainSparkButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: rgba(var(--accent-rgb), .10);
+  box-shadow: 0 8px 18px rgba(var(--accent-rgb), .10);
 }
 
-.brainViewTabs button.active {
-  color: var(--accent);
-  border-color: rgba(var(--accent-rgb), .13);
-  background: rgba(var(--accent-rgb), .075);
-  box-shadow: 0 5px 14px rgba(var(--accent-rgb), .06);
-}
-
-.brainViewTabs button.real:not(.active)::after {
-  content: "!";
-  width: 15px;
-  height: 15px;
-  margin-left: 6px;
-  display: inline-grid;
-  place-items: center;
-  border-radius: 50%;
-  color: #a1702e;
-  background: #fff5de;
-  font-size: 8px;
-}
-
-.realBrainStats span {
-  color: #7b8394;
-}
-
-.brainStage.realBrainMode {
-  min-height: 390px;
-  background:
-    radial-gradient(circle at 50% 35%, rgba(var(--accent-rgb), .08), transparent 58%),
-    #11131a;
-}
-
-.realBrainFrame {
-  min-height: 390px;
-  display: grid;
-  grid-template-rows: minmax(0,1fr) auto;
-  position: relative;
-  z-index: 1;
-}
-
-.realBrainFrame img {
-  width: 100%;
-  height: 315px;
-  display: block;
-  object-fit: contain;
-  background: #090a0f;
-}
-
-.realBrainCaption {
-  padding: 12px 14px 13px;
-  display: grid;
-  gap: 4px;
-  border-top: 1px solid rgba(255,255,255,.08);
-  color: rgba(255,255,255,.82);
-  background: rgba(9,10,15,.94);
-}
-
-.realBrainCaption strong {
-  font-size: 10px;
-}
-
-.realBrainCaption span {
-  color: rgba(255,255,255,.56);
-  font-size: 8px;
-  line-height: 1.45;
-}
-
-.realBrainCaption a {
-  width: fit-content;
-  color: #b8b2ff;
-  font-size: 7.5px;
-  text-decoration: none;
-}
-
-.realBrainCaption a:hover {
-  text-decoration: underline;
-}
-
-.realBrainMode .stageChip {
-  color: #ddd9ff;
-  border-color: rgba(255,255,255,.13);
-  background: rgba(16,18,27,.78);
-  backdrop-filter: blur(10px);
-}
-
-.brainWarningBackdrop {
-  position: absolute;
-  inset: 0;
-  z-index: 8;
-  display: grid;
-  place-items: center;
-  padding: 18px;
-  border-radius: inherit;
-  background: rgba(245,247,252,.72);
-  backdrop-filter: blur(12px);
-}
-
-.brainWarningDialog {
-  width: min(350px,100%);
-  padding: 20px;
-  display: grid;
-  grid-template-columns: 42px minmax(0,1fr);
-  gap: 12px;
-  border: 1px solid rgba(161,112,46,.16);
-  border-radius: 20px;
-  background: rgba(255,255,255,.97);
-  box-shadow: 0 24px 65px rgba(50,56,86,.18);
-}
-
-.brainWarningIcon {
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
-  border-radius: 14px;
-  background: #fff5de;
-  font-size: 21px;
-}
-
-.brainWarningDialog h3 {
-  margin: 4px 0 7px;
-  font-size: 14px;
-  letter-spacing: -.02em;
-}
-
-.brainWarningDialog p {
-  margin: 0;
-  color: #737b8c;
-  font-size: 9px;
-  line-height: 1.65;
-}
-
-.brainWarningActions {
-  grid-column: 1 / -1;
-  display: flex;
-  justify-content: flex-end;
-  gap: 7px;
-  margin-top: 2px;
-}
-
-.brainWarningActions button {
-  min-height: 36px;
-  padding: 0 13px;
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  color: #687183;
-  background: #f7f8fb;
-  cursor: pointer;
-  font-size: 9px;
-  font-weight: 760;
-}
-
-.brainWarningActions button.confirm {
+.brainSparkButton.active {
   color: #fff;
   border-color: transparent;
   background: linear-gradient(145deg, var(--accent), var(--accent-2));
-  box-shadow: 0 8px 18px rgba(var(--accent-rgb), .16);
+  box-shadow: 0 0 18px rgba(var(--accent-rgb), .26);
+}
+
+.brainSparkButton:disabled {
+  opacity: .4;
+  cursor: default;
+}
+
+.brainStatus.live {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(145deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 17px rgba(var(--accent-rgb), .20);
+  animation: liveBadgePulse .8s ease-in-out infinite alternate;
+}
+
+.brainStage.sparkling {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(var(--accent-rgb), .18), transparent 54%),
+    radial-gradient(circle at 35% 38%, rgba(255,208,107,.09), transparent 28%),
+    #f7f8fc;
+}
+
+.brainStage.sparkling::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 20% 26%, rgba(255,255,255,.9) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 73% 31%, rgba(var(--accent-rgb), .5) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 61% 72%, rgba(255,190,88,.55) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 31% 68%, rgba(var(--accent-rgb), .4) 0 1px, transparent 1.7px);
+  background-size: 71px 71px, 83px 83px, 61px 61px, 96px 96px;
+  animation: sparkleField 1.1s steps(2,end) infinite;
+}
+
+.brainEdge {
+  transition:
+    opacity .12s linear,
+    stroke-width .12s linear;
+}
+
+.brainEdge.hot {
+  stroke: #8c82ff;
+  stroke-dasharray: .10 .09;
+  filter: url(#brainGlow);
+  animation: neuralDash .48s linear infinite;
+}
+
+.brainNode {
+  transition:
+    r .12s linear,
+    opacity .12s linear,
+    fill .12s linear;
+}
+
+.brainNode.active {
+  fill: #a59cff;
+  filter: url(#brainGlow);
+}
+
+.brainSparkHalo {
+  fill: rgba(var(--accent-rgb), .19);
+  stroke: rgba(var(--accent-rgb), .68);
+  stroke-width: .14;
+  filter: url(#brainGlow);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: brainTwinkle .52s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.brainSparkHalo.bright {
+  fill: rgba(255,194,87,.22);
+  stroke: rgba(255,184,77,.88);
+  filter: url(#brainHotGlow);
+  animation-duration: .36s;
+}
+
+.brainSparkCore {
+  fill: #fff6cc;
+  stroke: #ffb84d;
+  stroke-width: .12;
+  filter: url(#brainHotGlow);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: brainCoreBlink .32s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.brainFlashWash {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 45px rgba(var(--accent-rgb), .08),
+    inset 0 0 90px rgba(255,201,100,.035);
+  animation: flashWash .82s ease-in-out infinite alternate;
+}
+
+.stageChip.live {
+  color: var(--accent);
+  border-color: rgba(var(--accent-rgb), .18);
+  background: rgba(255,255,255,.90);
+  box-shadow: 0 0 15px rgba(var(--accent-rgb), .12);
+}
+
+@keyframes neuralDash {
+  to {
+    stroke-dashoffset: -.38;
+  }
+}
+
+@keyframes brainTwinkle {
+  0% {
+    opacity: .18;
+    transform: scale(.72);
+  }
+  100% {
+    opacity: .92;
+    transform: scale(1.22);
+  }
+}
+
+@keyframes brainCoreBlink {
+  0% {
+    opacity: .46;
+    transform: scale(.74);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1.22);
+  }
+}
+
+@keyframes sparkleField {
+  0% {
+    opacity: .24;
+    transform: translate3d(0,0,0);
+  }
+  50% {
+    opacity: .7;
+    transform: translate3d(2px,-1px,0);
+  }
+  100% {
+    opacity: .38;
+    transform: translate3d(-1px,2px,0);
+  }
+}
+
+@keyframes flashWash {
+  from { opacity: .3; }
+  to { opacity: .9; }
+}
+
+@keyframes liveBadgePulse {
+  from { transform: scale(.97); }
+  to { transform: scale(1.03); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brainSparkHalo,
+  .brainSparkCore,
+  .brainEdge.hot,
+  .brainFlashWash,
+  .brainStage.sparkling::before,
+  .brainStatus.live {
+    animation: none !important;
+  }
 }
 
 @media (max-width: 450px) {
-  .realBrainFrame img {
-    height: min(58dvh, 420px);
-  }
-
-  .brainWarningBackdrop {
-    padding: 10px;
+  .brainSparkButton {
+    padding: 0 7px;
+    font-size: 6px;
   }
 }
