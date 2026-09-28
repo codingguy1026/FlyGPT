@@ -1686,3 +1686,200 @@ textarea:focus-visible {
     z-index: 30;
   }
 }
+
+
+/* FlyGraph real brain microscope view */
+.brainViewTabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255,255,255,.56);
+}
+
+.brainViewTabs button {
+  min-height: 34px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: #8a91a1;
+  background: transparent;
+  cursor: pointer;
+  font-size: 7.5px;
+  font-weight: 900;
+  letter-spacing: .11em;
+}
+
+.brainViewTabs button:hover {
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), .045);
+}
+
+.brainViewTabs button.active {
+  color: var(--accent);
+  border-color: rgba(var(--accent-rgb), .13);
+  background: rgba(var(--accent-rgb), .075);
+  box-shadow: 0 5px 14px rgba(var(--accent-rgb), .06);
+}
+
+.brainViewTabs button.real:not(.active)::after {
+  content: "!";
+  width: 15px;
+  height: 15px;
+  margin-left: 6px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #a1702e;
+  background: #fff5de;
+  font-size: 8px;
+}
+
+.realBrainStats span {
+  color: #7b8394;
+}
+
+.brainStage.realBrainMode {
+  min-height: 390px;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(var(--accent-rgb), .08), transparent 58%),
+    #11131a;
+}
+
+.realBrainFrame {
+  min-height: 390px;
+  display: grid;
+  grid-template-rows: minmax(0,1fr) auto;
+  position: relative;
+  z-index: 1;
+}
+
+.realBrainFrame img {
+  width: 100%;
+  height: 315px;
+  display: block;
+  object-fit: contain;
+  background: #090a0f;
+}
+
+.realBrainCaption {
+  padding: 12px 14px 13px;
+  display: grid;
+  gap: 4px;
+  border-top: 1px solid rgba(255,255,255,.08);
+  color: rgba(255,255,255,.82);
+  background: rgba(9,10,15,.94);
+}
+
+.realBrainCaption strong {
+  font-size: 10px;
+}
+
+.realBrainCaption span {
+  color: rgba(255,255,255,.56);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.realBrainCaption a {
+  width: fit-content;
+  color: #b8b2ff;
+  font-size: 7.5px;
+  text-decoration: none;
+}
+
+.realBrainCaption a:hover {
+  text-decoration: underline;
+}
+
+.realBrainMode .stageChip {
+  color: #ddd9ff;
+  border-color: rgba(255,255,255,.13);
+  background: rgba(16,18,27,.78);
+  backdrop-filter: blur(10px);
+}
+
+.brainWarningBackdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  border-radius: inherit;
+  background: rgba(245,247,252,.72);
+  backdrop-filter: blur(12px);
+}
+
+.brainWarningDialog {
+  width: min(350px,100%);
+  padding: 20px;
+  display: grid;
+  grid-template-columns: 42px minmax(0,1fr);
+  gap: 12px;
+  border: 1px solid rgba(161,112,46,.16);
+  border-radius: 20px;
+  background: rgba(255,255,255,.97);
+  box-shadow: 0 24px 65px rgba(50,56,86,.18);
+}
+
+.brainWarningIcon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: #fff5de;
+  font-size: 21px;
+}
+
+.brainWarningDialog h3 {
+  margin: 4px 0 7px;
+  font-size: 14px;
+  letter-spacing: -.02em;
+}
+
+.brainWarningDialog p {
+  margin: 0;
+  color: #737b8c;
+  font-size: 9px;
+  line-height: 1.65;
+}
+
+.brainWarningActions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+  margin-top: 2px;
+}
+
+.brainWarningActions button {
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  color: #687183;
+  background: #f7f8fb;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 760;
+}
+
+.brainWarningActions button.confirm {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(145deg, var(--accent), var(--accent-2));
+  box-shadow: 0 8px 18px rgba(var(--accent-rgb), .16);
+}
+
+@media (max-width: 450px) {
+  .realBrainFrame img {
+    height: min(58dvh, 420px);
+  }
+
+  .brainWarningBackdrop {
+    padding: 10px;
+  }
+}
