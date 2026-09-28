@@ -15,7 +15,7 @@ type Props = {
   router: RouterResult | null;
 };
 
-const SPARK_STEPS = 26;
+const CALCIUM_STEPS = 30;
 
 function nodePosition(index: number, count: number) {
   const right = index % 2 === 1;
@@ -36,12 +36,10 @@ export default function BrainPanel({ open, onClose, router }: Props) {
   const [graph, setGraph] = useState<GraphResponse | null>(null);
   const [error, setError] = useState("");
   const [frameIndex, setFrameIndex] = useState(-1);
-  const [sparkStep, setSparkStep] = useState(-1);
+  const [calciumStep, setCalciumStep] = useState(-1);
 
   useEffect(() => {
-    if (!open || graph || error) {
-      return;
-    }
+    if (!open || graph || error) return;
 
     getRouterGraph()
       .then(setGraph)
@@ -51,14 +49,12 @@ export default function BrainPanel({ open, onClose, router }: Props) {
   }, [open, graph, error]);
 
   useEffect(() => {
-    if (!open) {
-      setSparkStep(-1);
-    }
+    if (!open) setCalciumStep(-1);
   }, [open]);
 
   useEffect(() => {
     const trace = router?.trace ?? [];
-    setSparkStep(-1);
+    setCalciumStep(-1);
 
     if (trace.length === 0) {
       setFrameIndex(-1);
@@ -80,20 +76,20 @@ export default function BrainPanel({ open, onClose, router }: Props) {
   }, [router]);
 
   useEffect(() => {
-    if (sparkStep < 0) return;
+    if (calciumStep < 0) return;
 
-    if (sparkStep >= SPARK_STEPS) {
-      const stopTimer = window.setTimeout(() => setSparkStep(-1), 260);
+    if (calciumStep >= CALCIUM_STEPS) {
+      const stopTimer = window.setTimeout(() => setCalciumStep(-1), 360);
       return () => window.clearTimeout(stopTimer);
     }
 
     const timer = window.setTimeout(
-      () => setSparkStep((current) => current + 1),
-      125,
+      () => setCalciumStep((current) => current + 1),
+      120,
     );
 
     return () => window.clearTimeout(timer);
-  }, [sparkStep]);
+  }, [calciumStep]);
 
   const activeFrame: TraceFrame | null =
     frameIndex >= 0 ? router?.trace?.[frameIndex] ?? null : null;
@@ -109,71 +105,89 @@ export default function BrainPanel({ open, onClose, router }: Props) {
   const displayActivations = useMemo(() => {
     if (!graph) return [];
 
-    if (sparkStep >= 0) {
-      const phase = Math.min(1, sparkStep / SPARK_STEPS);
-      const centerX = 18 + phase * 64;
-      const centerY = 50 + Math.sin(phase * Math.PI * 3) * 17;
+    if (calciumStep >= 0) {
+      const phase = Math.min(1, calciumStep / CALCIUM_STEPS);
+      const focusA = {
+        x: 26 + phase * 45,
+        y: 36 + Math.sin(phase * Math.PI * 2.4) * 13,
+      };
+      const focusB = {
+        x: 76 - phase * 33,
+        y: 64 + Math.cos(phase * Math.PI * 2.1) * 11,
+      };
 
       return positions.map((point, index) => {
-        const dx = point.x - centerX;
-        const dy = point.y - centerY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        const distanceTo = (x: number, y: number) => {
+          const dx = point.x - x;
+          const dy = point.y - y;
+          return Math.sqrt(dx * dx + dy * dy);
+        };
 
-        const wave = Math.max(0, 1 - distance / 26);
-        const ring = Math.max(
-          0,
-          1 - Math.abs(distance - (10 + phase * 13)) / 7,
-        );
+        const pulseA = Math.max(0, 1 - distanceTo(focusA.x, focusA.y) / 24);
+        const pulseB = Math.max(0, 1 - distanceTo(focusB.x, focusB.y) / 20);
+        const spontaneous =
+          ((index * 47 + calciumStep * 29) % 101) > 86
+            ? 0.35 + ((index * 13) % 17) / 40
+            : 0;
         const flicker =
-          0.68 + (((index * 37 + sparkStep * 19) % 31) / 31) * 0.32;
+          0.72 + (((index * 31 + calciumStep * 17) % 29) / 29) * 0.28;
 
-        return Math.min(1, Math.max(wave, ring * 0.72) * flicker);
+        return Math.min(
+          1,
+          Math.max(pulseA, pulseB * 0.82, spontaneous) * flicker,
+        );
       });
     }
 
     return graph.nodes.map(
       (_, index) => activeFrame?.activations?.[index] ?? 0,
     );
-  }, [activeFrame, graph, positions, sparkStep]);
+  }, [activeFrame, calciumStep, graph, positions]);
 
-  function runSparkTest() {
+  const meanActivity = useMemo(() => {
+    if (displayActivations.length === 0) return 0;
+    return (
+      displayActivations.reduce((sum, value) => sum + value, 0) /
+      displayActivations.length
+    );
+  }, [displayActivations]);
+
+  function runCalciumDemo() {
     if (!graph) return;
     setFrameIndex(-1);
-    setSparkStep(0);
+    setCalciumStep(0);
   }
 
-  const isSparking =
-    sparkStep >= 0 ||
+  const isActive =
+    calciumStep >= 0 ||
     displayActivations.some((activity) => activity > 0.08);
 
-  if (!open) {
-    return null;
-  }
+  if (!open) return null;
 
   return (
     <aside className="brainPanel">
       <header className="brainHeader">
         <div>
-          <div className="eyebrow">LIVE MODEL VIEW</div>
-          <h2>FlyGraph Neural Map</h2>
+          <div className="eyebrow">GCaMP-STYLE MODEL VIEW</div>
+          <h2>FlyGraph Calcium Map</h2>
         </div>
         <div className="brainHeaderActions">
           <button
-            className={"brainSparkButton" + (sparkStep >= 0 ? " active" : "")}
-            onClick={runSparkTest}
+            className={"brainSparkButton" + (calciumStep >= 0 ? " active" : "")}
+            onClick={runCalciumDemo}
             type="button"
             disabled={!graph}
-            title="활성화 반짝임 데모"
+            title="칼슘 이미징 스타일 활성화 데모"
           >
-            ✦ {sparkStep >= 0 ? "SPARKING" : "SPARK TEST"}
+            ◉ {calciumStep >= 0 ? "IMAGING" : "CALCIUM DEMO"}
           </button>
-          <div className={"brainStatus" + (isSparking ? " live" : "")}>
+          <div className={"brainStatus" + (isActive ? " live" : "")}>
             {error
               ? "OFFLINE"
               : !graph
                 ? "LOADING"
-                : isSparking
-                  ? "LIVE"
+                : isActive
+                  ? "ΔF/F LIVE"
                   : "READY"}
           </div>
           <button
@@ -190,10 +204,10 @@ export default function BrainPanel({ open, onClose, router }: Props) {
       <div className="brainStats">
         <span>{graph ? `${graph.n_nodes} nodes` : "— nodes"}</span>
         <span>{graph ? `${graph.n_edges} edges` : "— edges"}</span>
-        <span>{graph ? `${graph.steps} steps` : "— steps"}</span>
+        <span>{isActive ? `ΔF/F ${(meanActivity * 100).toFixed(1)}%` : graph ? `${graph.steps} steps` : "— steps"}</span>
       </div>
 
-      <div className={"brainStage" + (isSparking ? " sparkling" : "")}>
+      <div className={"brainStage calciumStage" + (isActive ? " calciumLive" : "")}>
         {error ? (
           <div className="brainEmpty">
             뉴런 지도를 불러오지 못했습니다.{"\n"}
@@ -204,32 +218,32 @@ export default function BrainPanel({ open, onClose, router }: Props) {
         ) : (
           <svg
             viewBox="0 0 100 100"
-            className="brainSvg"
+            className="brainSvg calciumSvg"
             role="img"
-            aria-label="FlyGPT connectome scaffold activation map"
+            aria-label="FlyGPT activation map rendered in a GCaMP calcium-imaging style"
           >
             <defs>
               <filter
-                id="brainGlow"
-                x="-120%"
-                y="-120%"
-                width="340%"
-                height="340%"
+                id="calciumGlow"
+                x="-180%"
+                y="-180%"
+                width="460%"
+                height="460%"
               >
-                <feGaussianBlur stdDeviation="1.45" result="blur" />
+                <feGaussianBlur stdDeviation="1.8" result="blur" />
                 <feMerge>
                   <feMergeNode in="blur" />
                   <feMergeNode in="SourceGraphic" />
                 </feMerge>
               </filter>
               <filter
-                id="brainHotGlow"
-                x="-180%"
-                y="-180%"
-                width="460%"
-                height="460%"
+                id="calciumHotGlow"
+                x="-260%"
+                y="-260%"
+                width="620%"
+                height="620%"
               >
-                <feGaussianBlur stdDeviation="2.4" result="blur" />
+                <feGaussianBlur stdDeviation="3.1" result="blur" />
                 <feMerge>
                   <feMergeNode in="blur" />
                   <feMergeNode in="blur" />
@@ -238,15 +252,20 @@ export default function BrainPanel({ open, onClose, router }: Props) {
               </filter>
             </defs>
 
+            <path
+              className="calciumBrainOutline"
+              d="M50 12 C38 7 22 14 18 29 C10 36 10 51 17 59 C14 73 25 87 40 86 C44 92 56 92 60 86 C75 87 86 73 83 59 C90 51 90 36 82 29 C78 14 62 7 50 12 Z"
+            />
+
             {graph.edges.map((edge, index) => {
               const src = positions[edge.src];
               const dst = positions[edge.dst];
               if (!src || !dst) return null;
 
-              const a = displayActivations[edge.src] ?? 0;
-              const b = displayActivations[edge.dst] ?? 0;
-              const activity = Math.max(a, b);
-              const hot = activity > 0.18;
+              const activity = Math.max(
+                displayActivations[edge.src] ?? 0,
+                displayActivations[edge.dst] ?? 0,
+              );
 
               return (
                 <line
@@ -255,12 +274,9 @@ export default function BrainPanel({ open, onClose, router }: Props) {
                   y1={src.y}
                   x2={dst.x}
                   y2={dst.y}
-                  pathLength="1"
-                  className={hot ? "brainEdge hot" : "brainEdge"}
+                  className={activity > 0.18 ? "calciumEdge active" : "calciumEdge"}
                   style={{
-                    opacity: 0.07 + Math.min(0.72, activity * 0.72),
-                    strokeWidth: hot ? 0.14 + activity * 0.16 : 0.1,
-                    animationDelay: `-${(index % 11) * 0.055}s`,
+                    opacity: 0.025 + Math.min(0.22, activity * 0.22),
                   }}
                 />
               );
@@ -270,7 +286,7 @@ export default function BrainPanel({ open, onClose, router }: Props) {
               const point = positions[index];
               const activity = displayActivations[index] ?? 0;
               const active = activity > 0.08;
-              const bright = activity > 0.42;
+              const hot = activity > 0.48;
 
               return (
                 <g key={node.root_id ?? index}>
@@ -278,27 +294,11 @@ export default function BrainPanel({ open, onClose, router }: Props) {
                     <circle
                       cx={point.x}
                       cy={point.y}
-                      r={1.55 + activity * 2.8}
-                      className={
-                        bright
-                          ? "brainSparkHalo bright"
-                          : "brainSparkHalo"
-                      }
+                      r={1.9 + activity * 3.9}
+                      className={hot ? "calciumHalo hot" : "calciumHalo"}
                       style={{
-                        opacity: 0.16 + activity * 0.54,
-                        animationDelay: `-${(index % 9) * 0.07}s`,
-                      }}
-                    />
-                  )}
-
-                  {bright && (
-                    <circle
-                      cx={point.x}
-                      cy={point.y}
-                      r={0.75 + activity * 1.05}
-                      className="brainSparkCore"
-                      style={{
-                        animationDelay: `-${(index % 7) * 0.06}s`,
+                        opacity: 0.14 + activity * 0.52,
+                        animationDelay: `-${(index % 8) * 0.08}s`,
                       }}
                     />
                   )}
@@ -306,15 +306,15 @@ export default function BrainPanel({ open, onClose, router }: Props) {
                   <circle
                     cx={point.x}
                     cy={point.y}
-                    r={0.55 + activity * 1.55}
-                    className={active ? "brainNode active" : "brainNode"}
+                    r={0.44 + activity * 1.5}
+                    className={hot ? "calciumNode hot" : active ? "calciumNode active" : "calciumNode"}
                     style={{
-                      opacity: active ? 0.68 + activity * 0.32 : 0.5,
+                      opacity: active ? 0.62 + activity * 0.38 : 0.22,
                     }}
                   >
                     <title>
                       Node {index} · FlyWire {node.root_id ?? "not mapped"} ·
-                      activation {(activity * 100).toFixed(1)}%
+                      relative fluorescence {(activity * 100).toFixed(1)}%
                     </title>
                   </circle>
                 </g>
@@ -323,11 +323,14 @@ export default function BrainPanel({ open, onClose, router }: Props) {
           </svg>
         )}
 
-        {isSparking && <div className="brainFlashWash" aria-hidden="true" />}
+        <div className="calciumHud" aria-hidden="true">
+          <span>GCaMP</span>
+          <i style={{ width: `${Math.max(3, meanActivity * 100)}%` }} />
+        </div>
 
-        <div className={"stageChip" + (isSparking ? " live" : "")}>
-          {sparkStep >= 0
-            ? "signal burst"
+        <div className={"stageChip" + (isActive ? " live" : "")}>
+          {calciumStep >= 0
+            ? "calcium demo"
             : activeFrame?.stage?.replace("_", " ") ?? "idle"}
         </div>
       </div>
@@ -335,9 +338,9 @@ export default function BrainPanel({ open, onClose, router }: Props) {
       <RoutePanel router={router} />
 
       <div className="brainNote">
-        ✦ SPARK TEST는 시각 효과 데모입니다. 실제 질문을 보내면 FlyGPT가
-        반환한 trace activation 값으로 같은 반짝임이 재생됩니다. 실제 생물학적
-        뉴런 발화 영상은 아닙니다.
+        이 화면은 실제 GCaMP 칼슘 이미징의 형광 표현 방식을 참고해 FlyGPT의
+        trace activation을 시각화한 것입니다. 살아있는 파리를 실시간 촬영한
+        영상은 아니며, 밝아질수록 모델 활성도가 높은 것으로 표시됩니다.
       </div>
     </aside>
   );
