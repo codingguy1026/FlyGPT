@@ -19,6 +19,7 @@ import {
 import {
   createMemorySessionId,
   getMemorySessionId,
+  setMemorySessionId,
 } from "@/lib/session";
 
 type MessageMeta = {
@@ -32,6 +33,70 @@ type Message = {
   content: string;
   meta?: MessageMeta[];
 };
+
+type ChatRecord = {
+  id: string;
+  title: string;
+  sessionId: string;
+  messages: Message[];
+  updatedAt: number;
+};
+
+const CHAT_HISTORY_KEY = "flygpt-chat-history-v0.7";
+const ACTIVE_CHAT_KEY = "flygpt-active-chat-v0.7";
+const MAX_STORED_CHATS = 40;
+
+function loadChatHistory(): ChatRecord[] {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const raw = window.localStorage.getItem(CHAT_HISTORY_KEY);
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .filter(
+        (item): item is ChatRecord =>
+          Boolean(
+            item &&
+              typeof item.id === "string" &&
+              typeof item.title === "string" &&
+              typeof item.sessionId === "string" &&
+              Array.isArray(item.messages) &&
+              typeof item.updatedAt === "number",
+          ),
+      )
+      .slice(0, MAX_STORED_CHATS);
+  } catch {
+    return [];
+  }
+}
+
+function writeChatHistory(history: ChatRecord[]) {
+  try {
+    window.localStorage.setItem(
+      CHAT_HISTORY_KEY,
+      JSON.stringify(history.slice(0, MAX_STORED_CHATS)),
+    );
+  } catch {
+    // Local chat history is best-effort.
+  }
+}
+
+function formatChatTime(updatedAt: number) {
+  try {
+    return new Intl.DateTimeFormat("ko-KR", {
+      month: "numeric",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(updatedAt));
+  } catch {
+    return "";
+  }
+}
 
 type IconName =
   | "home"
@@ -119,6 +184,9 @@ function FlyOrb({ small = false }: { small?: boolean }) {
 
 export default function FlyGPTApp() {
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
+  const [chatHistory, setChatHistory] = useState<ChatRecord[]>([]);
+  const [activeChatId, setActiveChatId] = useState("");
+  const [historyReady, setHistoryReady] = useState(false);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [brainOpen, setBrainOpen] = useState(false);
@@ -135,7 +203,30 @@ export default function FlyGPTApp() {
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    setSessionId(getMemorySessionId());
+    const storedHistory = loadChatHistory();
+    const fallbackSessionId = getMemorySessionId();
+    let nextSessionId = fallbackSessionId;
+    let nextChatId = makeId("chat");
+
+    try {
+      const storedActiveId = window.localStorage.getItem(ACTIVE_CHAT_KEY);
+      const storedActiveChat = storedHistory.find((chat) => chat.id === storedActiveId);
+
+      if (storedActiveChat) {
+        nextChatId = storedActiveChat.id;
+        nextSessionId = storedActiveChat.sessionId;
+        setMessages(storedActiveChat.messages.length ? storedActiveChat.messages : [INITIAL_MESSAGE]);
+        setConversationTitle(storedActiveChat.title);
+      }
+    } catch {
+      // Fall back to a fresh local conversation shell.
+    }
+
+    setChatHistory(storedHistory);
+    setActiveChatId(nextChatId);
+    setSessionId(nextSessionId);
+    setMemorySessionId(nextSessionId);
+    setHistoryReady(true);
 
     try {
       const savedTheme = window.localStorage.getItem("flygpt-original-theme");
@@ -165,6 +256,44 @@ export default function FlyGPTApp() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, sending]);
+
+  useEffect(() => {
+    if (!historyReady || !activeChatId || !sessionId) return;
+
+    try {
+      window.localStorage.setItem(ACTIVE_CHAT_KEY, activeChatId);
+    } catch {
+      // Active-chat persistence is best-effort.
+    }
+
+    const hasUserMessage = messages.some((message) => message.role === "user");
+    const alreadyStored = chatHistory.some((chat) => chat.id === activeChatId);
+
+    if (!hasUserMessage && !alreadyStored) return;
+
+    const record: ChatRecord = {
+      id: activeChatId,
+      title: conversationTitle,
+      sessionId,
+      messages,
+      updatedAt: Date.now(),
+    };
+
+    setChatHistory((current) => {
+      const next = [
+        record,
+        ...current.filter((chat) => chat.id !== activeChatId),
+      ].slice(0, MAX_STORED_CHATS);
+      writeChatHistory(next);
+      return next;
+    });
+  }, [
+    activeChatId,
+    conversationTitle,
+    historyReady,
+    messages,
+    sessionId,
+  ]);
 
   const theme = useMemo(
     () => THEMES.find((item) => item.id === themeId) ?? THEMES[0],
@@ -268,12 +397,41 @@ export default function FlyGPTApp() {
   }
 
   function newFlight() {
-    setSessionId(createMemorySessionId());
+    const nextSessionId = createMemorySessionId();
+    const nextChatId = makeId("chat");
+
+    setActiveChatId(nextChatId);
+    setSessionId(nextSessionId);
     setMessages([INITIAL_MESSAGE]);
     setInput("");
     setRouter(null);
     setConversationTitle("Untitled flight");
     setRailOpen(false);
+
+    try {
+      window.localStorage.setItem(ACTIVE_CHAT_KEY, nextChatId);
+    } catch {
+      // Active-chat persistence is best-effort.
+    }
+  }
+
+  function openFlight(chat: ChatRecord) {
+    if (sending) return;
+
+    setActiveChatId(chat.id);
+    setSessionId(chat.sessionId);
+    setMemorySessionId(chat.sessionId);
+    setMessages(chat.messages.length ? chat.messages : [INITIAL_MESSAGE]);
+    setConversationTitle(chat.title);
+    setRouter(null);
+    setInput("");
+    setRailOpen(false);
+
+    try {
+      window.localStorage.setItem(ACTIVE_CHAT_KEY, chat.id);
+    } catch {
+      // Active-chat persistence is best-effort.
+    }
   }
 
   async function resetMemory() {
@@ -317,27 +475,66 @@ export default function FlyGPTApp() {
   return (
     <main className="flightApp" style={themeVars}>
       <aside className={"flightRail" + (railOpen ? " open" : "")}>
-        <div className="railBrand">
-          <FlyOrb small />
+        <div className="railBrandFull">
+          <div className="railBrand">
+            <FlyOrb small />
+          </div>
+          <div className="railBrandCopy">
+            <strong>FlyGPT</strong>
+            <span>FLIGHT CONSOLE</span>
+          </div>
         </div>
+
+        <button className="newFlightButton" type="button" onClick={newFlight}>
+          <Icon name="plus" size={18} />
+          <span>새 채팅</span>
+        </button>
 
         <nav className="railNav" aria-label="FlyGPT navigation">
           <button className="railButton active" type="button" title="홈">
-            <Icon name="home" />
-          </button>
-          <button className="railButton primary" type="button" title="새 비행" onClick={newFlight}>
-            <Icon name="plus" />
+            <Icon name="home" size={18} />
+            <span>홈</span>
           </button>
           <button className="railButton" type="button" title="FlyGraph" onClick={() => { setBrainOpen(true); setRailOpen(false); }}>
-            <Icon name="brain" />
+            <Icon name="brain" size={18} />
+            <span>FlyGraph</span>
           </button>
           <button className="railButton" type="button" title="테마" onClick={() => { setTelemetryOpen(true); setRailOpen(false); }}>
-            <Icon name="palette" />
+            <Icon name="palette" size={18} />
+            <span>Telemetry</span>
           </button>
         </nav>
 
+        <section className="historySection" aria-label="채팅 기록">
+          <div className="historyLabel">
+            <span>RECENT FLIGHTS</span>
+            <b>{chatHistory.length}</b>
+          </div>
+
+          <div className="historyList">
+            {chatHistory.length === 0 ? (
+              <p className="historyEmpty">대화를 시작하면 여기에 기록돼요.</p>
+            ) : (
+              chatHistory.map((chat) => (
+                <button
+                  key={chat.id}
+                  className={"historyItem" + (chat.id === activeChatId ? " active" : "")}
+                  type="button"
+                  onClick={() => openFlight(chat)}
+                  disabled={sending}
+                  title={chat.title}
+                >
+                  <span>{chat.title}</span>
+                  <small>{formatChatTime(chat.updatedAt)}</small>
+                </button>
+              ))
+            )}
+          </div>
+        </section>
+
         <button className="railButton railSettings" type="button" title="설정" onClick={() => { setSettingsOpen(true); setRailOpen(false); }}>
-          <Icon name="settings" />
+          <Icon name="settings" size={18} />
+          <span>설정</span>
         </button>
       </aside>
 
