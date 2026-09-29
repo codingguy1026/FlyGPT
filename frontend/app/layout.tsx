@@ -4,6 +4,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "FlyGPT v0.7.1",
   description: "Connectome-routed AI workspace",
+  icons: {
+    icon: "/flygpt-logo.webp",
+  },
 };
 
 export default function RootLayout({
