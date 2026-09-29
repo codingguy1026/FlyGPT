@@ -13,14 +13,31 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from connectome import FlyWireConnectome, NT_COLUMNS
+from malecns import MaleCNSConnectome
 from dispatcher import dispatch, dispatch_math_fast_path, is_math_fast_path
 from generator_runtime import GENERATIVE_ROUTES, GeneratorRuntime
 from memory_store import MemoryStore, format_recall
 from auth_store import AuthStore, SESSION_TTL_SECONDS
 
 
-APP_VERSION = "0.7.1"
-DATA_DIR = os.environ.get("FLYWIRE_DATA_DIR", "data/flywire_parts")
+APP_VERSION = "0.8.0"
+CONNECTOME_BACKEND = os.environ.get("FLYGPT_CONNECTOME", "flywire").strip().lower()
+
+if CONNECTOME_BACKEND == "malecns":
+    DATA_DIR = os.environ.get("MALECNS_DATA_DIR", "data/malecns/parts")
+    METADATA_DIR: str | None = os.environ.get(
+        "MALECNS_METADATA_DIR",
+        "data/malecns/metadata",
+    )
+    CONNECTOME_LABEL = "MaleCNS v1.0"
+elif CONNECTOME_BACKEND == "flywire":
+    DATA_DIR = os.environ.get("FLYWIRE_DATA_DIR", "data/flywire_parts")
+    METADATA_DIR = None
+    CONNECTOME_LABEL = "FlyWire v783"
+else:
+    raise RuntimeError(
+        "FLYGPT_CONNECTOME must be either 'flywire' or 'malecns'"
+    )
 
 _model_override = os.environ.get("FLYGPT_MODEL_PATH")
 if _model_override:
@@ -54,7 +71,7 @@ app = FastAPI(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-_connectome: FlyWireConnectome | None = None
+_connectome: FlyWireConnectome | MaleCNSConnectome | None = None
 _connectome_lock = threading.Lock()
 
 _router: Any | None = None
@@ -119,12 +136,15 @@ def _scoped_session_id(user_id: str, session_id: str | None) -> str | None:
     return f"{user_id}:{raw}"
 
 
-def get_connectome() -> FlyWireConnectome:
+def get_connectome() -> FlyWireConnectome | MaleCNSConnectome:
     global _connectome
 
     with _connectome_lock:
         if _connectome is None:
-            _connectome = FlyWireConnectome(DATA_DIR)
+            if CONNECTOME_BACKEND == "malecns":
+                _connectome = MaleCNSConnectome(DATA_DIR, METADATA_DIR)
+            else:
+                _connectome = FlyWireConnectome(DATA_DIR)
         return _connectome
 
 
@@ -168,6 +188,16 @@ def predict_route(text: str) -> dict[str, Any] | None:
 
 
 def extract_root_ids(text: str) -> list[int]:
+    if CONNECTOME_BACKEND == "malecns":
+        explicit = re.findall(
+            r"(?:body|neuron|뉴런)\s*#?\s*(\d{1,12})",
+            text,
+            re.IGNORECASE,
+        )
+        if explicit:
+            return [int(value) for value in explicit]
+        return [int(value) for value in re.findall(r"\b\d{5,12}\b", text)]
+
     return [int(value) for value in re.findall(r"\b\d{15,}\b", text)]
 
 
@@ -191,15 +221,22 @@ def dominant_nt(row: dict[str, Any]) -> tuple[str, float]:
         NT_COLUMNS,
         key=lambda key: float(row.get(key) or 0.0),
     )
-    return column.removesuffix("_avg").upper(), float(row.get(column) or 0.0)
+    probability = float(row.get(column) or 0.0)
+    if probability <= 0:
+        return "UNKNOWN", 0.0
+    return column.removesuffix("_avg").upper(), probability
 
 
 def format_partner(row: dict[str, Any], index: int) -> str:
     nt, probability = dominant_nt(row)
+    if int(row.get("neuropil_count") or 0) > 0:
+        scope = f"Neuropils: {row['neuropil_count']}"
+    else:
+        scope = "Scope: whole CNS"
     return (
         f"{index}. Partner: {row['partner_root_id']}\n"
         f"   Synapses: {row['syn_count']:,}\n"
-        f"   Neuropils: {row['neuropil_count']}\n"
+        f"   {scope}\n"
         f"   Dominant NT: {nt} ({probability:.3f})"
     )
 
@@ -375,15 +412,22 @@ def chat_endpoint(req: ChatRequest, request: Request):
 
         if "통계" in msg or "stats" in lower or "statistics" in lower:
             stats = get_connectome().stats()
-            answer = (
-                "📊 FlyWire v783 Dataset Statistics\n\n"
-                f"Rows: {stats['rows']:,}\n"
-                f"Presynaptic neurons ≈ {stats['approx_presynaptic_neurons']:,}\n"
-                f"Postsynaptic neurons ≈ {stats['approx_postsynaptic_neurons']:,}\n"
-                f"Neuropils: {stats['neuropils']:,}\n"
-                f"Synapses: {stats['synapses']:,}\n"
-                f"Parquet parts: {stats['parts']}"
+            stat_lines = [
+                f"📊 {CONNECTOME_LABEL} Dataset Statistics",
+                "",
+                f"Rows: {stats['rows']:,}",
+                f"Presynaptic neurons ≈ {stats['approx_presynaptic_neurons']:,}",
+                f"Postsynaptic neurons ≈ {stats['approx_postsynaptic_neurons']:,}",
+            ]
+            if int(stats.get("neuropils") or 0) > 0:
+                stat_lines.append(f"Neuropils: {stats['neuropils']:,}")
+            stat_lines.extend(
+                [
+                    f"Synapses: {stats['synapses']:,}",
+                    f"Parquet parts: {stats['parts']}",
+                ]
             )
+            answer = "\n".join(stat_lines)
             return response_with_router(
                 answer=answer,
                 response_type="stats",
@@ -404,10 +448,14 @@ def chat_endpoint(req: ChatRequest, request: Request):
 
             for index, row in enumerate(rows, 1):
                 nt, probability = dominant_nt(row)
+                if int(row.get("neuropil_count") or 0) > 0:
+                    scope = f"Neuropils: {row['neuropil_count']}"
+                else:
+                    scope = "Scope: whole CNS"
                 sections.append(
                     f"{index}. {row['pre_pt_root_id']} → {row['post_pt_root_id']}\n"
                     f"   Synapses: {row['syn_count']:,}\n"
-                    f"   Neuropils: {row['neuropil_count']}\n"
+                    f"   {scope}\n"
                     f"   Dominant NT: {nt} ({probability:.3f})"
                 )
 
