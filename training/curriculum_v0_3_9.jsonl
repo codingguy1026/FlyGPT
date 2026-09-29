@@ -1,0 +1,46 @@
+{"input":"공식의 뜻 알려줘","route":"general","teacher_answer":"v0.3.9 paraphrase curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"공식 뜻 알려줘","route":"general","teacher_answer":"v0.3.9 paraphrase curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"공식은 무슨 뜻이야","route":"general","teacher_answer":"v0.3.9 paraphrase curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"공식이라는 말 뜻 알려줘","route":"general","teacher_answer":"v0.3.9 paraphrase curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"공식이 뭐라는 뜻이야","route":"general","teacher_answer":"v0.3.9 paraphrase curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"공식 뜻이 뭔데","route":"general","teacher_answer":"v0.3.9 paraphrase curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"공식이란 게 뭐야","route":"general","teacher_answer":"v0.3.9 paraphrase curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"공식이 무슨 의미야","route":"general","teacher_answer":"v0.3.9 paraphrase curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"공식 뜻 좀","route":"general","teacher_answer":"v0.3.9 paraphrase curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"공식 뜻 설명해줘","route":"general","teacher_answer":"v0.3.9 paraphrase curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"원 면적 공식 좀","route":"math","teacher_answer":"v0.3.9 paraphrase curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"원의 면적 공식 좀","route":"math","teacher_answer":"v0.3.9 paraphrase curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"원 면적 공식 알려줘","route":"math","teacher_answer":"v0.3.9 paraphrase curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"원의 면적 공식 알려줘","route":"math","teacher_answer":"v0.3.9 paraphrase curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"원 넓이 공식","route":"math","teacher_answer":"v0.3.9 paraphrase curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"원넓이 공식?","route":"math","teacher_answer":"v0.3.9 paraphrase curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"원 넓이 구하는 공식","route":"math","teacher_answer":"v0.3.9 paraphrase curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"원의 넓이 공식 뭐야","route":"math","teacher_answer":"v0.3.9 paraphrase curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"원면적 공식","route":"math","teacher_answer":"v0.3.9 paraphrase curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"원 면적 공식?","route":"math","teacher_answer":"v0.3.9 paraphrase curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"인터넷에서 검색해줘","route":"research","teacher_answer":"v0.3.9 paraphrase curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"인터넷으로 찾아줘","route":"research","teacher_answer":"v0.3.9 paraphrase curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"웹에서 검색해줘","route":"research","teacher_answer":"v0.3.9 paraphrase curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"온라인에서 찾아봐","route":"research","teacher_answer":"v0.3.9 paraphrase curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"검색해서 알아봐","route":"research","teacher_answer":"v0.3.9 paraphrase curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"인터넷 검색해줘","route":"research","teacher_answer":"v0.3.9 paraphrase curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"웹으로 찾아줘","route":"research","teacher_answer":"v0.3.9 paraphrase curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"온라인 검색해봐","route":"research","teacher_answer":"v0.3.9 paraphrase curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"인터넷에서 찾아봐","route":"research","teacher_answer":"v0.3.9 paraphrase curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"검색해서 확인해줘","route":"research","teacher_answer":"v0.3.9 paraphrase curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"기억의 뜻 알려줘","route":"general","teacher_answer":"v0.3.9 paraphrase curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"기억이란 뭐야","route":"general","teacher_answer":"v0.3.9 paraphrase curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"기억은 뭔 뜻이야","route":"general","teacher_answer":"v0.3.9 paraphrase curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"기억이라는 말 뜻 알려줘","route":"general","teacher_answer":"v0.3.9 paraphrase curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"아까 기억나","route":"memory","teacher_answer":"v0.3.9 paraphrase curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"방금 거 기억나","route":"memory","teacher_answer":"v0.3.9 paraphrase curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"전에 말한 거 기억나","route":"memory","teacher_answer":"v0.3.9 paraphrase curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"직전 내용 기억해","route":"memory","teacher_answer":"v0.3.9 paraphrase curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"검색 뜻 알려줘","route":"general","teacher_answer":"v0.3.9 paraphrase curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"검색이란 뭐야","route":"general","teacher_answer":"v0.3.9 paraphrase curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"검색이라는 말 뜻 알려줘","route":"general","teacher_answer":"v0.3.9 paraphrase curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"검색은 무슨 의미야","route":"general","teacher_answer":"v0.3.9 paraphrase curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"검색 기능 코드 짜줘","route":"code","teacher_answer":"v0.3.9 paraphrase curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"검색창 코드 만들어줘","route":"code","teacher_answer":"v0.3.9 paraphrase curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"검색 API 코드 예시","route":"code","teacher_answer":"v0.3.9 paraphrase curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
+{"input":"검색 컴포넌트 만들어줘","route":"code","teacher_answer":"v0.3.9 paraphrase curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.9"}
