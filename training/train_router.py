@@ -253,6 +253,7 @@ def main() -> None:
     parser.add_argument("--val-ratio", type=float, default=0.25)
     parser.add_argument("--synthetic-nodes", type=int, default=96)
     parser.add_argument("--vectorizer-version", choices=("v1", "v2", "v3", "v4", "v5"), default="v1")
+    parser.add_argument("--patience", type=int, default=0, help="Stop after this many epochs without val improvement; 0 disables early stopping")
     args = parser.parse_args()
 
     random.seed(args.seed)
@@ -277,6 +278,8 @@ def main() -> None:
 
     best_state = None
     best_val = -1.0
+    epochs_without_improvement = 0
+    best_epoch = 0
     for epoch in range(1, args.epochs + 1):
         model.train()
         optimizer.zero_grad(set_to_none=True)
@@ -288,10 +291,18 @@ def main() -> None:
         val_acc = accuracy(model, val_x, val_y)
         if val_acc > best_val:
             best_val = val_acc
+            best_epoch = epoch
+            epochs_without_improvement = 0
             best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+        else:
+            epochs_without_improvement += 1
         if epoch == 1 or epoch % 10 == 0 or epoch == args.epochs:
             train_acc = accuracy(model, train_x, train_y)
             print(f"epoch={epoch:03d} loss={loss.item():.4f} train_acc={train_acc:.3f} val_acc={val_acc:.3f}")
+
+        if args.patience > 0 and epochs_without_improvement >= args.patience:
+            print(f"early_stop epoch={epoch:03d} best_epoch={best_epoch:03d} best_val={best_val:.3f}")
+            break
 
     assert best_state is not None
     model.load_state_dict(best_state)
@@ -309,12 +320,13 @@ def main() -> None:
             "scaffold_meta": scaffold_meta,
             "teacher_dataset": str(args.dataset),
             "best_val_accuracy": best_val,
+            "best_epoch": best_epoch,
             "seed": args.seed,
             "vectorizer_version": args.vectorizer_version,
         },
         args.out,
     )
-    print(f"saved={args.out} best_val_accuracy={best_val:.3f} routes={routes}")
+    print(f"saved={args.out} best_val_accuracy={best_val:.3f} best_epoch={best_epoch} routes={routes}")
 
 
 if __name__ == "__main__":
