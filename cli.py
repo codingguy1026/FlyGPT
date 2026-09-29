@@ -5,6 +5,7 @@ import json
 import os
 
 from connectome import FlyWireConnectome
+from malecns import MaleCNSConnectome
 
 
 def _print(value: object) -> None:
@@ -13,12 +14,23 @@ def _print(value: object) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Query FlyWire v783 proofread connectivity Parquet files."
+        description="Query FlyWire v783 or MaleCNS v1.0 connectivity Parquet files."
+    )
+    parser.add_argument(
+        "--backend",
+        choices=("flywire", "malecns"),
+        default=os.environ.get("FLYGPT_CONNECTOME", "flywire"),
+        help="Connectome backend (default: FLYGPT_CONNECTOME or flywire).",
     )
     parser.add_argument(
         "--data",
-        default=os.environ.get("FLYWIRE_DATA_DIR", "data/flywire_parts"),
-        help="Parquet file, glob, or directory (default: FLYWIRE_DATA_DIR or data/flywire_parts)",
+        default=None,
+        help="Parquet file, glob, or directory. Defaults depend on --backend.",
+    )
+    parser.add_argument(
+        "--metadata",
+        default=os.environ.get("MALECNS_METADATA_DIR", "data/malecns/metadata"),
+        help="MaleCNS metadata directory.",
     )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -56,7 +68,14 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = build_parser().parse_args()
 
-    with FlyWireConnectome(args.data) as connectome:
+    if args.backend == "malecns":
+        data = args.data or os.environ.get("MALECNS_DATA_DIR", "data/malecns/parts")
+        connectome_ctx = MaleCNSConnectome(data, args.metadata)
+    else:
+        data = args.data or os.environ.get("FLYWIRE_DATA_DIR", "data/flywire_parts")
+        connectome_ctx = FlyWireConnectome(data)
+
+    with connectome_ctx as connectome:
         if args.command == "stats":
             _print(connectome.stats())
             return
