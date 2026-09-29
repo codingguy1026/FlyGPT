@@ -8,6 +8,9 @@ proofread_connections_783.parquet
 data/flygpt_memory.sqlite3
 data/flygpt_memory.sqlite3-shm
 data/flygpt_memory.sqlite3-wal
+data/flygpt_auth.sqlite3
+data/flygpt_auth.sqlite3-shm
+data/flygpt_auth.sqlite3-wal
 frontend/node_modules/
 frontend/.next/
 frontend/.env.local
