@@ -33,7 +33,7 @@ cleanup() {
 
 trap cleanup INT TERM EXIT
 
-echo "🪰 FlyGPT v0.7 full stack"
+echo "🪰 FlyGPT v0.7.1 full stack"
 echo
 
 if ! command -v ollama >/dev/null 2>&1; then
