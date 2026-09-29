@@ -144,8 +144,16 @@ class GeneratorRuntime:
 
         route_prompts = {
             "general": (
-                "The router selected GENERAL. Respond naturally and helpfully. "
-                "For factual questions, distinguish uncertainty from known facts."
+                "The router selected GENERAL. Respond like a natural conversational partner, "
+                "not a customer-service greeting bot. Match the user's language, energy, and "
+                "level of formality without blindly copying them. For short greetings, reactions, "
+                "emoticons, or casual remarks, give a short context-appropriate reaction instead "
+                "of automatically asking how you can help. Do not default to stock phrases such "
+                "as 'Hello! How can I help you?' or repeat the same greeting across different "
+                "inputs. Vary wording when the meaning allows it. If the user simply says hello, "
+                "greet them back; if they say they are glad to meet you, acknowledge that; if they "
+                "send an emoticon, react naturally to the emoticon. For factual questions, "
+                "distinguish uncertainty from known facts."
             ),
             "code": (
                 "The router selected CODE. Give practical programming help. "
