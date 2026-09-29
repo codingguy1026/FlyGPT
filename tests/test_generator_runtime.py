@@ -2,7 +2,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-from generator_runtime import GeneratorRuntime, _clean_assistant_memory
+from generator_runtime import GeneratorRuntime, _clean_assistant_memory, _memory_messages
 
 
 class GeneratorRuntimeTests(unittest.TestCase):
@@ -113,6 +113,35 @@ class GeneratorRuntimeTests(unittest.TestCase):
         self.assertIn("not a customer-service greeting bot", prompt)
         self.assertIn("Do not default to stock phrases", prompt)
         self.assertIn("emoticon", prompt)
+
+    def test_short_general_turn_drops_assistant_echo_history(self):
+        history = _memory_messages(
+            "반가워",
+            "general",
+            [
+                {"role": "user", "content": "안녕"},
+                {"role": "assistant", "content": "안녕하세요! 어떻게 도와드릴까요?"},
+                {"role": "user", "content": "반가워"},
+                {"role": "assistant", "content": "안녕하세요! 어떻게 도와드릴까요?"},
+            ],
+        )
+
+        self.assertTrue(any(item["role"] == "user" for item in history))
+        self.assertFalse(any(item["role"] == "assistant" for item in history))
+
+    def test_long_general_history_deduplicates_identical_assistant_replies(self):
+        history = _memory_messages(
+            "아까 이야기한 파리 뇌 구조를 계속 설명해줘",
+            "general",
+            [
+                {"role": "assistant", "content": "같은 답변"},
+                {"role": "assistant", "content": "같은 답변"},
+                {"role": "user", "content": "앞에서 파리 뇌를 물어봤어"},
+            ],
+        )
+
+        assistant_items = [item for item in history if item["role"] == "assistant"]
+        self.assertEqual(len(assistant_items), 1)
 
     def test_tool_context_is_injected_before_user_message(self):
         with patch.dict(os.environ, {}, clear=True):
