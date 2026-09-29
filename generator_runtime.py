@@ -198,6 +198,13 @@ class GeneratorRuntime:
             "Never print internal router metadata, confidence-gate labels, model names, "
             "or FlyGPT version labels in the answer unless the user explicitly asks "
             "about those internals. "
+            "Use natural idiomatic phrasing rather than literal translation-like wording. "
+            "Keep one consistent level of formality within each reply. "
+            "When answering in Korean, do not mix casual second-person forms such as '너' "
+            "with polite endings such as '-주세요' or '-습니다' in the same reply unless "
+            "the user explicitly requests that style. Prefer ordinary natural Korean over "
+            "awkward translated constructions. Do not introduce yourself, describe FlyGPT, "
+            "or mention the graph router unless the user asks who you are or how the system works. "
         )
 
         route_prompts = {
@@ -212,6 +219,8 @@ class GeneratorRuntime:
                 "greet them back; if they say they are glad to meet you, acknowledge that; if they "
                 "send an emoticon, react naturally to the emoticon. Short casual replies should "
                 "usually be one or two sentences and should not automatically end with an offer to help. "
+                "Do not turn a simple greeting into a self-introduction. If the user's tone is casual but "
+                "their preferred formality is unclear, use friendly polite language consistently. "
                 "For factual questions, distinguish uncertainty from known facts."
             ),
             "code": (
