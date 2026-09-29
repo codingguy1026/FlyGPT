@@ -18,7 +18,7 @@ from generator_runtime import GENERATIVE_ROUTES, GeneratorRuntime
 from memory_store import MemoryStore, format_recall
 
 
-APP_VERSION = "0.7.0"
+APP_VERSION = "0.7.1"
 DATA_DIR = os.environ.get("FLYWIRE_DATA_DIR", "data/flywire_parts")
 
 _model_override = os.environ.get("FLYGPT_MODEL_PATH")
@@ -449,7 +449,7 @@ def chat_endpoint(req: ChatRequest):
                     tool_context = "No relevant prior-session messages were retrieved."
 
             elif result.route == "research":
-                # v0.4.0 establishes the retrieval contract without pretending
+                # Generator integration establishes the retrieval contract without pretending
                 # that a live search backend already exists.
                 tool_context = (
                     "No live search backend is connected in this build. "
