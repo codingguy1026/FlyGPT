@@ -1,0 +1,64 @@
+{"input":"공식 알려줘","route":"math","teacher_answer":"v0.3.7 yugeok curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"원의 공식 알려줘","route":"math","teacher_answer":"v0.3.7 yugeok curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"삼각형 넓이 공식 다시 설명해줘","route":"math","teacher_answer":"v0.3.7 yugeok curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"근의 공식이 뭐야","route":"math","teacher_answer":"v0.3.7 yugeok curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"분산 공식 말고 개념부터 알려줘","route":"math","teacher_answer":"v0.3.7 yugeok curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"표준편차 계산법 알려줘","route":"math","teacher_answer":"v0.3.7 yugeok curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"공식 사이트 알려줘","route":"research","teacher_answer":"v0.3.7 yugeok curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"공식 홈페이지에서 찾아줘","route":"research","teacher_answer":"v0.3.7 yugeok curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"공식 문서 최신판 확인해줘","route":"research","teacher_answer":"v0.3.7 yugeok curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"공식 가격 지금 얼마인지 찾아줘","route":"research","teacher_answer":"v0.3.7 yugeok curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"공식 발표가 있었는지 검색해줘","route":"research","teacher_answer":"v0.3.7 yugeok curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"최신 공식 버전 확인해줘","route":"research","teacher_answer":"v0.3.7 yugeok curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"아까 공식 뭐였지","route":"memory","teacher_answer":"v0.3.7 yugeok curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"방금 알려준 공식 기억나","route":"memory","teacher_answer":"v0.3.7 yugeok curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"전에 쓴 명령 다시 알려줘","route":"memory","teacher_answer":"v0.3.7 yugeok curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"직전 답변에서 파일명이 뭐였지","route":"memory","teacher_answer":"v0.3.7 yugeok curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"내가 아까 선택한 방법 기억나","route":"memory","teacher_answer":"v0.3.7 yugeok curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"방금 말한 숫자가 몇이었지","route":"memory","teacher_answer":"v0.3.7 yugeok curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"공식 설명 한 줄로 요약해줘","route":"summarize","teacher_answer":"v0.3.7 yugeok curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"아까 답변 핵심만 줄여줘","route":"summarize","teacher_answer":"v0.3.7 yugeok curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"이 에러 로그 세 줄로 정리해줘","route":"summarize","teacher_answer":"v0.3.7 yugeok curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"이 코드 설명 요점만 뽑아줘","route":"summarize","teacher_answer":"v0.3.7 yugeok curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"이 문단 결론만 말해줘","route":"summarize","teacher_answer":"v0.3.7 yugeok curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"방금 설명 짧게 줄여줘","route":"summarize","teacher_answer":"v0.3.7 yugeok curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"공식이란 단어 뜻이 뭐야","route":"general","teacher_answer":"v0.3.7 yugeok curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"최신판이라는 말은 무슨 뜻이야","route":"general","teacher_answer":"v0.3.7 yugeok curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"요약이라는 게 정확히 뭐야","route":"general","teacher_answer":"v0.3.7 yugeok curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"기억은 뇌에서 어떻게 만들어져","route":"general","teacher_answer":"v0.3.7 yugeok curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"검색 엔진은 어떻게 작동해","route":"general","teacher_answer":"v0.3.7 yugeok curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"코드가 뭐야 쉽게 설명해줘","route":"general","teacher_answer":"v0.3.7 yugeok curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"ㅇㅇ","route":"general","teacher_answer":"v0.3.7 yugeok curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"ㄱㄱ","route":"general","teacher_answer":"v0.3.7 yugeok curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"오케이","route":"general","teacher_answer":"v0.3.7 yugeok curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"좋아","route":"general","teacher_answer":"v0.3.7 yugeok curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"계속","route":"general","teacher_answer":"v0.3.7 yugeok curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"다음","route":"general","teacher_answer":"v0.3.7 yugeok curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"다시 왔어","route":"general","teacher_answer":"v0.3.7 yugeok curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"헐 신기하다","route":"general","teacher_answer":"v0.3.7 yugeok curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"ㅋㅋㅋㅋ","route":"general","teacher_answer":"v0.3.7 yugeok curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"고마워","route":"general","teacher_answer":"v0.3.7 yugeok curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"땡큐","route":"general","teacher_answer":"v0.3.7 yugeok curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"ty","route":"general","teacher_answer":"v0.3.7 yugeok curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"한줄로","route":"summarize","teacher_answer":"v0.3.7 yugeok curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"두 줄로","route":"summarize","teacher_answer":"v0.3.7 yugeok curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"핵심만","route":"summarize","teacher_answer":"v0.3.7 yugeok curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"결론만","route":"summarize","teacher_answer":"v0.3.7 yugeok curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"아까 뭐였지","route":"memory","teacher_answer":"v0.3.7 yugeok curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"방금 그거 뭐였더라","route":"memory","teacher_answer":"v0.3.7 yugeok curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"전에 말한 거 기억나","route":"memory","teacher_answer":"v0.3.7 yugeok curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"직전 거 다시","route":"memory","teacher_answer":"v0.3.7 yugeok curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"최신판?","route":"research","teacher_answer":"v0.3.7 yugeok curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"지금 버전?","route":"research","teacher_answer":"v0.3.7 yugeok curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"오늘 공지?","route":"research","teacher_answer":"v0.3.7 yugeok curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"현재 가격?","route":"research","teacher_answer":"v0.3.7 yugeok curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"git log","route":"code","teacher_answer":"v0.3.7 yugeok curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"npm install 왜 안돼","route":"code","teacher_answer":"v0.3.7 yugeok curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"React 에러 좀 봐줘","route":"code","teacher_answer":"v0.3.7 yugeok curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"파이썬 함수 만들어줘","route":"code","teacher_answer":"v0.3.7 yugeok curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"CSS 이거 왜 안 먹어","route":"code","teacher_answer":"v0.3.7 yugeok curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"터미널에서 뭐 쳐야 돼","route":"code","teacher_answer":"v0.3.7 yugeok curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"32 곱하기 11","route":"math","teacher_answer":"v0.3.7 yugeok curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"루트 81","route":"math","teacher_answer":"v0.3.7 yugeok curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"x+3=10 풀어줘","route":"math","teacher_answer":"v0.3.7 yugeok curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
+{"input":"원의 둘레 공식?","route":"math","teacher_answer":"v0.3.7 yugeok curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.7"}
