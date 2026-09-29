@@ -31,6 +31,64 @@ def _clean_assistant_memory(content: str) -> str:
     return "\n".join(kept_lines).strip()
 
 
+_CONTINUITY_HINTS = (
+    "그거", "이거", "저거", "그건", "그게", "그걸", "그럼", "아까", "방금",
+    "계속", "앞에서", "전에", "다시", "that", "it", "that one", "earlier",
+    "before", "continue", "again",
+)
+
+
+def _is_short_standalone_general(message: str, route: str) -> bool:
+    """Short standalone GENERAL turns should not be poisoned by stale assistant replies."""
+    if route != "general":
+        return False
+
+    text = " ".join(message.strip().lower().split())
+    if not text or len(text) > 32:
+        return False
+
+    return not any(hint in text for hint in _CONTINUITY_HINTS)
+
+
+def _memory_messages(
+    message: str,
+    route: str,
+    memory_context: list[dict[str, Any]] | None,
+) -> list[dict[str, str]]:
+    """Convert stored history into chat roles while suppressing repetitive assistant echoes."""
+    if not memory_context:
+        return []
+
+    short_standalone_general = _is_short_standalone_general(message, route)
+    prepared: list[dict[str, str]] = []
+    seen_assistant: set[str] = set()
+
+    for item in memory_context[-8:]:
+        role = str(item.get("role", "user")).strip().lower()
+        if role not in {"user", "assistant"}:
+            continue
+
+        content = str(item.get("content", "")).strip()
+        if role == "assistant":
+            content = _clean_assistant_memory(content)
+            if short_standalone_general:
+                continue
+
+            fingerprint = re.sub(r"\s+", " ", content).strip().lower()
+            if fingerprint in seen_assistant:
+                continue
+            seen_assistant.add(fingerprint)
+
+        if not content:
+            continue
+        if len(content) > 700:
+            content = content[:697] + "..."
+
+        prepared.append({"role": role, "content": content})
+
+    return prepared
+
+
 def _env_float(name: str, default: float, *, minimum: float, maximum: float) -> float:
     raw = os.environ.get(name, "").strip()
     if not raw:
@@ -152,8 +210,9 @@ class GeneratorRuntime:
                 "as 'Hello! How can I help you?' or repeat the same greeting across different "
                 "inputs. Vary wording when the meaning allows it. If the user simply says hello, "
                 "greet them back; if they say they are glad to meet you, acknowledge that; if they "
-                "send an emoticon, react naturally to the emoticon. For factual questions, "
-                "distinguish uncertainty from known facts."
+                "send an emoticon, react naturally to the emoticon. Short casual replies should "
+                "usually be one or two sentences and should not automatically end with an offer to help. "
+                "For factual questions, distinguish uncertainty from known facts."
             ),
             "code": (
                 "The router selected CODE. Give practical programming help. "
@@ -199,30 +258,9 @@ class GeneratorRuntime:
             }
         ]
 
-        if memory_context:
-            context_lines = []
-            for item in memory_context[-8:]:
-                role = str(item.get("role", "user"))
-                content = str(item.get("content", "")).strip()
-                if role == "assistant":
-                    content = _clean_assistant_memory(content)
-                if not content:
-                    continue
-                if len(content) > 700:
-                    content = content[:697] + "..."
-                context_lines.append(f"{role}: {content}")
-
-            if context_lines:
-                messages.append(
-                    {
-                        "role": "system",
-                        "content": (
-                            "Recent conversation context from this FlyGPT browser session:\n"
-                            + "\n".join(context_lines)
-                            + "\nUse it only when relevant to the current request."
-                        ),
-                    }
-                )
+        history = _memory_messages(message, route, memory_context)
+        if history:
+            messages.extend(history)
 
         if tool_context:
             messages.append(
