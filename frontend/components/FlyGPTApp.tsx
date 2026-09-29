@@ -138,6 +138,20 @@ function titleFrom(text: string) {
   return clean.length > 28 ? clean.slice(0, 28) + "…" : clean;
 }
 
+function formatRouterModel(raw?: string | null) {
+  if (!raw) return "Router pending";
+
+  const filename = raw.split("/").pop() || raw;
+  let version = filename
+    .replace(/^fly_router_/, "")
+    .replace(/\.pt$/, "");
+
+  if (version.startsWith("v")) version = version.slice(1);
+  version = version.replaceAll("_", ".");
+
+  return version ? "Router v" + version : "Router";
+}
+
 function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   const common = {
     width: size,
@@ -308,11 +322,10 @@ export default function FlyGPTApp() {
 
   const online = !healthError && health?.status === "ok";
 
-  const modelLabel = useMemo(() => {
-    const raw = health?.model_path;
-    if (!raw) return "router pending";
-    return raw.split("/").pop() || raw;
-  }, [health]);
+  const modelLabel = useMemo(
+    () => formatRouterModel(health?.model_path),
+    [health],
+  );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -347,9 +360,7 @@ export default function FlyGPTApp() {
 
         if (response.router.model) {
           meta.push({
-            text: response.router.model
-              .replace("fly_router_", "")
-              .replace(".pt", ""),
+            text: formatRouterModel(response.router.model),
             tone: "muted",
           });
         }
@@ -684,7 +695,7 @@ export default function FlyGPTApp() {
             </form>
 
             <div className="dockStatus">
-              <span>{health?.app_version ?? "FlyGPT v0.7"}</span>
+              <span>FlyGPT v{health?.app_version ?? "0.7.1"}</span>
               <span>•</span>
               <span>{modelLabel}</span>
               {router && (
@@ -747,7 +758,7 @@ export default function FlyGPTApp() {
         <section className="telemetrySection systemGrid">
           <div>
             <span>BACKEND</span>
-            <strong>{health?.app_version ?? "checking"}</strong>
+            <strong>{health?.app_version ? "v" + health.app_version : "checking"}</strong>
           </div>
           <div>
             <span>MEMORY</span>
