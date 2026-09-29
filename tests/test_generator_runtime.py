@@ -16,7 +16,7 @@ class GeneratorRuntimeTests(unittest.TestCase):
         self.assertEqual(result.provider, "fallback")
         self.assertIsNone(result.answer)
 
-    def test_non_generative_route_is_never_sent(self):
+    def test_unknown_route_is_never_sent(self):
         with patch.dict(
             os.environ,
             {
@@ -26,7 +26,7 @@ class GeneratorRuntimeTests(unittest.TestCase):
             clear=True,
         ):
             runtime = GeneratorRuntime()
-            result = runtime.generate("어제 말한 거 기억나?", "memory")
+            result = runtime.generate("알 수 없는 경로", "not-a-route")
 
         self.assertTrue(runtime.configured)
         self.assertFalse(result.used)
@@ -97,6 +97,26 @@ class GeneratorRuntimeTests(unittest.TestCase):
         self.assertEqual(messages[0]["role"], "system")
         self.assertEqual(messages[-1], {"role": "user", "content": "계속 설명해줘"})
         self.assertIn("앞에서 파리 뇌 구조", messages[1]["content"])
+
+    def test_memory_and_research_routes_have_specialized_prompts(self):
+        with patch.dict(os.environ, {}, clear=True):
+            runtime = GeneratorRuntime()
+
+        self.assertIn("MEMORY", runtime._system_prompt("memory"))
+        self.assertIn("RESEARCH", runtime._system_prompt("research"))
+
+    def test_tool_context_is_injected_before_user_message(self):
+        with patch.dict(os.environ, {}, clear=True):
+            runtime = GeneratorRuntime()
+            messages = runtime._messages(
+                "3x+7=22 풀어줘",
+                "math",
+                [],
+                "Exact math tool result: x = 5",
+            )
+
+        self.assertEqual(messages[-1], {"role": "user", "content": "3x+7=22 풀어줘"})
+        self.assertTrue(any("x = 5" in item["content"] for item in messages[:-1]))
 
 if __name__ == "__main__":
     unittest.main()
