@@ -114,6 +114,16 @@ class GeneratorRuntimeTests(unittest.TestCase):
         self.assertIn("Do not default to stock phrases", prompt)
         self.assertIn("emoticon", prompt)
 
+    def test_prompt_enforces_natural_consistent_korean_tone(self):
+        with patch.dict(os.environ, {}, clear=True):
+            runtime = GeneratorRuntime()
+            prompt = runtime._system_prompt("general")
+
+        self.assertIn("consistent level of formality", prompt)
+        self.assertIn("do not mix casual second-person forms", prompt)
+        self.assertIn("Do not introduce yourself", prompt)
+        self.assertIn("Do not turn a simple greeting into a self-introduction", prompt)
+
     def test_short_general_turn_drops_assistant_echo_history(self):
         history = _memory_messages(
             "반가워",
