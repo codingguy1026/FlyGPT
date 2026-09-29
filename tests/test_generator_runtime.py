@@ -105,6 +105,15 @@ class GeneratorRuntimeTests(unittest.TestCase):
         self.assertIn("MEMORY", runtime._system_prompt("memory"))
         self.assertIn("RESEARCH", runtime._system_prompt("research"))
 
+    def test_general_prompt_discourages_stock_greeting_bot_replies(self):
+        with patch.dict(os.environ, {}, clear=True):
+            runtime = GeneratorRuntime()
+            prompt = runtime._system_prompt("general")
+
+        self.assertIn("not a customer-service greeting bot", prompt)
+        self.assertIn("Do not default to stock phrases", prompt)
+        self.assertIn("emoticon", prompt)
+
     def test_tool_context_is_injected_before_user_message(self):
         with patch.dict(os.environ, {}, clear=True):
             runtime = GeneratorRuntime()
