@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import BrainPanel from "./BrainPanel";
+import type { AuthUser } from "@/lib/auth";
 import {
   clearMemory,
   getHealth,
@@ -42,15 +43,23 @@ type ChatRecord = {
   updatedAt: number;
 };
 
-const CHAT_HISTORY_KEY = "flygpt-chat-history-v0.7";
-const ACTIVE_CHAT_KEY = "flygpt-active-chat-v0.7";
+const CHAT_HISTORY_KEY_PREFIX = "flygpt-chat-history-v0.7";
+const ACTIVE_CHAT_KEY_PREFIX = "flygpt-active-chat-v0.7";
 const MAX_STORED_CHATS = 40;
 
-function loadChatHistory(): ChatRecord[] {
+function chatHistoryKey(userId: string) {
+  return CHAT_HISTORY_KEY_PREFIX + ":" + userId;
+}
+
+function activeChatKey(userId: string) {
+  return ACTIVE_CHAT_KEY_PREFIX + ":" + userId;
+}
+
+function loadChatHistory(userId: string): ChatRecord[] {
   if (typeof window === "undefined") return [];
 
   try {
-    const raw = window.localStorage.getItem(CHAT_HISTORY_KEY);
+    const raw = window.localStorage.getItem(chatHistoryKey(userId));
     if (!raw) return [];
 
     const parsed = JSON.parse(raw);
@@ -74,10 +83,10 @@ function loadChatHistory(): ChatRecord[] {
   }
 }
 
-function writeChatHistory(history: ChatRecord[]) {
+function writeChatHistory(userId: string, history: ChatRecord[]) {
   try {
     window.localStorage.setItem(
-      CHAT_HISTORY_KEY,
+      chatHistoryKey(userId),
       JSON.stringify(history.slice(0, MAX_STORED_CHATS)),
     );
   } catch {
@@ -196,7 +205,13 @@ function FlyOrb({ small = false }: { small?: boolean }) {
   );
 }
 
-export default function FlyGPTApp() {
+export default function FlyGPTApp({
+  user,
+  onSignOut,
+}: {
+  user: AuthUser;
+  onSignOut: () => void | Promise<void>;
+}) {
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
   const [chatHistory, setChatHistory] = useState<ChatRecord[]>([]);
   const [activeChatId, setActiveChatId] = useState("");
@@ -217,13 +232,13 @@ export default function FlyGPTApp() {
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const storedHistory = loadChatHistory();
-    const fallbackSessionId = getMemorySessionId();
+    const storedHistory = loadChatHistory(user.id);
+    const fallbackSessionId = getMemorySessionId(user.id);
     let nextSessionId = fallbackSessionId;
     let nextChatId = makeId("chat");
 
     try {
-      const storedActiveId = window.localStorage.getItem(ACTIVE_CHAT_KEY);
+      const storedActiveId = window.localStorage.getItem(activeChatKey(user.id));
       const storedActiveChat = storedHistory.find((chat) => chat.id === storedActiveId);
 
       if (storedActiveChat) {
@@ -239,7 +254,7 @@ export default function FlyGPTApp() {
     setChatHistory(storedHistory);
     setActiveChatId(nextChatId);
     setSessionId(nextSessionId);
-    setMemorySessionId(nextSessionId);
+    setMemorySessionId(user.id, nextSessionId);
     setHistoryReady(true);
 
     try {
@@ -257,7 +272,7 @@ export default function FlyGPTApp() {
         setHealthError(false);
       })
       .catch(() => setHealthError(true));
-  }, []);
+  }, [user.id]);
 
   useEffect(() => {
     try {
@@ -275,7 +290,7 @@ export default function FlyGPTApp() {
     if (!historyReady || !activeChatId || !sessionId) return;
 
     try {
-      window.localStorage.setItem(ACTIVE_CHAT_KEY, activeChatId);
+      window.localStorage.setItem(activeChatKey(user.id), activeChatId);
     } catch {
       // Active-chat persistence is best-effort.
     }
@@ -298,7 +313,7 @@ export default function FlyGPTApp() {
         record,
         ...current.filter((chat) => chat.id !== activeChatId),
       ].slice(0, MAX_STORED_CHATS);
-      writeChatHistory(next);
+      writeChatHistory(user.id, next);
       return next;
     });
   }, [
@@ -408,7 +423,7 @@ export default function FlyGPTApp() {
   }
 
   function newFlight() {
-    const nextSessionId = createMemorySessionId();
+    const nextSessionId = createMemorySessionId(user.id);
     const nextChatId = makeId("chat");
 
     setActiveChatId(nextChatId);
@@ -420,7 +435,7 @@ export default function FlyGPTApp() {
     setRailOpen(false);
 
     try {
-      window.localStorage.setItem(ACTIVE_CHAT_KEY, nextChatId);
+      window.localStorage.setItem(activeChatKey(user.id), nextChatId);
     } catch {
       // Active-chat persistence is best-effort.
     }
@@ -431,7 +446,7 @@ export default function FlyGPTApp() {
 
     setActiveChatId(chat.id);
     setSessionId(chat.sessionId);
-    setMemorySessionId(chat.sessionId);
+    setMemorySessionId(user.id, chat.sessionId);
     setMessages(chat.messages.length ? chat.messages : [INITIAL_MESSAGE]);
     setConversationTitle(chat.title);
     setRouter(null);
@@ -439,7 +454,7 @@ export default function FlyGPTApp() {
     setRailOpen(false);
 
     try {
-      window.localStorage.setItem(ACTIVE_CHAT_KEY, chat.id);
+      window.localStorage.setItem(activeChatKey(user.id), chat.id);
     } catch {
       // Active-chat persistence is best-effort.
     }
@@ -546,6 +561,24 @@ export default function FlyGPTApp() {
             )}
           </div>
         </section>
+
+        <div className="railAccount">
+          <div className="railAccountAvatar" aria-hidden="true">
+            {user.display_name.slice(0, 1).toUpperCase()}
+          </div>
+          <div className="railAccountCopy">
+            <strong>{user.display_name}</strong>
+            <span>{user.email}</span>
+          </div>
+          <button
+            className="railSignOut"
+            type="button"
+            onClick={() => void onSignOut()}
+            title="로그아웃"
+          >
+            로그아웃
+          </button>
+        </div>
 
         <button className="railButton railSettings" type="button" title="설정" onClick={() => { setSettingsOpen(true); setRailOpen(false); }}>
           <Icon name="settings" size={18} />
