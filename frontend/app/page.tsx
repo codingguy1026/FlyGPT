@@ -1,5 +1,5 @@
-import FlyGPTApp from "@/components/FlyGPTApp";
+import AuthGate from "@/components/AuthGate";
 
 export default function Home() {
-  return <FlyGPTApp />;
+  return <AuthGate />;
 }
