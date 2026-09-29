@@ -130,7 +130,7 @@ class GenerationResult:
 
 
 class GeneratorRuntime:
-    """Provider-agnostic answer generation layer for FlyGPT v0.7.
+    """Provider-agnostic answer generation layer for FlyGPT v0.7.1.
 
     FlyGPT remains usable with no generator configured. When
     FLYGPT_GENERATOR_URL and FLYGPT_GENERATOR_MODEL are set, requests are sent
@@ -189,7 +189,7 @@ class GeneratorRuntime:
 
     def _system_prompt(self, route: str) -> str:
         common = (
-            "You are FlyGPT v0.7, a concise experimental assistant. "
+            "You are FlyGPT v0.7.1, a concise experimental assistant. "
             "A FlyWire-inspired graph router has already selected the task route. "
             "Answer the user's request directly in the user's language. "
             "Do not claim that you searched the web or remembered prior chats unless "
