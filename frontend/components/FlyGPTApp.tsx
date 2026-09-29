@@ -488,7 +488,11 @@ export default function FlyGPTApp() {
       <aside className={"flightRail" + (railOpen ? " open" : "")}>
         <div className="railBrandFull">
           <div className="railBrand">
-            <FlyOrb small />
+            <img
+              className="railBrandLogo"
+              src="/flygpt-logo.webp"
+              alt="FlyGPT logo"
+            />
           </div>
           <div className="railBrandCopy">
             <strong>FlyGPT</strong>
