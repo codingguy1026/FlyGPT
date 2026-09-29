@@ -1482,12 +1482,10 @@ textarea:focus-visible {
   height: 100%;
   display: block;
   object-fit: contain;
-  border: 1px solid rgba(38, 48, 76, .08);
-  border-radius: 16px;
-  background: #fff;
-  box-shadow:
-    0 9px 24px rgba(52, 66, 94, .10),
-    0 0 0 3px rgba(var(--accent-rgb), .035);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  filter: drop-shadow(0 6px 10px rgba(31, 45, 68, .12));
 }
 
 .railBrandCopy {
