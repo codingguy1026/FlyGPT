@@ -1,0 +1,68 @@
+{"input":"공식이라는 말 뜻이 뭐야","route":"general","teacher_answer":"v0.3.8 hard-negative curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"공식의 뜻을 설명해줘","route":"general","teacher_answer":"v0.3.8 hard-negative curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"여기서 공식은 무슨 의미야","route":"general","teacher_answer":"v0.3.8 hard-negative curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"공식이란 단어를 쉽게 설명해줘","route":"general","teacher_answer":"v0.3.8 hard-negative curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"원의 넓이 공식 알려줘","route":"math","teacher_answer":"v0.3.8 hard-negative curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"기울기 구하는 공식 알려줘","route":"math","teacher_answer":"v0.3.8 hard-negative curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"근의 공식 설명해줘","route":"math","teacher_answer":"v0.3.8 hard-negative curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"분산 계산 공식 알려줘","route":"math","teacher_answer":"v0.3.8 hard-negative curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"공식 홈페이지 찾아줘","route":"research","teacher_answer":"v0.3.8 hard-negative curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"공식 사이트에서 최신 내용 확인해줘","route":"research","teacher_answer":"v0.3.8 hard-negative curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"공식 문서 최신판 검색해줘","route":"research","teacher_answer":"v0.3.8 hard-negative curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"공식 가격을 찾아줘","route":"research","teacher_answer":"v0.3.8 hard-negative curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"아까 말한 공식 다시 알려줘","route":"memory","teacher_answer":"v0.3.8 hard-negative curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"방금 알려준 공식 뭐였지","route":"memory","teacher_answer":"v0.3.8 hard-negative curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"전에 쓴 공식 기억나","route":"memory","teacher_answer":"v0.3.8 hard-negative curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"직전에 나온 공식 다시","route":"memory","teacher_answer":"v0.3.8 hard-negative curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"공식 설명 핵심만 요약해줘","route":"summarize","teacher_answer":"v0.3.8 hard-negative curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"공식 설명을 한 줄로 줄여줘","route":"summarize","teacher_answer":"v0.3.8 hard-negative curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"공식 관련 답변 결론만","route":"summarize","teacher_answer":"v0.3.8 hard-negative curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"공식 설명 두 줄 요약","route":"summarize","teacher_answer":"v0.3.8 hard-negative curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"검색이 뭐야","route":"general","teacher_answer":"v0.3.8 hard-negative curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"검색이라는 말 뜻이 뭐야","route":"general","teacher_answer":"v0.3.8 hard-negative curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"검색 엔진은 어떻게 작동해","route":"general","teacher_answer":"v0.3.8 hard-negative curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"검색 기능이 뭔지 설명해줘","route":"general","teacher_answer":"v0.3.8 hard-negative curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"검색해서 확인해줘","route":"research","teacher_answer":"v0.3.8 hard-negative curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"웹에서 검색해줘","route":"research","teacher_answer":"v0.3.8 hard-negative curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"최신 정보를 검색해줘","route":"research","teacher_answer":"v0.3.8 hard-negative curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"공식 출처를 검색해봐","route":"research","teacher_answer":"v0.3.8 hard-negative curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"아까 검색 결과 뭐였지","route":"memory","teacher_answer":"v0.3.8 hard-negative curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"방금 검색한 거 다시 알려줘","route":"memory","teacher_answer":"v0.3.8 hard-negative curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"전에 검색했던 결과 기억나","route":"memory","teacher_answer":"v0.3.8 hard-negative curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"직전 검색 결과 뭐였더라","route":"memory","teacher_answer":"v0.3.8 hard-negative curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"검색 결과 요약해줘","route":"summarize","teacher_answer":"v0.3.8 hard-negative curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"검색 결과 핵심만","route":"summarize","teacher_answer":"v0.3.8 hard-negative curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"검색 내용 한 줄로","route":"summarize","teacher_answer":"v0.3.8 hard-negative curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"검색 결과 결론만 정리해줘","route":"summarize","teacher_answer":"v0.3.8 hard-negative curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"검색 기능 코드 짜줘","route":"code","teacher_answer":"v0.3.8 hard-negative curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"사이트 검색 코드 만들어줘","route":"code","teacher_answer":"v0.3.8 hard-negative curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"검색창 React 코드 보여줘","route":"code","teacher_answer":"v0.3.8 hard-negative curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"검색 API 예시 작성해줘","route":"code","teacher_answer":"v0.3.8 hard-negative curriculum for code","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"기억은 어떻게 만들어져","route":"general","teacher_answer":"v0.3.8 hard-negative curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"기억이 뇌에서 어떻게 저장돼","route":"general","teacher_answer":"v0.3.8 hard-negative curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"기억이라는 건 뭐야","route":"general","teacher_answer":"v0.3.8 hard-negative curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"사람은 왜 기억을 잊어","route":"general","teacher_answer":"v0.3.8 hard-negative curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"아까 기억나","route":"memory","teacher_answer":"v0.3.8 hard-negative curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"방금 말한 거 기억해","route":"memory","teacher_answer":"v0.3.8 hard-negative curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"전에 정한 거 기억나","route":"memory","teacher_answer":"v0.3.8 hard-negative curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"직전 대화 기억하지","route":"memory","teacher_answer":"v0.3.8 hard-negative curriculum for memory","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"기억에 관한 글 요약해줘","route":"summarize","teacher_answer":"v0.3.8 hard-negative curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"기억 설명을 한 줄로","route":"summarize","teacher_answer":"v0.3.8 hard-negative curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"기억 관련 문단 핵심만","route":"summarize","teacher_answer":"v0.3.8 hard-negative curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"기억 설명 결론만","route":"summarize","teacher_answer":"v0.3.8 hard-negative curriculum for summarize","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"기억 연구 최신 논문 찾아줘","route":"research","teacher_answer":"v0.3.8 hard-negative curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"기억 관련 최신 연구 검색해줘","route":"research","teacher_answer":"v0.3.8 hard-negative curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"기억 연구 최근 발표 확인해줘","route":"research","teacher_answer":"v0.3.8 hard-negative curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"기억 관련 공식 자료 찾아줘","route":"research","teacher_answer":"v0.3.8 hard-negative curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"기울기 뜻이 뭐야","route":"math","teacher_answer":"v0.3.8 hard-negative curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"기울기 개념 설명해줘","route":"math","teacher_answer":"v0.3.8 hard-negative curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"직선의 기울기가 뭔데","route":"math","teacher_answer":"v0.3.8 hard-negative curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"기울기 의미를 수학적으로 설명해줘","route":"math","teacher_answer":"v0.3.8 hard-negative curriculum for math","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"기울기 최신 연구 찾아줘","route":"research","teacher_answer":"v0.3.8 hard-negative curriculum for research","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"기울기라는 말의 일반적 뜻이 뭐야","route":"general","teacher_answer":"v0.3.8 hard-negative curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"반갑슈","route":"general","teacher_answer":"v0.3.8 hard-negative curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"반갑수다","route":"general","teacher_answer":"v0.3.8 hard-negative curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"반갑네유","route":"general","teacher_answer":"v0.3.8 hard-negative curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"반가워유","route":"general","teacher_answer":"v0.3.8 hard-negative curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"오랜만이슈","route":"general","teacher_answer":"v0.3.8 hard-negative curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
+{"input":"왔슈","route":"general","teacher_answer":"v0.3.8 hard-negative curriculum for general","teacher":"GPT-5.6 Sol","dataset_version":"v0.3.8"}
