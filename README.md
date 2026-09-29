@@ -54,6 +54,34 @@ You can also keep the data anywhere else and point FlyGPT at it with:
 export FLYWIRE_DATA_DIR=/path/to/flywire_parts
 ```
 
+
+## Local accounts and login
+
+FlyGPT includes a self-hosted email/password login flow. Accounts are stored in
+`data/flygpt_auth.sqlite3`; password plaintext is never stored. Passwords are
+derived with PBKDF2-HMAC-SHA256 and a per-user random salt, and browser sessions
+use random tokens stored in an HttpOnly, SameSite=Lax cookie.
+
+For local development, no extra auth dependency is required. The auth database is
+created automatically on first signup.
+
+Optional settings:
+
+```bash
+export FLYGPT_AUTH_PATH=data/flygpt_auth.sqlite3
+export FLYGPT_COOKIE_SECURE=0
+```
+
+When FlyGPT is served behind HTTPS in production, set:
+
+```bash
+export FLYGPT_COOKIE_SECURE=1
+```
+
+Chat memory is scoped by authenticated user plus conversation session so one
+account cannot retrieve another account's FlyGPT memory by reusing a browser
+session ID.
+
 ## FlyGPT v0.7.1 answer generation
 
 The FlyWire-inspired router decides whether a request is `general`, `code`,
