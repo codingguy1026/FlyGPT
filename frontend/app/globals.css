@@ -1907,3 +1907,267 @@ textarea:focus-visible {
     font-size: 6px;
   }
 }
+
+
+/* Authentication */
+.authShell {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 22% 8%, rgba(62, 190, 235, .16), transparent 26rem),
+    radial-gradient(circle at 82% 18%, rgba(110, 99, 255, .14), transparent 28rem),
+    linear-gradient(155deg, #f8fbff 0%, #f2f5fb 52%, #f9fbfe 100%);
+}
+
+.authCard {
+  width: min(440px, 100%);
+  padding: 28px;
+  border: 1px solid rgba(30, 45, 72, .09);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, .82);
+  box-shadow: 0 28px 80px rgba(51, 65, 98, .13);
+  backdrop-filter: blur(24px);
+}
+
+.authBrand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.authBrand img {
+  width: 74px;
+  height: 58px;
+  object-fit: contain;
+  filter: drop-shadow(0 7px 12px rgba(31, 45, 68, .10));
+}
+
+.authBrand span,
+.authIntro > span {
+  color: #25aee5;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: .17em;
+}
+
+.authBrand h1 {
+  margin: 2px 0 0;
+  font-size: 24px;
+  letter-spacing: -.035em;
+}
+
+.authIntro {
+  margin-top: 25px;
+}
+
+.authIntro h2 {
+  margin: 7px 0 7px;
+  font-size: 23px;
+  letter-spacing: -.035em;
+}
+
+.authIntro p {
+  margin: 0;
+  color: #737c8e;
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.authTabs {
+  margin-top: 22px;
+  padding: 4px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(236, 240, 247, .72);
+}
+
+.authTabs button {
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  color: #7a8394;
+  background: transparent;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 760;
+}
+
+.authTabs button.active {
+  color: #202738;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(47, 59, 89, .08);
+}
+
+.authForm {
+  margin-top: 17px;
+  display: grid;
+  gap: 13px;
+}
+
+.authForm label {
+  display: grid;
+  gap: 6px;
+}
+
+.authForm label > span {
+  color: #747d8f;
+  font-size: 8px;
+  font-weight: 780;
+}
+
+.authForm input {
+  width: 100%;
+  height: 45px;
+  padding: 0 13px;
+  border: 1px solid rgba(36, 48, 77, .11);
+  border-radius: 13px;
+  outline: none;
+  color: #202637;
+  background: rgba(255, 255, 255, .88);
+  font-size: 12px;
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+
+.authForm input:focus {
+  border-color: rgba(43, 191, 211, .42);
+  box-shadow: 0 0 0 4px rgba(43, 191, 211, .08);
+}
+
+.authSubmit {
+  height: 46px;
+  margin-top: 2px;
+  border: 0;
+  border-radius: 14px;
+  color: #fff;
+  background: linear-gradient(135deg, #28bde5, #6e63ff);
+  box-shadow: 0 12px 28px rgba(80, 110, 210, .19);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.authSubmit:disabled {
+  cursor: wait;
+  opacity: .65;
+}
+
+.authError {
+  padding: 10px 12px;
+  border: 1px solid rgba(214, 90, 112, .15);
+  border-radius: 11px;
+  color: #b64e62;
+  background: rgba(214, 90, 112, .055);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.authFootnote {
+  margin: 14px 0 0;
+  color: #a0a6b2;
+  text-align: center;
+  font-size: 7.5px;
+}
+
+.authLoading {
+  display: grid;
+  place-items: center;
+  gap: 11px;
+  color: #81899a;
+  font-size: 10px;
+}
+
+.authLoading img {
+  width: 104px;
+  height: 78px;
+  object-fit: contain;
+  animation: authFloat 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes authFloat {
+  to { transform: translateY(-5px); }
+}
+
+/* Signed-in account card */
+.railAccount {
+  min-width: 0;
+  padding: 9px;
+  display: grid;
+  grid-template-columns: 31px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, .55);
+}
+
+.railAccountAvatar {
+  width: 31px;
+  height: 31px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: #fff;
+  background: linear-gradient(145deg, #28bde5, var(--accent));
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.railAccountCopy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.railAccountCopy strong,
+.railAccountCopy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.railAccountCopy strong {
+  color: #485062;
+  font-size: 9px;
+}
+
+.railAccountCopy span {
+  color: #9aa1ae;
+  font-size: 6.5px;
+}
+
+.railSignOut {
+  padding: 5px 6px;
+  border: 0;
+  border-radius: 8px;
+  color: #8a92a1;
+  background: transparent;
+  cursor: pointer;
+  font-size: 6.5px;
+  font-weight: 760;
+}
+
+.railSignOut:hover {
+  color: var(--danger);
+  background: rgba(214, 90, 112, .06);
+}
+
+@media (max-width: 520px) {
+  .authShell {
+    padding: 13px;
+  }
+
+  .authCard {
+    padding: 22px 18px;
+    border-radius: 22px;
+  }
+
+  .authIntro h2 {
+    font-size: 20px;
+  }
+}
