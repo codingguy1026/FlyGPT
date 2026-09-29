@@ -1,0 +1,30 @@
+{"input":"공식은 무슨 뜻이야","route":"general"}
+{"input":"수학 공식 알려줘","route":"math"}
+{"input":"공식 웹페이지 찾아줘","route":"research"}
+{"input":"아까 그 공식 뭐였지","route":"memory"}
+{"input":"공식 설명 짧게 정리해줘","route":"summarize"}
+{"input":"검색은 정확히 뭐야","route":"general"}
+{"input":"인터넷에서 검색해줘","route":"research"}
+{"input":"방금 검색한 내용 뭐였어","route":"memory"}
+{"input":"검색 결과 두 줄 요약","route":"summarize"}
+{"input":"검색 컴포넌트 코드 짜줘","route":"code"}
+{"input":"기억은 왜 생겨","route":"general"}
+{"input":"아까 내가 말한 거 기억나","route":"memory"}
+{"input":"기억 설명 요약해줘","route":"summarize"}
+{"input":"기억 연구 최근 자료 찾아줘","route":"research"}
+{"input":"기울기 뜻 알려줘","route":"math"}
+{"input":"기울기 공식 알려줘","route":"math"}
+{"input":"기울기라는 단어의 일반 뜻은?","route":"general"}
+{"input":"반갑슈ㅋㅋ","route":"general"}
+{"input":"오랜만이슈","route":"general"}
+{"input":"왔네유","route":"general"}
+{"input":"원의 면적 공식 좀","route":"math"}
+{"input":"원 면적 공식 알려줘","route":"math"}
+{"input":"근의 공식 설명","route":"math"}
+{"input":"표준편차 뜻","route":"math"}
+{"input":"공식 사이트?","route":"research"}
+{"input":"최신판?","route":"research"}
+{"input":"아까 뭐였더라","route":"memory"}
+{"input":"한줄로","route":"summarize"}
+{"input":"땡큐","route":"general"}
+{"input":"git log","route":"code"}
