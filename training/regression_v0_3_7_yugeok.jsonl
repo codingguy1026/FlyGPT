@@ -1,0 +1,36 @@
+{"input":"공식의 뜻 알려줘","route":"general"}
+{"input":"공식 웹사이트 찾아줘","route":"research"}
+{"input":"아까 말한 공식 다시","route":"memory"}
+{"input":"공식 설명만 짧게","route":"summarize"}
+{"input":"사다리꼴 넓이 공식","route":"math"}
+{"input":"최신판이 무슨 뜻이야","route":"general"}
+{"input":"최신판 찾아봐","route":"research"}
+{"input":"아까 최신판 뭐라 했지","route":"memory"}
+{"input":"최신판 설명 한 줄 요약","route":"summarize"}
+{"input":"검색이 뭔데","route":"general"}
+{"input":"검색해서 확인해줘","route":"research"}
+{"input":"방금 검색 결과 뭐였지","route":"memory"}
+{"input":"검색 결과 핵심만","route":"summarize"}
+{"input":"코드라는 게 뭐야","route":"general"}
+{"input":"이 코드 고쳐줘","route":"code"}
+{"input":"아까 코드 뭐였지","route":"memory"}
+{"input":"이 코드 한 줄 요약","route":"summarize"}
+{"input":"기억이 어떻게 생겨","route":"general"}
+{"input":"아까 뭐였더라","route":"memory"}
+{"input":"한 줄이 무슨 뜻이야","route":"general"}
+{"input":"한줄로","route":"summarize"}
+{"input":"ㅇㅋ","route":"general"}
+{"input":"ㄱㄱㄱ","route":"general"}
+{"input":"감사","route":"general"}
+{"input":"잘자","route":"general"}
+{"input":"지금 가격?","route":"research"}
+{"input":"현재 버전?","route":"research"}
+{"input":"오늘 발표?","route":"research"}
+{"input":"git branch","route":"code"}
+{"input":"FastAPI 오류 잡아줘","route":"code"}
+{"input":"루트 144","route":"math"}
+{"input":"기울기 공식 알려줘","route":"math"}
+{"input":"전에 쓴 명령어 뭐였지","route":"memory"}
+{"input":"오류 로그 결론만","route":"summarize"}
+{"input":"이게 뭔 뜻이야","route":"general"}
+{"input":"다음으로 가자","route":"general"}
