@@ -54,11 +54,11 @@ You can also keep the data anywhere else and point FlyGPT at it with:
 export FLYWIRE_DATA_DIR=/path/to/flywire_parts
 ```
 
-## FlyGPT v0.7 answer generation
+## FlyGPT v0.7.1 answer generation
 
 The FlyWire-inspired router decides whether a request is `general`, `code`,
 `summarize`, `math`, `memory`, or `research`. For generative routes,
-FlyGPT v0.7 can forward the request to any OpenAI-compatible
+FlyGPT v0.7.1 can forward the request to any OpenAI-compatible
 `/v1/chat/completions` endpoint.
 
 Copy the example configuration and fill in the provider you want to use:
