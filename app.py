@@ -26,6 +26,9 @@ if _model_override:
     MODEL_PATH = _model_override
 else:
     _model_candidates = (
+        "artifacts/fly_router_v0_3_9.pt",
+        "artifacts/fly_router_v0_3_8.pt",
+        "artifacts/fly_router_v0_3_7.pt",
         "artifacts/fly_router_v0_3_6.pt",
         "artifacts/fly_router_v0_3_5.pt",
         "artifacts/fly_router_v0_3_4.pt",
@@ -262,17 +265,7 @@ def chat_endpoint(req: ChatRequest):
     try:
         if is_math_fast_path(msg):
             result = dispatch_math_fast_path(msg)
-            router_note = (
-                f"Router raw: {route['route']} · {route['confidence']:.1%}"
-                if route is not None
-                else "Router raw: unavailable"
-            )
-            answer = (
-                "🪰 FlyGPT v0.7 · math fast-path\n\n"
-                f"{result.answer}\n\n"
-                "Decision: math fast-path\n"
-                f"{router_note}"
-            )
+            answer = result.answer
             return response_with_router(
                 answer=answer,
                 response_type="math_fast_path",
@@ -413,42 +406,79 @@ def chat_endpoint(req: ChatRequest):
             result = dispatch(msg, route)
             model_label = route.get("model", Path(MODEL_PATH).name)
 
-            generation = None
+            if result.status == "uncertain":
+                return response_with_router(
+                    answer=result.answer,
+                    response_type="dispatch",
+                    data={
+                        "dispatch": result.to_dict(),
+                        "generation": None,
+                        "memory_hits": None,
+                        "ui_meta": {
+                            "mode": result.handler,
+                            "router_model": model_label,
+                            "app_version": APP_VERSION,
+                        },
+                    },
+                    route=route,
+                    session_id=session_id,
+                )
+
             memory_hits = None
-            final_answer = result.answer
-            mode_label = result.handler
+            tool_context = result.tool_context
 
-            if result.route == "memory" and result.status != "uncertain" and session_id:
-                memory_hits = _memory.search(
-                    session_id,
-                    msg,
-                    limit=5,
-                    exclude_content=msg,
+            if result.route == "memory":
+                memory_hits = (
+                    _memory.search(
+                        session_id,
+                        msg,
+                        limit=5,
+                        exclude_content=msg,
+                    )
+                    if session_id
+                    else []
                 )
-                final_answer = format_recall(memory_hits)
-                mode_label = "memory · recall"
-            elif (
-                result.status == "completed"
-                and result.route in GENERATIVE_ROUTES
-            ):
-                generation = _generator.generate(
-                    msg,
-                    result.route,
-                    memory_context=memory_context,
-                )
-                if generation.used and generation.answer:
-                    final_answer = generation.answer
-                    mode_label = f"{result.route} · generated"
+                if memory_hits:
+                    lines = ["Retrieved prior-session messages:"]
+                    for item in memory_hits:
+                        role = str(item.get("role", "user"))
+                        content = str(item.get("content", "")).replace("\n", " ").strip()
+                        lines.append(f"- {role}: {content[:700]}")
+                    tool_context = "\n".join(lines)
                 else:
-                    mode_label = f"{result.handler} · fallback"
+                    tool_context = "No relevant prior-session messages were retrieved."
 
-            # Keep the chat bubble focused on the answer. The frontend renders
-            # route/model/generation details as compact metadata chips.
-            answer = final_answer
+            elif result.route == "research":
+                # v0.4.0 establishes the retrieval contract without pretending
+                # that a live search backend already exists.
+                tool_context = (
+                    "No live search backend is connected in this build. "
+                    "Do not invent current search results, prices, releases, news, "
+                    "or other fresh external facts."
+                )
+
+            generation = _generator.generate(
+                msg,
+                result.route,
+                memory_context=memory_context,
+                tool_context=tool_context,
+            )
+
+            if generation.used and generation.answer:
+                answer = generation.answer
+                mode_label = f"{result.route} · generated"
+            else:
+                detail = generation.error or "generator is not configured"
+                answer = (
+                    "⚠️ 답변 생성기를 사용할 수 없습니다. "
+                    "라우팅은 완료됐지만 생성 단계에서 중단됐어요. "
+                    f"({detail})"
+                )
+                mode_label = f"{result.route} · generator_unavailable"
 
             data = {
                 "dispatch": result.to_dict(),
-                "generation": generation.to_dict() if generation is not None else None,
+                "generation": generation.to_dict(),
                 "memory_hits": memory_hits,
                 "ui_meta": {
                     "mode": mode_label,
