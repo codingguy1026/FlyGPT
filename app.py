@@ -6,7 +6,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -16,6 +16,7 @@ from connectome import FlyWireConnectome, NT_COLUMNS
 from dispatcher import dispatch, dispatch_math_fast_path, is_math_fast_path
 from generator_runtime import GENERATIVE_ROUTES, GeneratorRuntime
 from memory_store import MemoryStore, format_recall
+from auth_store import AuthStore, SESSION_TTL_SECONDS
 
 
 APP_VERSION = "0.7.1"
@@ -62,6 +63,15 @@ _router_error: str | None = None
 
 _generator = GeneratorRuntime()
 _memory = MemoryStore(os.environ.get("FLYGPT_MEMORY_PATH", "data/flygpt_memory.sqlite3"))
+_auth = AuthStore(os.environ.get("FLYGPT_AUTH_PATH", "data/flygpt_auth.sqlite3"))
+
+AUTH_COOKIE_NAME = "flygpt_session"
+AUTH_COOKIE_SECURE = os.environ.get("FLYGPT_COOKIE_SECURE", "").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
 
 
 class ChatRequest(BaseModel):
@@ -71,6 +81,42 @@ class ChatRequest(BaseModel):
 
 class MemoryRequest(BaseModel):
     session_id: str
+
+
+class AuthCredentials(BaseModel):
+    email: str
+    password: str
+    display_name: str | None = None
+
+
+def _set_auth_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=AUTH_COOKIE_NAME,
+        value=token,
+        max_age=SESSION_TTL_SECONDS,
+        httponly=True,
+        secure=AUTH_COOKIE_SECURE,
+        samesite="lax",
+        path="/",
+    )
+
+
+def _current_user(request: Request) -> dict[str, Any] | None:
+    return _auth.user_for_token(request.cookies.get(AUTH_COOKIE_NAME))
+
+
+def _require_user(request: Request) -> dict[str, Any]:
+    user = _current_user(request)
+    if user is None:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+    return user
+
+
+def _scoped_session_id(user_id: str, session_id: str | None) -> str | None:
+    raw = (session_id or "").strip()[:128]
+    if not raw:
+        return None
+    return f"{user_id}:{raw}"
 
 
 def get_connectome() -> FlyWireConnectome:
@@ -188,8 +234,53 @@ def index(request: Request):
     )
 
 
+@app.post("/api/auth/signup")
+def auth_signup(req: AuthCredentials, response: Response):
+    try:
+        user = _auth.create_user(req.email, req.password, req.display_name)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    token = _auth.create_session(user["id"])
+    _set_auth_cookie(response, token)
+    return {"user": user}
+
+
+@app.post("/api/auth/login")
+def auth_login(req: AuthCredentials, response: Response):
+    user = _auth.authenticate(req.email, req.password)
+    if user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="이메일 또는 비밀번호가 올바르지 않습니다.",
+        )
+
+    token = _auth.create_session(user["id"])
+    _set_auth_cookie(response, token)
+    return {"user": user}
+
+
+@app.post("/api/auth/logout")
+def auth_logout(request: Request, response: Response):
+    _auth.revoke_session(request.cookies.get(AUTH_COOKIE_NAME))
+    response.delete_cookie(
+        key=AUTH_COOKIE_NAME,
+        path="/",
+        secure=AUTH_COOKIE_SECURE,
+        httponly=True,
+        samesite="lax",
+    )
+    return {"ok": True}
+
+
+@app.get("/api/auth/me")
+def auth_me(request: Request):
+    return {"user": _require_user(request)}
+
+
 @app.get("/api/router/graph")
-def router_graph():
+def router_graph(request: Request):
+    _require_user(request)
     router = get_router()
     if router is None:
         raise HTTPException(
@@ -224,6 +315,10 @@ def health():
             "path": str(_memory.path),
             "max_messages_per_session": 200,
         },
+        "auth": {
+            "enabled": True,
+            "cookie_secure": AUTH_COOKIE_SECURE,
+        },
     }
 
 
@@ -233,27 +328,31 @@ def generator_status():
 
 
 @app.get("/api/memory/status")
-def memory_status(session_id: str):
-    return _memory.stats(session_id.strip()[:128])
+def memory_status(session_id: str, request: Request):
+    user = _require_user(request)
+    scoped = _scoped_session_id(user["id"], session_id)
+    return _memory.stats(scoped or "")
 
 
 @app.post("/api/memory/clear")
-def memory_clear(req: MemoryRequest):
-    session_id = req.session_id.strip()[:128]
+def memory_clear(req: MemoryRequest, request: Request):
+    user = _require_user(request)
+    session_id = _scoped_session_id(user["id"], req.session_id)
     return {
-        "cleared": _memory.clear(session_id),
+        "cleared": _memory.clear(session_id or ""),
         "session_id_present": bool(session_id),
     }
 
 
 @app.post("/api/chat")
-def chat_endpoint(req: ChatRequest):
+def chat_endpoint(req: ChatRequest, request: Request):
+    user = _require_user(request)
     msg = req.message.strip()
 
     if not msg:
         raise HTTPException(status_code=400, detail="메시지가 비어 있습니다.")
 
-    session_id = (req.session_id or "").strip()[:128] or None
+    session_id = _scoped_session_id(user["id"], req.session_id)
     memory_context = _memory.recent(session_id, limit=12) if session_id else []
     if session_id:
         _memory.add(session_id, "user", msg)
