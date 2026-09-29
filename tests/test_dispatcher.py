@@ -1,6 +1,6 @@
 import unittest
 
-from dispatcher import dispatch
+from dispatcher import dispatch, dispatch_math_fast_path
 
 
 def route_info(route: str, confidence: float = 0.95, second: float = 0.03):
@@ -16,39 +16,44 @@ def route_info(route: str, confidence: float = 0.95, second: float = 0.03):
 
 
 class DispatcherTests(unittest.TestCase):
-    def test_math_multiplication(self):
-        result = dispatch("17 × 23은?", route_info("math"))
-        self.assertEqual(result.status, "completed")
-        self.assertEqual(result.handler, "math")
-        self.assertIn("391", result.answer)
-
-    def test_math_linear_equation(self):
+    def test_math_route_prepares_exact_tool_context(self):
         result = dispatch("3x+7=22에서 x는?", route_info("math"))
-        self.assertEqual(result.status, "completed")
-        self.assertIn("x = 5", result.answer)
+        self.assertEqual(result.status, "ready")
+        self.assertEqual(result.handler, "math_tool+generator")
+        self.assertEqual(result.answer, "")
+        self.assertIn("x = 5", result.tool_context or "")
 
-    def test_math_fraction(self):
+    def test_math_fraction_prepares_tool_context(self):
         result = dispatch("0.75를 분수로 바꾸면?", route_info("math"))
-        self.assertIn("3/4", result.answer)
+        self.assertIn("3/4", result.tool_context or "")
 
-    def test_code_python_sort(self):
+    def test_code_route_does_not_author_canned_answer(self):
         result = dispatch(
             "검색하지 말고, 파이썬 리스트 정렬 방법만 알려줘",
             route_info("code"),
         )
-        self.assertEqual(result.handler, "code")
-        self.assertIn("sorted(values)", result.answer)
-        self.assertIn("values.sort()", result.answer)
+        self.assertEqual(result.status, "ready")
+        self.assertEqual(result.handler, "generator")
+        self.assertEqual(result.answer, "")
+        self.assertIsNone(result.tool_context)
 
-    def test_research_is_pending(self):
+    def test_research_is_generator_ready(self):
         result = dispatch("최신 AI 연구 동향 찾아줘", route_info("research"))
-        self.assertEqual(result.status, "pending")
-        self.assertEqual(result.handler, "research")
+        self.assertEqual(result.status, "ready")
+        self.assertEqual(result.handler, "research_context+generator")
+        self.assertEqual(result.answer, "")
 
-    def test_memory_is_pending(self):
+    def test_memory_is_generator_ready(self):
         result = dispatch("내가 전에 정한 이름 뭐였지?", route_info("memory"))
-        self.assertEqual(result.status, "pending")
-        self.assertEqual(result.handler, "memory")
+        self.assertEqual(result.status, "ready")
+        self.assertEqual(result.handler, "memory_context+generator")
+        self.assertEqual(result.answer, "")
+
+    def test_math_fast_path_remains_deterministic(self):
+        result = dispatch_math_fast_path("17*23")
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.handler, "math_fast_path")
+        self.assertIn("391", result.answer)
 
     def test_uncertain_route_is_not_executed(self):
         info = {
