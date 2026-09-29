@@ -1,0 +1,25 @@
+{"input":"공식의 뜻이 뭐야","route":"general"}
+{"input":"공식 뜻이 뭐임","route":"general"}
+{"input":"공식이라는 건 무슨 뜻이야","route":"general"}
+{"input":"공식 의미 알려줘","route":"general"}
+{"input":"원 면적 공식","route":"math"}
+{"input":"원의 넓이 공식 좀","route":"math"}
+{"input":"원넓이 공식 알려줘","route":"math"}
+{"input":"원 면적 구하는 공식 뭐야","route":"math"}
+{"input":"인터넷 검색 부탁","route":"research"}
+{"input":"웹에서 찾아봐","route":"research"}
+{"input":"온라인으로 검색해줘","route":"research"}
+{"input":"검색해서 확인 부탁","route":"research"}
+{"input":"검색 뜻이 뭐야","route":"general"}
+{"input":"검색이라는 건 뭐야","route":"general"}
+{"input":"검색창 코드 짜줘","route":"code"}
+{"input":"웹 검색 기능 코드 만들어줘","route":"code"}
+{"input":"기억이란 뜻이 뭐야","route":"general"}
+{"input":"아까 내용 기억나","route":"memory"}
+{"input":"공식 설명 요약해줘","route":"summarize"}
+{"input":"아까 공식 뭐였지","route":"memory"}
+{"input":"공식 사이트 찾아줘","route":"research"}
+{"input":"반갑슈","route":"general"}
+{"input":"한줄로","route":"summarize"}
+{"input":"최신판?","route":"research"}
+{"input":"git log","route":"code"}
