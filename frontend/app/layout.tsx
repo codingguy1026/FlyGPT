@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FlyGPT v0.7",
+  title: "FlyGPT v0.7.1",
   description: "Connectome-routed AI workspace",
 };
 
