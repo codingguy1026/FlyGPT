@@ -156,7 +156,7 @@ export default function AuthGate() {
             {busy
               ? "확인 중..."
               : mode === "login"
-                ? "FlyGPT 입장"
+                ? "로그인"
                 : "계정 만들고 입장"}
           </button>
         </form>
