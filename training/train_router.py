@@ -181,7 +181,7 @@ def load_scaffold(path: Path | None, synthetic_nodes: int, seed: int) -> tuple[i
     if src.min() < 0 or dst.min() < 0 or src.max() >= n_nodes or dst.max() >= n_nodes:
         raise ValueError("Scaffold edge index out of range")
     meta = {k: v for k, v in payload.items() if k != "edges"}
-    meta["kind"] = "flywire"
+    meta["kind"] = str(payload.get("dataset") or "malecns")
     return n_nodes, src, dst, base, meta
 
 
