@@ -292,6 +292,64 @@ class MaleCNSConnectome:
             )
         return rows
 
+    def top_neurons(self, *, limit: int = 10) -> list[dict[str, Any]]:
+        """Return neurons with the strongest total weighted connectivity.
+
+        Strength is defined as the sum of incoming and outgoing ConnectsTo
+        synapse weights. This is a weighted-degree ranking, not a claim about
+        biological importance or activity.
+        """
+
+        if limit < 1:
+            raise ValueError("limit must be at least 1")
+
+        query = f"""
+        MATCH (n:Neuron)-[c:ConnectsTo]-(other:Neuron)
+        WHERE n.bodyId <> other.bodyId
+        WITH
+            n,
+            sum(c.weight) AS total_synapses,
+            count(DISTINCT other.bodyId) AS partner_count
+        ORDER BY total_synapses DESC, n.bodyId
+        LIMIT {int(limit)}
+        OPTIONAL MATCH (n)-[out:ConnectsTo]->()
+        WITH
+            n,
+            total_synapses,
+            partner_count,
+            coalesce(sum(out.weight), 0) AS outgoing_synapses
+        OPTIONAL MATCH ()-[inc:ConnectsTo]->(n)
+        RETURN
+            n.bodyId AS body_id,
+            n.type AS type,
+            n.instance AS instance,
+            n.consensusNt AS consensus_nt,
+            total_synapses,
+            outgoing_synapses,
+            coalesce(sum(inc.weight), 0) AS incoming_synapses,
+            partner_count
+        ORDER BY total_synapses DESC, body_id
+        """
+        frame = self.client.fetch_custom(query)
+        if frame is None or len(frame) == 0:
+            return []
+
+        rows: list[dict[str, Any]] = []
+        for row in frame.to_dict("records"):
+            rows.append(
+                {
+                    "body_id": int(row["body_id"]),
+                    "type": str(row.get("type") or ""),
+                    "instance": str(row.get("instance") or ""),
+                    "total_synapses": int(row.get("total_synapses") or 0),
+                    "outgoing_synapses": int(row.get("outgoing_synapses") or 0),
+                    "incoming_synapses": int(row.get("incoming_synapses") or 0),
+                    "partner_count": int(row.get("partner_count") or 0),
+                    "dominant_nt": _nt_label(row.get("consensus_nt")),
+                }
+            )
+        return rows
+
     def scaffold_edges(self, *, candidate_edges: int = 32768) -> list[tuple[int, int, int]]:
         """Fetch a bounded set of strongest real MaleCNS edges for router scaffolds."""
 
