@@ -14,6 +14,10 @@ export type RouterResult = {
   confidence: number;
   top_routes?: RouteScore[];
   trace?: TraceFrame[];
+  n_nodes?: number;
+  steps?: number;
+  scaffold_kind?: string;
+  vectorizer_version?: string;
 };
 
 export type GenerationResult = {
@@ -68,6 +72,12 @@ export type HealthResponse = {
   model_path?: string;
   model_available?: boolean;
   router_initialized?: boolean;
+  connectome?: {
+    provider?: string;
+    dataset?: string;
+    configured?: boolean;
+    initialized?: boolean;
+  };
   generator?: {
     configured?: boolean;
     provider?: string;
