@@ -181,7 +181,7 @@ def load_scaffold(path: Path | None, synthetic_nodes: int, seed: int) -> tuple[i
     if src.min() < 0 or dst.min() < 0 or src.max() >= n_nodes or dst.max() >= n_nodes:
         raise ValueError("Scaffold edge index out of range")
     meta = {k: v for k, v in payload.items() if k != "edges"}
-    meta["kind"] = "flywire"
+    meta["kind"] = str(payload.get("dataset") or "malecns")
     return n_nodes, src, dst, base, meta
 
 
@@ -242,7 +242,7 @@ def accuracy(model: nn.Module, x: torch.Tensor, y: torch.Tensor) -> float:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train FlyGPT's first connectome-inspired task router")
     parser.add_argument("--dataset", type=Path, default=Path("training/teacher_seed.jsonl"))
-    parser.add_argument("--scaffold", type=Path, help="JSON scaffold built from FlyWire; omit only for smoke tests")
+    parser.add_argument("--scaffold", type=Path, help="JSON scaffold built from MaleCNS; omit only for smoke tests")
     parser.add_argument("--out", type=Path, default=Path("artifacts/fly_router_v0_2.pt"))
     parser.add_argument("--epochs", type=int, default=60)
     parser.add_argument("--lr", type=float, default=2e-3)

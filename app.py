@@ -12,15 +12,14 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
-from connectome import FlyWireConnectome, NT_COLUMNS
+from connectome import MaleCNSConnectome
 from dispatcher import dispatch, dispatch_math_fast_path, is_math_fast_path
 from generator_runtime import GENERATIVE_ROUTES, GeneratorRuntime
 from memory_store import MemoryStore, format_recall
 from auth_store import AuthStore, SESSION_TTL_SECONDS
 
 
-APP_VERSION = "0.7.1"
-DATA_DIR = os.environ.get("FLYWIRE_DATA_DIR", "data/flywire_parts")
+APP_VERSION = "0.8.0"
 
 _model_override = os.environ.get("FLYGPT_MODEL_PATH")
 if _model_override:
@@ -54,7 +53,7 @@ app = FastAPI(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-_connectome: FlyWireConnectome | None = None
+_connectome: MaleCNSConnectome | None = None
 _connectome_lock = threading.Lock()
 
 _router: Any | None = None
@@ -119,12 +118,12 @@ def _scoped_session_id(user_id: str, session_id: str | None) -> str | None:
     return f"{user_id}:{raw}"
 
 
-def get_connectome() -> FlyWireConnectome:
+def get_connectome() -> MaleCNSConnectome:
     global _connectome
 
     with _connectome_lock:
         if _connectome is None:
-            _connectome = FlyWireConnectome(DATA_DIR)
+            _connectome = MaleCNSConnectome()
         return _connectome
 
 
@@ -168,7 +167,9 @@ def predict_route(text: str) -> dict[str, Any] | None:
 
 
 def extract_root_ids(text: str) -> list[int]:
-    return [int(value) for value in re.findall(r"\b\d{15,}\b", text)]
+    # MaleCNS body IDs are not fixed-width FlyWire root IDs; valid examples
+    # include short values such as 12781.
+    return [int(value) for value in re.findall(r"\b\d{4,16}\b", text)]
 
 
 def extract_limit(text: str, default: int = 10) -> int:
@@ -186,21 +187,17 @@ def extract_limit(text: str, default: int = 10) -> int:
     return default
 
 
-def dominant_nt(row: dict[str, Any]) -> tuple[str, float]:
-    column = max(
-        NT_COLUMNS,
-        key=lambda key: float(row.get(key) or 0.0),
-    )
-    return column.removesuffix("_avg").upper(), float(row.get(column) or 0.0)
+def dominant_nt(row: dict[str, Any]) -> str:
+    return str(row.get("dominant_nt") or row.get("consensusNt") or "UNKNOWN").upper()
 
 
 def format_partner(row: dict[str, Any], index: int) -> str:
-    nt, probability = dominant_nt(row)
+    nt = dominant_nt(row)
     return (
         f"{index}. Partner: {row['partner_root_id']}\n"
         f"   Synapses: {row['syn_count']:,}\n"
         f"   Neuropils: {row['neuropil_count']}\n"
-        f"   Dominant NT: {nt} ({probability:.3f})"
+        f"   Consensus NT: {nt}"
     )
 
 
@@ -376,13 +373,12 @@ def chat_endpoint(req: ChatRequest, request: Request):
         if "통계" in msg or "stats" in lower or "statistics" in lower:
             stats = get_connectome().stats()
             answer = (
-                "📊 FlyWire v783 Dataset Statistics\n\n"
-                f"Rows: {stats['rows']:,}\n"
-                f"Presynaptic neurons ≈ {stats['approx_presynaptic_neurons']:,}\n"
-                f"Postsynaptic neurons ≈ {stats['approx_postsynaptic_neurons']:,}\n"
-                f"Neuropils: {stats['neuropils']:,}\n"
-                f"Synapses: {stats['synapses']:,}\n"
-                f"Parquet parts: {stats['parts']}"
+                "📊 Janelia MaleCNS v1.0 Dataset Statistics\n\n"
+                f"Neurons: {stats['neurons']:,}\n"
+                f"Presynaptic sites: {stats['presynaptic_sites']:,}\n"
+                f"Postsynaptic sites: {stats['postsynaptic_sites']:,}\n"
+                f"Primary neuropils: {stats['neuropils']:,}\n"
+                f"Dataset: {stats['dataset']}"
             )
             return response_with_router(
                 answer=answer,
@@ -403,12 +399,14 @@ def chat_endpoint(req: ChatRequest, request: Request):
             sections = [f"🔗 Top {len(rows)} Strongest Connections"]
 
             for index, row in enumerate(rows, 1):
-                nt, probability = dominant_nt(row)
+                nt = dominant_nt(row)
+                neuropils = row.get("neuropil_count")
+                neuropil_text = str(neuropils) if neuropils is not None else "n/a (total edge)"
                 sections.append(
                     f"{index}. {row['pre_pt_root_id']} → {row['post_pt_root_id']}\n"
                     f"   Synapses: {row['syn_count']:,}\n"
-                    f"   Neuropils: {row['neuropil_count']}\n"
-                    f"   Dominant NT: {nt} ({probability:.3f})"
+                    f"   Neuropils: {neuropil_text}\n"
+                    f"   Consensus NT: {nt}"
                 )
 
             return response_with_router(
@@ -436,10 +434,10 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 ]
 
                 for row in pair["by_neuropil"]:
-                    nt, probability = dominant_nt(row)
+                    nt = dominant_nt(row)
                     lines.append(
                         f"• {row['neuropil']}: {row['syn_count']:,} synapses, "
-                        f"{nt} {probability:.3f}"
+                        f"consensus NT {nt}"
                     )
 
                 answer = "\n".join(lines)
@@ -600,8 +598,8 @@ def chat_endpoint(req: ChatRequest, request: Request):
             "커넥톰 질의는 계속 사용할 수 있습니다:\n"
             "데이터 통계 보여줘\n"
             "가장 강한 연결 10개 보여줘\n"
-            "뉴런 720575940627737365의 출력 연결 5개\n"
-            "720575940627737365 -> 720575940628914436 연결"
+            "뉴런 12781의 출력 연결 5개\n"
+            "12781 -> 85165 연결"
         )
         return response_with_router(
             answer=answer,
@@ -611,7 +609,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
             session_id=session_id,
         )
 
-    except FileNotFoundError as exc:
+    except (FileNotFoundError, RuntimeError) as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(

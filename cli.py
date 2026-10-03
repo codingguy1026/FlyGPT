@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 
-from connectome import FlyWireConnectome
+from connectome import MaleCNSConnectome
 
 
 def _print(value: object) -> None:
@@ -13,12 +12,7 @@ def _print(value: object) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Query FlyWire v783 proofread connectivity Parquet files."
-    )
-    parser.add_argument(
-        "--data",
-        default=os.environ.get("FLYWIRE_DATA_DIR", "data/flywire_parts"),
-        help="Parquet file, glob, or directory (default: FLYWIRE_DATA_DIR or data/flywire_parts)",
+        description="Query Janelia MaleCNS v1.0 through neuPrint."
     )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -45,8 +39,7 @@ def build_parser() -> argparse.ArgumentParser:
     pair.add_argument("pre_root_id", type=int)
     pair.add_argument("post_root_id", type=int)
 
-    top = subparsers.add_parser("top", help="Show strongest directed neuron pairs.")
-    top.add_argument("--neuropil")
+    top = subparsers.add_parser("top", help="Show strongest total directed neuron pairs.")
     top.add_argument("--min-synapses", type=int, default=1)
     top.add_argument("--limit", type=int, default=25)
 
@@ -56,7 +49,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = build_parser().parse_args()
 
-    with FlyWireConnectome(args.data) as connectome:
+    with MaleCNSConnectome() as connectome:
         if args.command == "stats":
             _print(connectome.stats())
             return
@@ -89,7 +82,6 @@ def main() -> None:
         if args.command == "top":
             _print(
                 connectome.top_connections(
-                    neuropil=args.neuropil,
                     min_synapses=args.min_synapses,
                     limit=args.limit,
                 )

@@ -1,14 +1,12 @@
-# FlyWire data directory
+# FlyGPT data directory
 
-Place the split v783 Parquet files in `data/flywire_parts/`.
+FlyGPT v0.8.0 no longer needs local FlyWire v783 Parquet parts for connectome
+queries. Janelia MaleCNS v1.0 is queried through neuPrint using
+`NEUPRINT_TOKEN`.
 
-The expected default filenames are:
+This directory is still used for local runtime state such as:
 
-```text
-proofread_connections_783_part_01.parquet
-...
-proofread_connections_783_part_09.parquet
-```
+- `flygpt_auth.sqlite3`
+- `flygpt_memory.sqlite3`
 
-The Parquet files are not committed to Git because they are large. The loader
-also accepts a single Parquet file or a glob path.
+Those databases remain ignored by Git.
