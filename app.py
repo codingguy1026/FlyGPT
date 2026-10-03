@@ -289,17 +289,21 @@ def router_graph(request: Request):
 
 @app.get("/api/health")
 def health():
-    data_path = Path(DATA_DIR)
     model_path = Path(MODEL_PATH)
-    has_parquet = data_path.is_file() or (
-        data_path.is_dir() and any(data_path.glob("*.parquet"))
+    neuprint_dataset = os.environ.get("NEUPRINT_DATASET", "male-cns:v1.0")
+    neuprint_configured = bool(
+        os.environ.get("NEUPRINT_TOKEN")
+        or os.environ.get("NEUPRINT_APPLICATION_CREDENTIALS")
     )
 
     return {
         "status": "ok",
-        "data_dir": str(data_path),
-        "data_available": has_parquet,
-        "connectome_initialized": _connectome is not None,
+        "connectome": {
+            "provider": "neuPrint",
+            "dataset": neuprint_dataset,
+            "configured": neuprint_configured,
+            "initialized": _connectome is not None,
+        },
         "model_path": str(model_path),
         "model_available": model_path.is_file(),
         "router_initialized": _router is not None,
