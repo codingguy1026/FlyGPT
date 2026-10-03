@@ -3,11 +3,11 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
-SCAFFOLD="training/flywire_scaffold.json"
+SCAFFOLD="training/malecns_scaffold.json"
 OUT="artifacts/fly_router_v0_3.pt"
 
 if [[ ! -f "$SCAFFOLD" ]]; then
-  echo "No scaffold found; building one from local FlyWire parts..."
+  echo "No scaffold found; building one from Janelia MaleCNS v1.0 via neuPrint..."
   python training/build_scaffold.py \
     --data-dir data/flywire_parts \
     --out "$SCAFFOLD" \
