@@ -12,6 +12,7 @@ if [[ -f ".env" ]]; then
 fi
 
 MODEL="${FLYGPT_LOCAL_MODEL:-qwen2.5:0.5b-instruct}"
+export OLLAMA_KEEP_ALIVE="${OLLAMA_KEEP_ALIVE:-30m}"
 
 if [[ -z "${NEUPRINT_TOKEN:-}" && -z "${NEUPRINT_APPLICATION_CREDENTIALS:-}" ]]; then
   echo "⚠️  neuPrint token is not set. MaleCNS queries will return a service error until you add one to .env."
@@ -55,7 +56,7 @@ if ! command -v ollama >/dev/null 2>&1; then
 fi
 
 if ! curl -fsS "$OLLAMA_URL" >/dev/null 2>&1; then
-  echo "🧠 Starting Ollama on :11434..."
+  echo "🧠 Starting Ollama on :11434... (keep-alive: $OLLAMA_KEEP_ALIVE)"
   ollama serve >/tmp/flygpt-ollama.log 2>&1 &
   OLLAMA_PID=$!
 
@@ -76,6 +77,12 @@ if ! ollama list 2>/dev/null | awk 'NR > 1 {print $1}' | grep -Fxq "$MODEL"; the
   echo "📦 Local model not found. Pulling $MODEL..."
   ollama pull "$MODEL"
 fi
+
+echo "🔥 Preloading $MODEL so the first chat does not pay the cold-start cost..."
+curl -fsS http://127.0.0.1:11434/api/generate \
+  -H "Content-Type: application/json" \
+  -d "{\"model\":\"${MODEL}\",\"prompt\":\"\",\"keep_alive\":\"${OLLAMA_KEEP_ALIVE}\"}" \
+  >/dev/null || echo "⚠️  Model preload failed; FlyGPT can still start, but the first response may be slow."
 
 if [[ ! -x ".venv/bin/python" ]]; then
   echo "🐍 Creating Python virtual environment..."
