@@ -31,6 +31,7 @@ export type GenerationResult = {
 };
 
 export type ChatTimings = {
+  query_ms?: number | null;
   router_ms?: number | null;
   dispatch_ms?: number | null;
   generation_ms?: number | null;
@@ -52,7 +53,8 @@ export type ChatData = {
 export type ChatResponse = {
   answer: string;
   type: string;
-  data?: ChatData | null;
+  data?: ChatData | unknown | null;
+  timings?: ChatTimings | null;
   router?: RouterResult;
 };
 
