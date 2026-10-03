@@ -3,8 +3,6 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
-MODEL="${FLYGPT_LOCAL_MODEL:-qwen2.5:0.5b-instruct}"
-
 if [[ -f ".env" ]]; then
   echo "🔐 Loading .env"
   set -a
@@ -12,6 +10,8 @@ if [[ -f ".env" ]]; then
   source .env
   set +a
 fi
+
+MODEL="${FLYGPT_LOCAL_MODEL:-qwen2.5:0.5b-instruct}"
 
 if [[ -z "${NEUPRINT_TOKEN:-}" && -z "${NEUPRINT_APPLICATION_CREDENTIALS:-}" ]]; then
   echo "⚠️  neuPrint token is not set. MaleCNS queries will return a service error until you add one to .env."
