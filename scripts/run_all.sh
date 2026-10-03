@@ -78,15 +78,18 @@ if ! ollama list 2>/dev/null | awk 'NR > 1 {print $1}' | grep -Fxq "$MODEL"; the
 fi
 
 if [[ ! -x ".venv/bin/python" ]]; then
-  echo "❌ Python virtual environment not found at .venv/"
-  echo "Create/install the backend environment first."
-  exit 1
+  echo "🐍 Creating Python virtual environment..."
+  python3 -m venv .venv
 fi
 
-if ! .venv/bin/python -c "import uvicorn" >/dev/null 2>&1; then
-  echo "❌ uvicorn is not installed in .venv"
-  echo "Install the backend dependencies first."
-  exit 1
+REQ_HASH="$(sha256sum requirements.txt | awk '{print $1}')"
+REQ_MARKER=".venv/.flygpt-requirements.sha256"
+INSTALLED_HASH="$(cat "$REQ_MARKER" 2>/dev/null || true)"
+
+if [[ "$REQ_HASH" != "$INSTALLED_HASH" ]] || ! .venv/bin/python -c "import uvicorn, fastapi, neuprint, pandas, jinja2" >/dev/null 2>&1; then
+  echo "📦 Backend dependencies changed or are incomplete. Installing requirements..."
+  .venv/bin/python -m pip install -r requirements.txt
+  printf '%s\n' "$REQ_HASH" > "$REQ_MARKER"
 fi
 
 if [[ ! -f "frontend/package.json" ]]; then
@@ -103,6 +106,28 @@ echo
 echo "🚀 Starting backend  : http://127.0.0.1:8000"
 bash scripts/run_backend_v0_7_local.sh &
 BACKEND_PID=$!
+
+echo "⏳ Waiting for backend health check..."
+BACKEND_READY=0
+for _ in $(seq 1 40); do
+  if curl -fsS http://127.0.0.1:8000/api/health >/dev/null 2>&1; then
+    BACKEND_READY=1
+    break
+  fi
+  if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+    echo "❌ Backend exited before port 8000 became ready."
+    echo "   Check the backend error printed above."
+    exit 1
+  fi
+  sleep 0.5
+done
+
+if [[ "$BACKEND_READY" -ne 1 ]]; then
+  echo "❌ Backend did not become ready on port 8000."
+  exit 1
+fi
+
+echo "✅ Backend ready"
 
 echo "🎨 Starting frontend : http://127.0.0.1:3000"
 (
