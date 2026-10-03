@@ -1,3 +1,14 @@
 {
-  "python.terminal.activateEnvironment": false
+  "python.terminal.activateEnvironment": false,
+  "remote.autoForwardPorts": true,
+  "remote.portsAttributes": {
+    "3000": {
+      "label": "FlyGPT Frontend",
+      "onAutoForward": "openBrowser"
+    },
+    "8000": {
+      "label": "FlyGPT Backend",
+      "onAutoForward": "silent"
+    }
+  }
 }
