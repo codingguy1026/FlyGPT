@@ -168,8 +168,8 @@ export default function BrainPanel({ open, onClose, router }: Props) {
     <aside className="brainPanel">
       <header className="brainHeader">
         <div>
-          <div className="eyebrow">GCaMP-STYLE MODEL VIEW</div>
-          <h2>FlyGraph Calcium Map</h2>
+          <div className="eyebrow">MALECNS · ROUTER TRACE VIEW</div>
+          <h2>MaleCNS Activation Map</h2>
         </div>
         <div className="brainHeaderActions">
           <button
@@ -177,7 +177,7 @@ export default function BrainPanel({ open, onClose, router }: Props) {
             onClick={runCalciumDemo}
             type="button"
             disabled={!graph}
-            title="칼슘 이미징 스타일 활성화 데모"
+            title="MaleCNS 라우터 활성화 데모"
           >
             ◉ {calciumStep >= 0 ? "IMAGING" : "CALCIUM DEMO"}
           </button>
@@ -313,7 +313,7 @@ export default function BrainPanel({ open, onClose, router }: Props) {
                     }}
                   >
                     <title>
-                      Node {index} · FlyWire {node.root_id ?? "not mapped"} ·
+                      Node {index} · MaleCNS body {node.root_id ?? "not mapped"} ·
                       relative fluorescence {(activity * 100).toFixed(1)}%
                     </title>
                   </circle>
@@ -338,8 +338,8 @@ export default function BrainPanel({ open, onClose, router }: Props) {
       <RoutePanel router={router} />
 
       <div className="brainNote">
-        이 화면은 실제 GCaMP 칼슘 이미징의 형광 표현 방식을 참고해 FlyGPT의
-        trace activation을 시각화한 것입니다. 살아있는 파리를 실시간 촬영한
+        이 화면은 GCaMP 칼슘 이미징의 형광 표현을 참고해 MaleCNS 기반 FlyGPT의
+        router trace activation을 시각화한 것입니다. 살아있는 파리를 실시간 촬영한
         영상은 아니며, 밝아질수록 모델 활성도가 높은 것으로 표시됩니다.
       </div>
     </aside>
