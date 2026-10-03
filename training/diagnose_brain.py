@@ -115,7 +115,7 @@ def main() -> None:
     if len(predicted_routes) < 3:
         fail(f"router appears collapsed; only predicted routes: {sorted(predicted_routes)}")
 
-    print("PASS FlyWire scaffold metadata")
+    print("PASS MaleCNS scaffold metadata")
     print(f"PASS topology match: nodes={runtime.n_nodes} edges={len(runtime.src)} steps={runtime.steps}")
     print(f"PASS graph propagation changed activations")
     print(f"PASS router is not collapsed: routes_seen={sorted(predicted_routes)}")
