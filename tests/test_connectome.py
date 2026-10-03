@@ -12,6 +12,31 @@ class FakeClient:
     def fetch_custom(self, query: str):
         if "count(n) AS neurons" in query:
             return pd.DataFrame([{"neurons": 3}])
+        if "AS body_id" in query and "total_synapses" in query:
+            return pd.DataFrame(
+                [
+                    {
+                        "body_id": 2,
+                        "type": "DNp01",
+                        "instance": "DNp01_R",
+                        "consensus_nt": "GABA",
+                        "total_synapses": 21,
+                        "outgoing_synapses": 9,
+                        "incoming_synapses": 12,
+                        "partner_count": 3,
+                    },
+                    {
+                        "body_id": 1,
+                        "type": "MBON",
+                        "instance": "MBON_L",
+                        "consensus_nt": "acetylcholine",
+                        "total_synapses": 13,
+                        "outgoing_synapses": 8,
+                        "incoming_synapses": 5,
+                        "partner_count": 2,
+                    },
+                ]
+            )
         if "pre_pt_root_id" in query and "consensus_nt" in query:
             return pd.DataFrame(
                 [
@@ -113,6 +138,16 @@ class MaleCNSConnectomeTest(unittest.TestCase):
         self.assertEqual(rows[0]["post_pt_root_id"], 2)
         self.assertEqual(rows[0]["syn_count"], 8)
         self.assertEqual(rows[0]["dominant_nt"], "ACH")
+
+    def test_top_neurons(self) -> None:
+        rows = self.connectome.top_neurons(limit=2)
+        self.assertEqual(rows[0]["body_id"], 2)
+        self.assertEqual(rows[0]["total_synapses"], 21)
+        self.assertEqual(rows[0]["incoming_synapses"], 12)
+        self.assertEqual(rows[0]["outgoing_synapses"], 9)
+        self.assertEqual(rows[0]["partner_count"], 3)
+        self.assertEqual(rows[0]["dominant_nt"], "GABA")
+        self.assertEqual(rows[0]["type"], "DNp01")
 
     def test_scaffold_edges(self) -> None:
         self.assertEqual(

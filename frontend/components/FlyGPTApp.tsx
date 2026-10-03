@@ -399,7 +399,13 @@ export default function FlyGPTApp({
         meta.push({ text: "fallback", tone: "warn" });
       }
 
-      const timings = response.data?.timings;
+      const timings = response.timings ?? response.data?.timings;
+      if (timings?.query_ms != null) {
+        meta.push({
+          text: "QUERY " + timings.query_ms + " ms",
+          tone: "info",
+        });
+      }
       if (timings?.router_ms != null) {
         meta.push({
           text: "ROUTE " + timings.router_ms + " ms",
