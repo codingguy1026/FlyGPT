@@ -3,7 +3,19 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
+if [[ -f ".env" ]]; then
+  echo "🔐 Loading .env"
+  set -a
+  # shellcheck disable=SC1091
+  source .env
+  set +a
+fi
+
 MODEL="${FLYGPT_LOCAL_MODEL:-qwen2.5:0.5b-instruct}"
+
+if [[ -z "${NEUPRINT_TOKEN:-}" && -z "${NEUPRINT_APPLICATION_CREDENTIALS:-}" ]]; then
+  echo "⚠️  neuPrint token is not set. MaleCNS queries will return a service error until you add one to .env."
+fi
 OLLAMA_URL="http://127.0.0.1:11434/api/tags"
 
 BACKEND_PID=""
@@ -33,7 +45,7 @@ cleanup() {
 
 trap cleanup INT TERM EXIT
 
-echo "🪰 FlyGPT v0.7.1 full stack"
+echo "🪰 FlyGPT v0.8.0 full stack"
 echo
 
 if ! command -v ollama >/dev/null 2>&1; then
