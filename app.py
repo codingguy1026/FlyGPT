@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import threading
+import time
 from pathlib import Path
 from typing import Any
 
@@ -348,6 +349,7 @@ def memory_clear(req: MemoryRequest, request: Request):
 
 @app.post("/api/chat")
 def chat_endpoint(req: ChatRequest, request: Request):
+    request_started = time.perf_counter()
     user = _require_user(request)
     msg = req.message.strip()
 
@@ -361,7 +363,9 @@ def chat_endpoint(req: ChatRequest, request: Request):
 
     lower = msg.lower()
     root_ids = extract_root_ids(msg)
+    router_started = time.perf_counter()
     route = predict_route(msg)
+    router_ms = round((time.perf_counter() - router_started) * 1000)
 
     try:
         if is_math_fast_path(msg):
@@ -505,7 +509,9 @@ def chat_endpoint(req: ChatRequest, request: Request):
             )
 
         if route is not None:
+            dispatch_started = time.perf_counter()
             result = dispatch(msg, route)
+            dispatch_ms = round((time.perf_counter() - dispatch_started) * 1000)
             model_label = route.get("model", Path(MODEL_PATH).name)
 
             if result.status == "uncertain":
@@ -520,6 +526,12 @@ def chat_endpoint(req: ChatRequest, request: Request):
                             "mode": result.handler,
                             "router_model": model_label,
                             "app_version": APP_VERSION,
+                        },
+                        "timings": {
+                            "router_ms": router_ms,
+                            "dispatch_ms": dispatch_ms,
+                            "generation_ms": None,
+                            "total_ms": round((time.perf_counter() - request_started) * 1000),
                         },
                     },
                     route=route,
@@ -578,10 +590,27 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 )
                 mode_label = f"{result.route} · generator_unavailable"
 
+            total_ms = round((time.perf_counter() - request_started) * 1000)
+            generation_ms = generation.latency_ms
+
+            print(
+                "[PERF] /api/chat "
+                f"route={result.route} router={router_ms}ms "
+                f"dispatch={dispatch_ms}ms generation={generation_ms}ms "
+                f"total={total_ms}ms",
+                flush=True,
+            )
+
             data = {
                 "dispatch": result.to_dict(),
                 "generation": generation.to_dict(),
                 "memory_hits": memory_hits,
+                "timings": {
+                    "router_ms": router_ms,
+                    "dispatch_ms": dispatch_ms,
+                    "generation_ms": generation_ms,
+                    "total_ms": total_ms,
+                },
                 "ui_meta": {
                     "mode": mode_label,
                     "router_model": model_label,

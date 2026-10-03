@@ -30,8 +30,16 @@ export type GenerationResult = {
   latency_ms?: number | null;
 };
 
+export type ChatTimings = {
+  router_ms?: number | null;
+  dispatch_ms?: number | null;
+  generation_ms?: number | null;
+  total_ms?: number | null;
+};
+
 export type ChatData = {
   generation?: GenerationResult | null;
+  timings?: ChatTimings | null;
   dispatch?: unknown;
   memory_hits?: unknown;
   ui_meta?: {

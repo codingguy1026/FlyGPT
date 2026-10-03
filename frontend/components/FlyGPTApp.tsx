@@ -391,12 +391,32 @@ export default function FlyGPTApp({
 
         if (generation.latency_ms != null) {
           meta.push({
-            text: generation.latency_ms + " ms",
+            text: "GEN " + generation.latency_ms + " ms",
             tone: "muted",
           });
         }
       } else if (generation && !generation.used) {
         meta.push({ text: "fallback", tone: "warn" });
+      }
+
+      const timings = response.data?.timings;
+      if (timings?.router_ms != null) {
+        meta.push({
+          text: "ROUTE " + timings.router_ms + " ms",
+          tone: "muted",
+        });
+      }
+      if (timings?.dispatch_ms != null) {
+        meta.push({
+          text: "DISPATCH " + timings.dispatch_ms + " ms",
+          tone: "muted",
+        });
+      }
+      if (timings?.total_ms != null) {
+        meta.push({
+          text: "TOTAL " + timings.total_ms + " ms",
+          tone: timings.total_ms >= 10000 ? "warn" : "muted",
+        });
       }
 
       setMessages((current) => [
