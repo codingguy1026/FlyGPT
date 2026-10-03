@@ -1,6 +1,7 @@
 __pycache__/
 *.py[cod]
 .venv/
+.venv-train/
 .env
 data/flygpt_memory.sqlite3
 data/flygpt_memory.sqlite3-shm
