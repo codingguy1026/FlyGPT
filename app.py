@@ -189,6 +189,62 @@ def extract_limit(text: str, default: int = 10) -> int:
     return default
 
 
+def is_strongest_neuron_query(text: str) -> bool:
+    """Detect natural-language requests for the most strongly connected neuron."""
+
+    lower = " ".join(text.lower().split())
+
+    korean_neuron = "뉴런" in text or "신경세포" in text
+    korean_connection = any(token in text for token in ("연결", "시냅스"))
+    korean_strength = any(
+        token in text
+        for token in (
+            "가장 강",
+            "제일 강",
+            "가장 많이 연결",
+            "제일 많이 연결",
+            "연결이 가장",
+            "연결이 제일",
+            "연결 수가 가장",
+            "연결수가 가장",
+        )
+    )
+    if korean_neuron and korean_connection and korean_strength:
+        return True
+
+    english_patterns = (
+        r"\bstrongest\s+(?:connected\s+)?neurons?\b",
+        r"\bmost\s+connected\s+neurons?\b",
+        r"\bneurons?\s+with\s+the\s+strongest\s+connections?\b",
+    )
+    return any(re.search(pattern, lower) for pattern in english_patterns)
+
+
+def is_top_connection_query(text: str) -> bool:
+    """Detect pair-level strongest-connection requests without hijacking generic TOP prompts."""
+
+    if is_strongest_neuron_query(text):
+        return False
+
+    lower = " ".join(text.lower().split())
+    if any(
+        token in text
+        for token in (
+            "가장 강한 연결",
+            "제일 강한 연결",
+            "강한 연결 순위",
+            "연결 강도 순위",
+        )
+    ):
+        return True
+
+    english_patterns = (
+        r"\bstrongest\s+(?:neural\s+)?connections?\b",
+        r"\btop\s*(?:\d+)?\s+(?:neural\s+)?connections?\b",
+    )
+    return any(re.search(pattern, lower) for pattern in english_patterns)
+
+
 def dominant_nt(row: dict[str, Any]) -> str:
     return str(row.get("dominant_nt") or row.get("consensusNt") or "UNKNOWN").upper()
 
@@ -210,6 +266,7 @@ def response_with_router(
     data: Any,
     route: dict[str, Any] | None,
     session_id: str | None = None,
+    timings: dict[str, int | None] | None = None,
 ) -> dict[str, Any]:
     payload = {
         "answer": answer,
@@ -218,6 +275,8 @@ def response_with_router(
     }
     if route is not None:
         payload["router"] = route
+    if timings is not None:
+        payload["timings"] = timings
 
     if session_id:
         _memory.add(session_id, "assistant", answer)
@@ -363,9 +422,6 @@ def chat_endpoint(req: ChatRequest, request: Request):
 
     lower = msg.lower()
     root_ids = extract_root_ids(msg)
-    router_started = time.perf_counter()
-    route = predict_route(msg)
-    router_ms = round((time.perf_counter() - router_started) * 1000)
 
     try:
         if is_math_fast_path(msg):
@@ -375,7 +431,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 answer=answer,
                 response_type="math_fast_path",
                 data=result.to_dict(),
-                route=route,
+                route=None,
                 session_id=session_id,
             )
 
@@ -393,15 +449,56 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 answer=answer,
                 response_type="stats",
                 data=stats,
-                route=route,
+                route=None,
                 session_id=session_id,
             )
 
-        if (
-            "가장 강한 연결" in msg
-            or "strongest" in lower
-            or re.search(r"\btop\b", lower)
-        ):
+        if is_strongest_neuron_query(msg):
+            limit = extract_limit(msg, 1)
+            query_started = time.perf_counter()
+            rows = get_connectome().top_neurons(limit=limit)
+            query_ms = round((time.perf_counter() - query_started) * 1000)
+            total_ms = round((time.perf_counter() - request_started) * 1000)
+
+            sections = [
+                "🧠 MaleCNS 연결 강도 상위 뉴런",
+                "기준: 입력 + 출력 ConnectsTo 시냅스 가중치 합 (weighted degree)",
+            ]
+            if not rows:
+                sections.append("조건에 맞는 뉴런을 찾지 못했습니다.")
+
+            for index, row in enumerate(rows, 1):
+                identity = row.get("type") or row.get("instance") or "untyped"
+                sections.append(
+                    f"{index}. Neuron {row['body_id']} · {identity}\n"
+                    f"   총 연결 강도: {row['total_synapses']:,} synapses\n"
+                    f"   입력: {row['incoming_synapses']:,} · 출력: {row['outgoing_synapses']:,}\n"
+                    f"   고유 파트너: {row['partner_count']:,} · Consensus NT: {row['dominant_nt']}"
+                )
+
+            sections.append(
+                "※ 여기서 '강함'은 연결 가중치 합 기준이며, 생물학적 중요도나 활성도를 뜻하지 않습니다."
+            )
+
+            print(
+                "[PERF] /api/chat fastpath=top_neurons "
+                f"query={query_ms}ms total={total_ms}ms",
+                flush=True,
+            )
+
+            return response_with_router(
+                answer="\n\n".join(sections),
+                response_type="top_neurons",
+                data=rows,
+                route=None,
+                session_id=session_id,
+                timings={
+                    "query_ms": query_ms,
+                    "total_ms": total_ms,
+                },
+            )
+
+        if is_top_connection_query(msg):
             limit = extract_limit(msg, 10)
             rows = get_connectome().top_connections(limit=limit)
 
@@ -422,7 +519,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 answer="\n\n".join(sections),
                 response_type="top_connections",
                 data=rows,
-                route=route,
+                route=None,
                 session_id=session_id,
             )
 
@@ -455,7 +552,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 answer=answer,
                 response_type="pair",
                 data=pair,
-                route=route,
+                route=None,
                 session_id=session_id,
             )
 
@@ -504,9 +601,13 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 answer="\n\n".join(sections),
                 response_type="neuron",
                 data=result,
-                route=route,
+                route=None,
                 session_id=session_id,
             )
+
+        router_started = time.perf_counter()
+        route = predict_route(msg)
+        router_ms = round((time.perf_counter() - router_started) * 1000)
 
         if route is not None:
             dispatch_started = time.perf_counter()
