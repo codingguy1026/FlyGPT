@@ -12,7 +12,7 @@ class FakeClient:
     def fetch_custom(self, query: str):
         if "count(n) AS neurons" in query:
             return pd.DataFrame([{"neurons": 3}])
-        if "RETURN pre.bodyId AS pre_pt_root_id" in query:
+        if "pre_pt_root_id" in query and "consensus_nt" in query:
             return pd.DataFrame(
                 [
                     {
