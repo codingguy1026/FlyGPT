@@ -7,8 +7,9 @@ reclaim:
 	@echo "🧹 Reclaiming safe FlyGPT development space..."
 	@rm -rf frontend/.next
 	@rm -rf data/flywire_parts
+	@rm -f data/proofread_connections_783.feather
 	@rm -rf "$$HOME/.cache/pip"
-	@echo "✅ Cleared Next.js build cache, obsolete FlyWire parts, and pip cache."
+	@echo "✅ Cleared Next.js build cache, obsolete FlyWire data, and pip cache."
 	@echo "Tip: run 'make disk' to inspect the largest remaining directories."
 
 disk:
