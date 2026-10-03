@@ -2171,3 +2171,846 @@ textarea:focus-visible {
     font-size: 20px;
   }
 }
+
+
+/* =========================================================
+   flewGPT v0.8 · MaleCNS Laboratory Console
+   Visual-only layer: keeps the existing interaction model.
+   ========================================================= */
+
+:root {
+  color-scheme: dark;
+  --bg: #070a0c;
+  --surface: rgba(12, 17, 19, .82);
+  --surface-strong: rgba(15, 22, 24, .96);
+  --line: rgba(154, 202, 180, .11);
+  --line-strong: rgba(154, 202, 180, .21);
+  --text: #e9f3ee;
+  --text-soft: #9cadA5;
+  --muted: #66746e;
+  --good: #67f7a7;
+  --warn: #e6bd6b;
+  --danger: #f1788e;
+}
+
+html {
+  background: #050708;
+}
+
+body {
+  color: var(--text);
+  background:
+    radial-gradient(circle at 72% 18%, rgba(var(--accent-rgb), .055), transparent 34rem),
+    radial-gradient(circle at 18% 88%, rgba(88, 151, 255, .035), transparent 28rem),
+    linear-gradient(180deg, #070a0c 0%, #090d0f 52%, #060809 100%);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 999;
+  opacity: .14;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      rgba(255,255,255,.016) 0,
+      rgba(255,255,255,.016) 1px,
+      transparent 1px,
+      transparent 4px
+    );
+  mix-blend-mode: screen;
+}
+
+::selection {
+  color: #051009;
+  background: var(--accent);
+}
+
+.flightApp {
+  grid-template-columns: 250px minmax(0, 1fr) 326px;
+  background:
+    linear-gradient(90deg, rgba(var(--accent-rgb), .02), transparent 18%, transparent 82%, rgba(var(--accent-rgb), .018)),
+    #070a0c;
+}
+
+.flightApp::after {
+  content: "DROSOPHILA MALE CNS · INTERACTIVE ROUTING INSTRUMENT";
+  position: fixed;
+  right: 18px;
+  bottom: 7px;
+  z-index: 2;
+  pointer-events: none;
+  color: rgba(167, 215, 194, .18);
+  font: 700 6px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: .17em;
+}
+
+.flightRail {
+  border-right-color: rgba(var(--accent-rgb), .11);
+  background:
+    linear-gradient(180deg, rgba(var(--accent-rgb), .025), transparent 18%),
+    rgba(7, 11, 12, .94);
+  box-shadow: inset -1px 0 rgba(255,255,255,.018);
+  backdrop-filter: blur(22px);
+}
+
+.railBrandFull {
+  border-bottom: 1px solid rgba(var(--accent-rgb), .08);
+}
+
+.railBrandLogo {
+  filter:
+    drop-shadow(0 0 12px rgba(var(--accent-rgb), .12))
+    saturate(.88);
+}
+
+.railBrandCopy strong {
+  color: #eef8f2;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: -.035em;
+}
+
+.railBrandCopy span,
+.historyLabel,
+.flightEyebrow,
+.telemetryHeader > div > span,
+.sectionTitle > span,
+.systemGrid span,
+.authBrand span,
+.authIntro > span {
+  color: color-mix(in srgb, var(--accent) 78%, #c9d8d0);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.newFlightButton {
+  border-color: rgba(var(--accent-rgb), .34);
+  color: #07120c;
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent-2) 74%, var(--accent)));
+  box-shadow:
+    0 0 0 1px rgba(var(--accent-rgb), .04),
+    0 10px 34px rgba(var(--accent-rgb), .11);
+}
+
+.railButton {
+  color: #819089;
+}
+
+.railButton:hover,
+.railButton.active {
+  color: var(--accent);
+  border-color: rgba(var(--accent-rgb), .14);
+  background: rgba(var(--accent-rgb), .055);
+  box-shadow: none;
+}
+
+.historySection,
+.railSettings {
+  border-color: rgba(var(--accent-rgb), .08);
+}
+
+.historyLabel {
+  color: #61726a;
+}
+
+.historyLabel b {
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), .075);
+}
+
+.historyEmpty,
+.historyItem small {
+  color: #56645e;
+}
+
+.historyItem {
+  color: #8b9a93;
+  border-radius: 9px;
+}
+
+.historyItem:hover {
+  border-color: rgba(var(--accent-rgb), .10);
+  background: rgba(var(--accent-rgb), .035);
+}
+
+.historyItem.active {
+  color: #dce8e2;
+  border-color: rgba(var(--accent-rgb), .16);
+  background:
+    linear-gradient(90deg, rgba(var(--accent-rgb), .09), rgba(var(--accent-rgb), .025));
+  box-shadow: inset 2px 0 var(--accent);
+}
+
+.railAccount {
+  border-color: rgba(var(--accent-rgb), .095);
+  border-radius: 10px;
+  background: rgba(255,255,255,.018);
+}
+
+.railAccountAvatar {
+  color: #06100a;
+  border-radius: 7px;
+  background: var(--accent);
+}
+
+.railAccountCopy strong { color: #bdcbc4; }
+.railAccountCopy span,
+.railSignOut { color: #63716b; }
+
+.flightWorkspace {
+  grid-template-rows: 70px 38px minmax(0,1fr);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(var(--accent-rgb), .025), transparent 26rem);
+}
+
+.flightHeader {
+  padding: 0 24px;
+  border-bottom-color: rgba(var(--accent-rgb), .09);
+  background: rgba(7, 11, 12, .80);
+  box-shadow: 0 12px 30px rgba(0,0,0,.12);
+  backdrop-filter: blur(20px);
+}
+
+.flightEyebrow {
+  margin-bottom: 5px;
+  font-size: 6.5px;
+  letter-spacing: .20em;
+}
+
+.flightTitle h1 {
+  color: #e7f0eb;
+  font-size: 15px;
+  font-weight: 680;
+}
+
+.connectionChip,
+.routeChip,
+.telemetryToggle {
+  border-color: rgba(var(--accent-rgb), .11);
+  color: #718078;
+  background: rgba(255,255,255,.018);
+  box-shadow: inset 0 1px rgba(255,255,255,.02);
+}
+
+.connectionChip.online {
+  color: var(--good);
+  background: rgba(var(--accent-rgb), .035);
+}
+
+.connectionChip i {
+  box-shadow: 0 0 10px currentColor;
+}
+
+.routeChip strong { color: var(--accent); }
+
+.labStatusStrip {
+  min-width: 0;
+  padding: 0 18px 0 24px;
+  display: grid;
+  grid-template-columns: minmax(120px,1.35fr) minmax(100px,1fr) minmax(120px,1.15fr) minmax(120px,1.2fr) auto;
+  align-items: stretch;
+  border-bottom: 1px solid rgba(var(--accent-rgb), .075);
+  background:
+    linear-gradient(90deg, rgba(var(--accent-rgb), .028), transparent 28%),
+    rgba(6, 9, 10, .88);
+  overflow: hidden;
+}
+
+.labStatusStrip > div {
+  min-width: 0;
+  padding: 6px 13px 5px;
+  display: grid;
+  align-content: center;
+  border-left: 1px solid rgba(var(--accent-rgb), .065);
+}
+
+.labStatusStrip > div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.labStatusStrip span,
+.labStatusStrip strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.labStatusStrip span {
+  color: #53625b;
+  font: 800 5.5px/1.1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: .15em;
+}
+
+.labStatusStrip strong {
+  margin-top: 2px;
+  color: #95a79e;
+  font: 650 7.5px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.labStatusStrip .labPulse {
+  min-width: 112px;
+  grid-template-columns: 7px auto;
+  align-items: center;
+  gap: 7px;
+  padding-right: 0;
+}
+
+.labPulse i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), .7);
+}
+
+.labPulse.active i {
+  animation: labSignal .6s infinite alternate ease-in-out;
+}
+
+.labPulse span {
+  color: color-mix(in srgb, var(--accent) 72%, #83948c);
+}
+
+@keyframes labSignal {
+  to {
+    transform: scale(1.5);
+    box-shadow: 0 0 18px rgba(var(--accent-rgb), .95);
+  }
+}
+
+.airCanvas {
+  background:
+    linear-gradient(rgba(var(--accent-rgb), .022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--accent-rgb), .022) 1px, transparent 1px);
+  background-size: 42px 42px;
+}
+
+.airCanvas::before {
+  background-image:
+    radial-gradient(rgba(var(--accent-rgb), .10) .65px, transparent .65px);
+  background-size: 24px 24px;
+  mask-image: radial-gradient(circle at 46% 40%, black, transparent 75%);
+  opacity: .28;
+}
+
+.airCurrent {
+  border-color: rgba(var(--accent-rgb), .045);
+}
+
+.messageViewport {
+  scrollbar-color: rgba(var(--accent-rgb), .16) transparent;
+}
+
+.flightConversation {
+  width: min(860px, calc(100% - 52px));
+  padding-top: 30px;
+}
+
+.flyOrb .orbRing {
+  border-color: rgba(var(--accent-rgb), .19);
+}
+
+.flyCore {
+  border-color: rgba(var(--accent-rgb), .30);
+  color: #06110a;
+  background:
+    radial-gradient(circle at 35% 25%, rgba(255,255,255,.42), transparent 28%),
+    linear-gradient(145deg, var(--accent-2), var(--accent));
+  box-shadow:
+    0 0 28px rgba(var(--accent-rgb), .15),
+    inset 0 1px rgba(255,255,255,.28);
+}
+
+.flyWing {
+  border-color: rgba(135, 173, 156, .5);
+  background: rgba(158, 196, 179, .12);
+}
+
+.flyBody {
+  color: #07120c;
+  text-shadow: none;
+}
+
+.beaconTrail {
+  border-color: rgba(var(--accent-rgb), .12);
+}
+
+.messageBubble {
+  border-color: rgba(var(--accent-rgb), .085);
+  box-shadow: none;
+}
+
+.flightMessage.assistant .messageBubble {
+  border-radius: 4px 15px 15px 15px;
+  background:
+    linear-gradient(180deg, rgba(17, 24, 26, .86), rgba(11, 17, 18, .82));
+  box-shadow:
+    inset 2px 0 rgba(var(--accent-rgb), .12),
+    0 14px 40px rgba(0,0,0,.13);
+  backdrop-filter: blur(18px);
+}
+
+.flightMessage.user .messageBubble {
+  border-color: rgba(var(--accent-rgb), .24);
+  border-radius: 15px 15px 4px 15px;
+  color: #dff5e8;
+  background:
+    linear-gradient(145deg, rgba(var(--accent-rgb), .16), rgba(var(--accent-rgb), .075));
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--accent-rgb), .025),
+    0 12px 30px rgba(0,0,0,.10);
+}
+
+.messageText {
+  color: #cbd8d1;
+  font-size: 13px;
+  line-height: 1.74;
+}
+
+.flightMessage.user .messageText {
+  color: #e6f6ed;
+}
+
+.messageMeta {
+  border-color: rgba(var(--accent-rgb), .08);
+}
+
+.metaChip {
+  border-color: rgba(var(--accent-rgb), .10);
+  color: #708079;
+  background: rgba(255,255,255,.015);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 7.5px;
+}
+
+.metaChip.good,
+.metaChip.info {
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), .045);
+}
+
+.metaChip.warn {
+  color: var(--warn);
+  background: rgba(230, 189, 107, .045);
+}
+
+.payloadActions button {
+  color: #53615b;
+}
+
+.payloadActions button:hover {
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), .045);
+}
+
+.loadingPayload {
+  color: #6f7e77;
+}
+
+.flightApp.isThinking .loadingPayload > span {
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), .55);
+}
+
+.launchDock {
+  padding-bottom: 13px;
+  background:
+    linear-gradient(180deg, transparent, rgba(7,10,11,.95) 38%),
+    rgba(7,10,11,.35);
+}
+
+.launchComposer {
+  border-color: rgba(var(--accent-rgb), .13);
+  border-radius: 17px;
+  background:
+    linear-gradient(180deg, rgba(15,22,23,.94), rgba(10,15,16,.96));
+  box-shadow:
+    0 16px 44px rgba(0,0,0,.22),
+    inset 0 1px rgba(255,255,255,.025);
+}
+
+.modeStrip {
+  border-bottom: 1px solid rgba(var(--accent-rgb), .07);
+  margin-bottom: 2px;
+}
+
+.modeStrip button {
+  border-radius: 7px;
+  color: #68766f;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 7.5px;
+  letter-spacing: .04em;
+}
+
+.modeStrip button:hover,
+.modeStrip button.active {
+  color: var(--accent);
+  border-color: rgba(var(--accent-rgb), .10);
+  background: rgba(var(--accent-rgb), .04);
+}
+
+.launchInputRow textarea {
+  color: #dce8e2;
+}
+
+.launchInputRow textarea::placeholder {
+  color: #56645e;
+}
+
+.launchButton {
+  border-radius: 11px;
+  color: #06110a;
+  background: var(--accent);
+  box-shadow: 0 0 22px rgba(var(--accent-rgb), .16);
+}
+
+.launchSpinner {
+  border-color: rgba(5, 16, 9, .22);
+  border-top-color: #07120c;
+}
+
+.dockStatus {
+  color: #4d5c55;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 6.5px;
+  letter-spacing: .04em;
+}
+
+.telemetryDock {
+  border-left-color: rgba(var(--accent-rgb), .095);
+  background:
+    radial-gradient(circle at 50% 10%, rgba(var(--accent-rgb), .045), transparent 17rem),
+    rgba(7, 11, 12, .94);
+  box-shadow: inset 1px 0 rgba(255,255,255,.014);
+  backdrop-filter: blur(22px);
+}
+
+.telemetryHeader h2 {
+  color: #e3eee8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 14px;
+  font-weight: 660;
+}
+
+.dockClose {
+  color: #74837c;
+  background: rgba(255,255,255,.025);
+}
+
+.pulseStage {
+  min-height: 250px;
+  border-color: rgba(var(--accent-rgb), .10);
+  border-radius: 14px;
+  background:
+    linear-gradient(rgba(var(--accent-rgb), .024) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--accent-rgb), .024) 1px, transparent 1px),
+    radial-gradient(circle at center, rgba(var(--accent-rgb), .07), transparent 58%),
+    #070b0c;
+  background-size: 22px 22px, 22px 22px, auto, auto;
+  box-shadow:
+    inset 0 0 55px rgba(0,0,0,.32),
+    inset 0 1px rgba(255,255,255,.018);
+}
+
+.pulseHalo {
+  border-color: rgba(var(--accent-rgb), .13);
+}
+
+.pulseLabel span {
+  color: #53625b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.pulseLabel strong {
+  color: #c9d7d0;
+}
+
+.pulseLabel b {
+  color: var(--accent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  text-shadow: 0 0 16px rgba(var(--accent-rgb), .22);
+}
+
+.telemetrySection {
+  border-color: rgba(var(--accent-rgb), .075);
+}
+
+.sectionTitle small,
+.telemetryEmpty,
+.brainNote {
+  color: #5b6963;
+}
+
+.sectionTitle button {
+  color: var(--accent);
+}
+
+.routeMixRow > div {
+  color: #829189;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 7.5px;
+}
+
+.routeMixRow strong {
+  color: #68766f;
+}
+
+.routeMixRow > i,
+.routeTrack {
+  background: rgba(255,255,255,.035);
+}
+
+.routeMixRow > i > b,
+.routeFill {
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), .16);
+}
+
+.systemGrid > div {
+  border-color: rgba(var(--accent-rgb), .08);
+  border-radius: 8px;
+  background: rgba(255,255,255,.015);
+}
+
+.systemGrid strong {
+  color: #829189;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.themeSwatches button {
+  border-color: rgba(255,255,255,.12);
+  border-radius: 7px;
+}
+
+.telemetryActions button {
+  border-color: rgba(var(--accent-rgb), .09);
+  color: #819088;
+  background: rgba(255,255,255,.018);
+}
+
+.telemetryActions button:hover {
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), .04);
+}
+
+.brainPanel {
+  border-color: rgba(var(--accent-rgb), .12);
+  background:
+    radial-gradient(circle at 50% 8%, rgba(var(--accent-rgb), .05), transparent 20rem),
+    rgba(6, 10, 11, .97);
+  box-shadow: 0 28px 100px rgba(0,0,0,.52);
+}
+
+.brainHeader {
+  border-color: rgba(var(--accent-rgb), .08);
+}
+
+.brainHeader h2 {
+  color: #e1ece6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.brainStats span,
+.brainStatus {
+  border-color: rgba(var(--accent-rgb), .095);
+  color: #75857d;
+  background: rgba(255,255,255,.018);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.routeCard {
+  border-color: rgba(var(--accent-rgb), .09);
+  border-radius: 10px;
+  background: rgba(255,255,255,.015);
+}
+
+.routeName { color: #bdcbc4; }
+.routeConfidence { color: var(--accent); }
+.routePlaceholder,
+.routeRowHead { color: #66756e; }
+
+/* Authentication is the first frame of the same instrument. */
+.authShell {
+  color: var(--text);
+  background:
+    linear-gradient(rgba(var(--accent-rgb), .018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--accent-rgb), .018) 1px, transparent 1px),
+    radial-gradient(circle at 50% 32%, rgba(103,247,167,.06), transparent 26rem),
+    #06090a;
+  background-size: 42px 42px, 42px 42px, auto, auto;
+}
+
+.authCard {
+  width: min(470px, 100%);
+  border-color: rgba(103,247,167,.10);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(15,22,23,.94), rgba(9,14,15,.96));
+  box-shadow:
+    0 32px 100px rgba(0,0,0,.42),
+    inset 0 1px rgba(255,255,255,.025);
+  backdrop-filter: blur(24px);
+}
+
+.authBrand {
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(103,247,167,.075);
+}
+
+.authBrand img {
+  filter:
+    drop-shadow(0 0 16px rgba(103,247,167,.10))
+    saturate(.9);
+}
+
+.authBrand h1,
+.authIntro h2 {
+  color: #e7f1ec;
+}
+
+.authIntro p,
+.authFootnote,
+.authLoading {
+  color: #6c7a73;
+}
+
+.authTabs {
+  border-color: rgba(103,247,167,.08);
+  border-radius: 9px;
+  background: rgba(255,255,255,.018);
+}
+
+.authTabs button {
+  border-radius: 6px;
+  color: #67766e;
+}
+
+.authTabs button.active {
+  color: #07120c;
+  background: #67f7a7;
+  box-shadow: none;
+}
+
+.authForm label > span {
+  color: #718078;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 7px;
+  letter-spacing: .08em;
+}
+
+.authForm input {
+  border-color: rgba(103,247,167,.09);
+  border-radius: 8px;
+  color: #dce8e2;
+  background: rgba(255,255,255,.018);
+}
+
+.authForm input::placeholder {
+  color: #4f5d56;
+}
+
+.authForm input:focus {
+  border-color: rgba(103,247,167,.34);
+  box-shadow: 0 0 0 3px rgba(103,247,167,.055);
+}
+
+.authSubmit {
+  border-radius: 8px;
+  color: #07120c;
+  background: #67f7a7;
+  box-shadow: 0 0 26px rgba(103,247,167,.12);
+}
+
+.authError {
+  border-color: rgba(241,120,142,.17);
+  color: #ef91a3;
+  background: rgba(241,120,142,.045);
+}
+
+/* Keep the dense lab strip useful without squeezing mobile chat. */
+@media (max-width: 1180px) {
+  .flightApp {
+    grid-template-columns: 236px minmax(0,1fr);
+  }
+
+  .labStatusStrip {
+    grid-template-columns: 1.2fr 1fr 1fr auto;
+  }
+
+  .labStatusStrip > div:nth-child(4) {
+    display: none;
+  }
+
+  .telemetryDock {
+    background: rgba(7,11,12,.98);
+  }
+}
+
+@media (max-width: 760px) {
+  .flightWorkspace {
+    grid-template-rows: 64px 34px minmax(0,1fr);
+  }
+
+  .flightHeader {
+    background: rgba(7,11,12,.94);
+  }
+
+  .labStatusStrip {
+    padding: 0 10px;
+    grid-template-columns: 1fr 1fr auto;
+  }
+
+  .labStatusStrip > div {
+    padding: 5px 8px;
+  }
+
+  .labStatusStrip > div:nth-child(2),
+  .labStatusStrip > div:nth-child(4) {
+    display: none;
+  }
+
+  .labStatusStrip .labPulse {
+    min-width: 94px;
+  }
+
+  .flightConversation {
+    width: calc(100% - 22px);
+  }
+
+  .flightRail {
+    background: rgba(7,11,12,.985);
+  }
+
+  .railScrim,
+  .telemetryScrim {
+    background: rgba(0,0,0,.46);
+  }
+
+  .launchComposer {
+    border-radius: 13px;
+  }
+}
+
+@media (max-width: 450px) {
+  .labStatusStrip > div:nth-child(3) {
+    display: none;
+  }
+
+  .labStatusStrip {
+    grid-template-columns: 1fr auto;
+  }
+
+  .labPulse span {
+    font-size: 5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .labPulse.active i,
+  .pulseHalo,
+  .orbRing,
+  .airCurrent {
+    animation: none !important;
+  }
+}
