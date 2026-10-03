@@ -54,13 +54,13 @@ class MaleCNSConnectome:
     def __post_init__(self) -> None:
         self.server = os.environ.get("NEUPRINT_SERVER", self.server).strip()
         self.dataset = os.environ.get("NEUPRINT_DATASET", self.dataset).strip()
-        self.token = (self.token or os.environ.get("NEUPRINT_TOKEN") or "").strip() or None
+        self.token = (\n            self.token\n            or os.environ.get("NEUPRINT_TOKEN")\n            or os.environ.get("NEUPRINT_APPLICATION_CREDENTIALS")\n            or ""\n        ).strip() or None
 
         if self.client is None:
             if not self.token:
                 raise RuntimeError(
                     "MaleCNS access needs a neuPrint token. "
-                    "Set NEUPRINT_TOKEN for neuprint.janelia.org."
+                    "Set NEUPRINT_TOKEN (or NEUPRINT_APPLICATION_CREDENTIALS) for neuprint.janelia.org."
                 )
             self.client = Client(self.server, dataset=self.dataset, token=self.token)
 
@@ -336,6 +336,3 @@ class MaleCNSConnectome:
         return "\n".join(lines)
 
 
-# Temporary import compatibility for external scripts that still use the old
-# class name. It no longer loads FlyWire files.
-FlyWireConnectome = MaleCNSConnectome
