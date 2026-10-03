@@ -54,7 +54,12 @@ class MaleCNSConnectome:
     def __post_init__(self) -> None:
         self.server = os.environ.get("NEUPRINT_SERVER", self.server).strip()
         self.dataset = os.environ.get("NEUPRINT_DATASET", self.dataset).strip()
-        self.token = (\n            self.token\n            or os.environ.get("NEUPRINT_TOKEN")\n            or os.environ.get("NEUPRINT_APPLICATION_CREDENTIALS")\n            or ""\n        ).strip() or None
+        self.token = (
+            self.token
+            or os.environ.get("NEUPRINT_TOKEN")
+            or os.environ.get("NEUPRINT_APPLICATION_CREDENTIALS")
+            or ""
+        ).strip() or None
 
         if self.client is None:
             if not self.token:
