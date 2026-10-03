@@ -62,7 +62,7 @@ export default function AuthGate() {
       <main className="authShell">
         <div className="authLoading">
           <img src="/flygpt-logo.webp" alt="" />
-          <span>FlyGPT 출입증 확인 중...</span>
+          <span>MaleCNS console credential 확인 중...</span>
         </div>
       </main>
     );
@@ -78,18 +78,18 @@ export default function AuthGate() {
         <div className="authBrand">
           <img src="/flygpt-logo.webp" alt="FlyGPT logo" />
           <div>
-            <span>CONNECTOME AI</span>
+            <span>JANELIA MALECNS INTERFACE</span>
             <h1>FlyGPT</h1>
           </div>
         </div>
 
         <div className="authIntro">
           <span>{mode === "login" ? "WELCOME BACK" : "CREATE FLIGHT ID"}</span>
-          <h2>{mode === "login" ? "다시 비행할 시간." : "파피티 계정을 만들자."}</h2>
+          <h2>{mode === "login" ? "실험실 콘솔에 다시 접속." : "새 연구 세션 ID를 만들자."}</h2>
           <p>
             {mode === "login"
-              ? "로그인하면 네 FlyGPT 작업공간으로 들어갑니다."
-              : "계정마다 채팅 기록과 FlyGPT 메모리를 따로 보관합니다."}
+              ? "로그인하면 MaleCNS 라우터, 대화 기록, 실험 텔레메트리가 있는 flewGPT 작업공간으로 들어갑니다."
+              : "계정마다 채팅 기록과 flewGPT 메모리를 분리해 보관합니다."}
           </p>
         </div>
 

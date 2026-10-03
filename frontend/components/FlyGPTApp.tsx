@@ -124,6 +124,7 @@ type IconName =
   | "close";
 
 const THEMES = [
+  { id: "bio", name: "Biolume", accent: "#67f7a7", accent2: "#8ad8ff", glow: "103,247,167" },
   { id: "violet", name: "Iris", accent: "#6e63ff", accent2: "#9f7cff", glow: "110,99,255" },
   { id: "aqua", name: "Aqua", accent: "#2bbfd3", accent2: "#62e0d1", glow: "43,191,211" },
   { id: "sun", name: "Solar", accent: "#f0a83a", accent2: "#ffd06b", glow: "240,168,58" },
@@ -134,7 +135,7 @@ const INITIAL_MESSAGE: Message = {
   id: "welcome",
   role: "assistant",
   content:
-    "안녕하세요. FlyGPT 비행 준비 완료 🪰\n질문을 던지면 FlyWire 라우터가 가장 알맞은 경로를 골라 답변을 생성해요.",
+    "안녕하세요. flewGPT MaleCNS 인터페이스 준비 완료 🪰\n질문을 보내면 실제 Drosophila MaleCNS 배선에서 만든 라우터 scaffold를 따라 경로를 선택해요.",
 };
 
 function makeId(prefix: string) {
@@ -227,7 +228,7 @@ export default function FlyGPTApp({
   const [healthError, setHealthError] = useState(false);
   const [sessionId, setSessionId] = useState("");
   const [conversationTitle, setConversationTitle] = useState("Untitled flight");
-  const [themeId, setThemeId] = useState<(typeof THEMES)[number]["id"]>("violet");
+  const [themeId, setThemeId] = useState<(typeof THEMES)[number]["id"]>("bio");
   const [mode, setMode] = useState<"ask" | "code" | "research">("ask");
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -499,7 +500,7 @@ export default function FlyGPTApp({
   const topRoutes = router?.top_routes?.slice(0, 4) ?? [];
 
   return (
-    <main className="flightApp" style={themeVars}>
+    <main className={"flightApp" + (sending ? " isThinking" : "")} style={themeVars}>
       <aside className={"flightRail" + (railOpen ? " open" : "")}>
         <div className="railBrandFull">
           <div className="railBrand">
@@ -511,7 +512,7 @@ export default function FlyGPTApp({
           </div>
           <div className="railBrandCopy">
             <strong>FlyGPT</strong>
-            <span>FLIGHT CONSOLE</span>
+            <span>MALECNS CONSOLE</span>
           </div>
         </div>
 
@@ -595,7 +596,7 @@ export default function FlyGPTApp({
               <Icon name="menu" />
             </button>
             <div className="flightTitle">
-              <span className="flightEyebrow">FLIGHT 07</span>
+              <span className="flightEyebrow">MALECNS / LIVE SESSION</span>
               <h1>{conversationTitle}</h1>
             </div>
           </div>
@@ -617,6 +618,29 @@ export default function FlyGPTApp({
             </button>
           </div>
         </header>
+
+        <div className="labStatusStrip" aria-label="MaleCNS system status">
+          <div>
+            <span>DATASET</span>
+            <strong>{health?.connectome?.dataset ?? "male-cns:v1.0"}</strong>
+          </div>
+          <div>
+            <span>ROUTER</span>
+            <strong>{router?.n_nodes ? router.n_nodes + " nodes" : health?.model_available ? "checkpoint ready" : "standby"}</strong>
+          </div>
+          <div>
+            <span>TRACE</span>
+            <strong>{router?.steps ? router.steps + " propagation steps" : "awaiting signal"}</strong>
+          </div>
+          <div>
+            <span>GENERATOR</span>
+            <strong>{health?.generator?.model ?? (health?.generator?.configured ? "ready" : "local fallback")}</strong>
+          </div>
+          <div className={"labPulse" + (sending ? " active" : "")}>
+            <i />
+            <span>{sending ? "SIGNAL MOVING" : online ? "SYSTEM NOMINAL" : "BACKEND CHECK"}</span>
+          </div>
+        </div>
 
         <div className="airCanvas">
           <div className="airCurrent currentOne" />
@@ -732,7 +756,9 @@ export default function FlyGPTApp({
             </form>
 
             <div className="dockStatus">
-              <span>FlyGPT v{health?.app_version ?? "0.7.1"}</span>
+              <span>flewGPT v{health?.app_version ?? "0.8.0"}</span>
+              <span>•</span>
+              <span>{health?.connectome?.dataset ?? "male-cns:v1.0"}</span>
               <span>•</span>
               <span>{modelLabel}</span>
               {router && (
@@ -750,7 +776,7 @@ export default function FlyGPTApp({
         <div className="telemetryHeader">
           <div>
             <span>LIVE TELEMETRY</span>
-            <h2>Flybrain Pulse</h2>
+            <h2>MaleCNS Live Trace</h2>
           </div>
           <button className="dockClose" type="button" aria-label="Telemetry 닫기" onClick={() => setTelemetryOpen(false)}>
             <Icon name="close" />

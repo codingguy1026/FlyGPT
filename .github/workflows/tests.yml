@@ -21,3 +21,15 @@ jobs:
         run: bash -n scripts/run_all.sh scripts/run_backend_v0_7_local.sh scripts/setup_train_env.sh training/train_malecns_v0_4.sh
       - name: Run tests
         run: python -m unittest discover -s tests -v
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install
+      - name: Typecheck frontend
+        working-directory: frontend
+        run: npm run typecheck
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
