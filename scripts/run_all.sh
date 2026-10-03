@@ -88,7 +88,7 @@ INSTALLED_HASH="$(cat "$REQ_MARKER" 2>/dev/null || true)"
 
 if [[ "$REQ_HASH" != "$INSTALLED_HASH" ]] || ! .venv/bin/python -c "import uvicorn, fastapi, neuprint, pandas, jinja2" >/dev/null 2>&1; then
   echo "📦 Backend dependencies changed or are incomplete. Installing requirements..."
-  .venv/bin/python -m pip install -r requirements.txt
+  .venv/bin/python -m pip install --no-cache-dir -r requirements.txt
   printf '%s\n' "$REQ_HASH" > "$REQ_MARKER"
 fi
 
