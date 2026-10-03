@@ -1,34 +1,27 @@
 # FlyGPT
 
-FlyGPT is an experimental interface for querying the **FlyWire v783 whole-brain
-Drosophila connectome** without loading the entire connectivity table into RAM.
+FlyGPT is an experimental Drosophila connectome interface and connectome-routed
+task router.
 
-The current loader targets `proofread_connections_783.feather` after conversion
-to one or more Parquet parts. DuckDB scans the Parquet files lazily, so queries
-such as "what are this neuron's strongest outputs?" only read the columns and
-row groups they need.
+As of v0.8.0, interactive connectome queries target the **Janelia MaleCNS v1.0**
+dataset through the official neuPrint service instead of requiring local
+FlyWire v783 Parquet files.
 
 ## Dataset
 
-Source: FlyWire Whole-brain Connectome Connectivity Data, release 783  
-https://zenodo.org/records/10676866
+Primary dataset:
 
-The proofread connection table contains one row per
-presynaptic-neuron / postsynaptic-neuron / neuropil combination and includes
-synapse counts plus average neurotransmitter probabilities.
+- Janelia FlyEM Male CNS Connectome v1.0
+- neuPrint dataset: `male-cns:v1.0`
+- neuPrint server: `https://neuprint.janelia.org`
+- project/download page: `https://male-cns.janelia.org/download/`
 
-Expected columns:
+The MaleCNS release covers the male Drosophila brain and ventral nerve cord.
+FlyGPT uses targeted neuPrint queries for neuron partners, directed pairs,
+dataset metadata, and bounded scaffold construction.
 
-- `pre_pt_root_id`
-- `post_pt_root_id`
-- `neuropil`
-- `syn_count`
-- `gaba_avg`
-- `ach_avg`
-- `glut_avg`
-- `oct_avg`
-- `ser_avg`
-- `da_avg`
+The full flat connection graph is available from Janelia for bulk analysis, but
+FlyGPT does **not** require that 1.1 GB file for normal app/CLI usage.
 
 ## Setup
 
@@ -36,92 +29,21 @@ Expected columns:
 python -m pip install -r requirements.txt
 ```
 
-Put the split Parquet files in:
-
-```text
-data/flywire_parts/
-  proofread_connections_783_part_01.parquet
-  proofread_connections_783_part_02.parquet
-  ...
-  proofread_connections_783_part_09.parquet
-```
-
-The large data files are intentionally ignored by Git.
-
-You can also keep the data anywhere else and point FlyGPT at it with:
+Create a neuPrint account/token, then configure:
 
 ```bash
-export FLYWIRE_DATA_DIR=/path/to/flywire_parts
+export NEUPRINT_TOKEN=your-token-here
+export NEUPRINT_SERVER=https://neuprint.janelia.org
+export NEUPRINT_DATASET=male-cns:v1.0
 ```
 
+Do not commit real tokens.
 
-## Local accounts and login
-
-FlyGPT includes a self-hosted email/password login flow. Accounts are stored in
-`data/flygpt_auth.sqlite3`; password plaintext is never stored. Passwords are
-derived with PBKDF2-HMAC-SHA256 and a per-user random salt, and browser sessions
-use random tokens stored in an HttpOnly, SameSite=Lax cookie.
-
-For local development, no extra auth dependency is required. The auth database is
-created automatically on first signup.
-
-Optional settings:
+## Run
 
 ```bash
-export FLYGPT_AUTH_PATH=data/flygpt_auth.sqlite3
-export FLYGPT_COOKIE_SECURE=0
+uvicorn app:app --host 0.0.0.0 --port 8000
 ```
-
-When FlyGPT is served behind HTTPS in production, set:
-
-```bash
-export FLYGPT_COOKIE_SECURE=1
-```
-
-Chat memory is scoped by authenticated user plus conversation session so one
-account cannot retrieve another account's FlyGPT memory by reusing a browser
-session ID.
-
-## FlyGPT v0.7.1 answer generation
-
-The FlyWire-inspired router decides whether a request is `general`, `code`,
-`summarize`, `math`, `memory`, or `research`. For generative routes,
-FlyGPT v0.7.1 can forward the request to any OpenAI-compatible
-`/v1/chat/completions` endpoint.
-
-Copy the example configuration and fill in the provider you want to use:
-
-```bash
-cp .env.example .env
-```
-
-The server reads environment variables, so export the values before starting
-Uvicorn. For example, a local Ollama server that exposes its OpenAI-compatible
-endpoint can be configured with:
-
-```bash
-export FLYGPT_GENERATOR_URL=http://127.0.0.1:11434/v1/chat/completions
-export FLYGPT_GENERATOR_MODEL=llama3.2:3b
-export FLYGPT_GENERATOR_PROVIDER=ollama
-```
-
-Hosted providers use the same URL/model fields and can additionally set:
-
-```bash
-export FLYGPT_GENERATOR_API_KEY=your-key-here
-```
-
-Do not commit real API keys. If no generator is configured, FlyGPT stays in
-router/fallback mode instead of failing.
-
-Generator status is available at:
-
-```text
-GET /api/generator/status
-```
-
-The browser header shows `ROUTER ONLY` when no answer model is connected and
-the configured model name when generation is ready.
 
 ## CLI
 
@@ -131,59 +53,83 @@ Dataset statistics:
 python cli.py stats
 ```
 
-Strongest input/output partners for a neuron:
+Strongest partners for a MaleCNS body:
 
 ```bash
-python cli.py neuron 720575940000000000 --limit 10
+python cli.py neuron 12781 --limit 10
 ```
 
-Only outputs in one neuropil:
+Inspect one directed pair:
 
 ```bash
-python cli.py neuron 720575940000000000 \
-  --direction outputs \
-  --neuropil AL_L \
-  --min-synapses 5
+python cli.py pair 12781 85165
 ```
 
-Inspect one directed neuron pair:
+Show strongest total directed edges:
 
 ```bash
-python cli.py pair 720575940000000000 720575940000000001
+python cli.py top --limit 10
 ```
 
-Generate compact text suitable for passing to an LLM:
+## Router scaffold
+
+The task router can now build its compact graph scaffold from real MaleCNS
+connections via neuPrint:
 
 ```bash
-python cli.py neuron 720575940000000000 --context --limit 10
+python training/build_scaffold.py \
+  --out training/malecns_scaffold.json \
+  --nodes 256 \
+  --edges 4096 \
+  --candidate-edges 32768
 ```
+
+The resulting checkpoint records `male-cns:v1.0` in its scaffold metadata.
+Existing FlyWire-trained checkpoints remain readable, but they must be retrained
+with `training/malecns_scaffold.json` before the router itself is genuinely
+MaleCNS-backed.
+
+## Local accounts and login
+
+FlyGPT includes a self-hosted email/password login flow. Accounts are stored in
+`data/flygpt_auth.sqlite3`. Password plaintext is never stored. Browser
+sessions use HttpOnly, SameSite=Lax cookies.
+
+Optional settings:
+
+```bash
+export FLYGPT_AUTH_PATH=data/flygpt_auth.sqlite3
+export FLYGPT_COOKIE_SECURE=0
+```
+
+Behind HTTPS, use `FLYGPT_COOKIE_SECURE=1`.
+
+Chat memory is scoped by authenticated user plus conversation session.
+
+## Answer generation
+
+FlyGPT can forward generative routes to an OpenAI-compatible
+`/v1/chat/completions` endpoint.
+
+```bash
+export FLYGPT_GENERATOR_URL=http://127.0.0.1:11434/v1/chat/completions
+export FLYGPT_GENERATOR_MODEL=llama3.2:3b
+export FLYGPT_GENERATOR_PROVIDER=ollama
+```
+
+Hosted providers can additionally use `FLYGPT_GENERATOR_API_KEY`. Keep real
+API keys out of Git.
 
 ## Python API
 
 ```python
-from connectome import FlyWireConnectome
+from connectome import MaleCNSConnectome
 
-with FlyWireConnectome("data/flywire_parts") as fw:
-    print(fw.stats())
-
-    partners = fw.neuron(
-        720575940000000000,
-        direction="both",
-        min_synapses=5,
-        limit=20,
-    )
-    print(partners)
-
-    context = fw.context_for_neuron(720575940000000000)
-    print(context)
+with MaleCNSConnectome() as cns:
+    print(cns.stats())
+    print(cns.neuron(12781, direction="both", limit=10))
+    print(cns.context_for_neuron(12781))
 ```
-
-## Why DuckDB?
-
-The v783 proofread connectivity table is large enough that eagerly converting
-the whole dataset into a pandas DataFrame is wasteful for interactive queries.
-DuckDB can query all Parquet parts as one logical table while keeping the
-working set much smaller.
 
 ## Tests
 
