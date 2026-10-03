@@ -2,9 +2,6 @@ __pycache__/
 *.py[cod]
 .venv/
 .env
-data/flywire_parts/*.parquet
-*.feather
-proofread_connections_783.parquet
 data/flygpt_memory.sqlite3
 data/flygpt_memory.sqlite3-shm
 data/flygpt_memory.sqlite3-wal
