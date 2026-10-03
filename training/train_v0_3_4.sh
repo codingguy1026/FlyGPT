@@ -32,11 +32,10 @@ if [[ ! -f "$SCAFFOLD" ]]; then
   echo
   echo "No scaffold found; building one from Janelia MaleCNS v1.0 via neuPrint..."
   python training/build_scaffold.py \
-    --data-dir data/flywire_parts \
     --out "$SCAFFOLD" \
     --nodes 256 \
     --edges 4096 \
-    --sample-rows 200000
+    --candidate-edges 32768
 fi
 
 if [[ -f "$OLD" ]]; then
