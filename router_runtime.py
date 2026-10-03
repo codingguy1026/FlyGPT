@@ -72,7 +72,7 @@ class FlyRouterRuntime:
         nodes = [
             {
                 "index": index,
-                # FlyWire root IDs exceed JavaScript's safe integer range.
+                # Keep connectome body IDs serialized as strings for browser safety and stable UI handling.
                 "root_id": str(root_ids[index]) if index < len(root_ids) else None,
             }
             for index in range(self.n_nodes)
