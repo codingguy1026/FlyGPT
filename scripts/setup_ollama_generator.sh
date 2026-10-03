@@ -2,6 +2,7 @@
 set -euo pipefail
 
 MODEL="${FLYGPT_LOCAL_MODEL:-qwen2.5:0.5b-instruct}"
+export OLLAMA_KEEP_ALIVE="${OLLAMA_KEEP_ALIVE:-30m}"
 
 if ! command -v ollama >/dev/null 2>&1; then
   echo "==> Installing Ollama from the official installer..."
@@ -9,7 +10,7 @@ if ! command -v ollama >/dev/null 2>&1; then
 fi
 
 if ! curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
-  echo "==> Starting Ollama..."
+  echo "==> Starting Ollama... (keep-alive: $OLLAMA_KEEP_ALIVE)"
   nohup ollama serve >/tmp/flygpt-ollama.log 2>&1 &
 
   for _ in $(seq 1 30); do
@@ -27,6 +28,12 @@ fi
 
 echo "==> Pulling local generator model: $MODEL"
 ollama pull "$MODEL"
+
+echo "==> Preloading $MODEL..."
+curl -fsS http://127.0.0.1:11434/api/generate \
+  -H "Content-Type: application/json" \
+  -d "{\"model\":\"${MODEL}\",\"prompt\":\"\",\"keep_alive\":\"${OLLAMA_KEEP_ALIVE}\"}" \
+  >/dev/null || echo "Warning: model preload failed; the first response may be slow." >&2
 
 echo
 echo "✅ Local generator is ready"
