@@ -597,9 +597,16 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 session_id=session_id,
             )
 
+        if Path(MODEL_PATH).is_file() and _router_error:
+            heading = "⚠️ FlyGPT 라우터 모델을 불러오지 못했습니다."
+            detail = f"Router error: {_router_error}"
+        else:
+            heading = "❓ FlyGPT 라우터 모델을 찾지 못했습니다."
+            detail = f"Expected model: {MODEL_PATH}"
+
         answer = (
-            "❓ FlyGPT 라우터 모델을 찾지 못했습니다.\n\n"
-            f"Expected model: {MODEL_PATH}\n\n"
+            f"{heading}\n\n"
+            f"{detail}\n\n"
             "커넥톰 질의는 계속 사용할 수 있습니다:\n"
             "데이터 통계 보여줘\n"
             "가장 강한 연결 10개 보여줘\n"
