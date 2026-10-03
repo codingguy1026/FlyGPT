@@ -53,7 +53,7 @@ export type ChatData = {
 export type ChatResponse = {
   answer: string;
   type: string;
-  data?: ChatData | unknown | null;
+  data?: ChatData | null;
   timings?: ChatTimings | null;
   router?: RouterResult;
 };
