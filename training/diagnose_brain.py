@@ -21,7 +21,7 @@ def fail(message: str) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Verify that a FlyGPT checkpoint is using the FlyWire scaffold normally")
+    parser = argparse.ArgumentParser(description="Verify that a FlyGPT checkpoint is using the MaleCNS scaffold normally")
     parser.add_argument("--model", type=Path, required=True)
     parser.add_argument("--scaffold", type=Path, required=True)
     args = parser.parse_args()
@@ -36,11 +36,15 @@ def main() -> None:
     scaffold = json.loads(args.scaffold.read_text(encoding="utf-8"))
 
     source = str(scaffold.get("source", ""))
-    if "FlyWire" not in source or "v783" not in source:
-        fail(f"unexpected scaffold source: {source!r}")
+    dataset = str(scaffold.get("dataset", ""))
+    if "MaleCNS" not in source or dataset != "male-cns:v1.0":
+        fail(f"unexpected scaffold source/dataset: source={source!r} dataset={dataset!r}")
 
-    if runtime.scaffold_meta.get("kind") != "flywire":
-        fail(f"checkpoint scaffold kind is {runtime.scaffold_meta.get('kind')!r}, expected 'flywire'")
+    if runtime.scaffold_meta.get("kind") != "male-cns:v1.0":
+        fail(
+            f"checkpoint scaffold kind is {runtime.scaffold_meta.get('kind')!r}, "
+            "expected 'male-cns:v1.0'"
+        )
 
     n_nodes = int(scaffold.get("n_nodes", 0))
     edges = scaffold.get("edges") or []
