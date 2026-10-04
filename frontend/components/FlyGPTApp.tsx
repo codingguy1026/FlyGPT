@@ -724,11 +724,38 @@ export default function FlyGPTApp({
                     <FlyOrb small />
                   </div>
                   <div className="messagePayload">
-                    <div className="messageBubble loadingPayload">
-                      <span />
-                      <span />
-                      <span />
-                      <b>route tracing</b>
+                    <div
+                      className="messageBubble loadingPayload"
+                      aria-label="FlyGPT가 연결망을 활성화하는 중"
+                    >
+                      <div className="connectomeLoader" aria-hidden="true">
+                        <svg className="connectomeTrace" viewBox="0 0 104 58">
+                          <path className="traceEdge edgeA" d="M12 29 L31 14 L52 29" />
+                          <path className="traceEdge edgeB" d="M12 29 L31 44 L52 29" />
+                          <path className="traceEdge edgeC" d="M31 14 L52 29 L73 13" />
+                          <path className="traceEdge edgeD" d="M31 44 L52 29 L73 45" />
+                          <path className="traceEdge edgeE" d="M52 29 L73 13 L92 29" />
+                          <path className="traceEdge edgeF" d="M52 29 L73 45 L92 29" />
+
+                          <circle className="traceNode nodeA" cx="12" cy="29" r="4" />
+                          <circle className="traceNode nodeB" cx="31" cy="14" r="3.5" />
+                          <circle className="traceNode nodeC" cx="31" cy="44" r="3.5" />
+                          <circle className="traceNode nodeD" cx="52" cy="29" r="4.5" />
+                          <circle className="traceNode nodeE" cx="73" cy="13" r="3.5" />
+                          <circle className="traceNode nodeF" cx="73" cy="45" r="3.5" />
+                          <circle className="traceNode nodeG" cx="92" cy="29" r="4" />
+                        </svg>
+                      </div>
+
+                      <div className="loadingCopy">
+                        <span>CONNECTOME ACTIVE</span>
+                        <div className="loadingPhases" aria-hidden="true">
+                          <b>Routing through scaffold...</b>
+                          <b>Recalling relevant memory...</b>
+                          <b>Generating response...</b>
+                        </div>
+                        <small>FlyWire neural route is live</small>
+                      </div>
                     </div>
                   </div>
                 </article>
