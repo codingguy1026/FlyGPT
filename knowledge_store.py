@@ -131,12 +131,17 @@ def _is_personal_or_project(statement: str) -> bool:
 def _eligible_for_auto_learning(message: str) -> bool:
     clean = _normalize_text(message)
     lower = clean.lower()
-    return (
-        any(clean.startswith(prefix) for prefix in _USER_FACT_PREFIXES)
-        or lower.startswith(("프로젝트 ", "flygpt ", "fly gpt ", "파피티 "))
-        or any(marker.lower() in lower for marker in _EXPLICIT_REMEMBER)
-        or any(marker in clean for marker in _CORRECTION_HINTS)
-    )
+    _, _, _, slot_key = _derive_slot(_strip_remember_prefix(clean))
+
+    if any(marker.lower() in lower for marker in _EXPLICIT_REMEMBER):
+        return True
+    if any(clean.startswith(prefix) for prefix in _USER_FACT_PREFIXES):
+        return True
+    if lower.startswith(("프로젝트 ", "flygpt ", "fly gpt ", "파피티 ")):
+        return slot_key is not None
+    if any(marker in clean for marker in _CORRECTION_HINTS):
+        return slot_key is not None
+    return False
 
 
 class KnowledgeStore:
@@ -360,8 +365,9 @@ class KnowledgeStore:
                         )
                     else:
                         conflicts_with_id = int(existing["id"])
-                        if status == "claim":
-                            status = "disputed"
+                        # A lower-trust contradictory value must never enter
+                        # trusted answer context alongside the stronger fact.
+                        status = "disputed"
 
             cursor = conn.execute(
                 """
@@ -448,6 +454,25 @@ class KnowledgeStore:
             if row is None:
                 return None
 
+            slot_key = str(row["slot_key"] or "")
+            if slot_key:
+                existing = self._active_slot_row(conn, user_id, slot_key)
+                if existing is not None and int(existing["id"]) != int(item_id):
+                    existing_trust = SOURCE_TRUST.get(str(existing["source_type"]), 0.0)
+                    if trust >= existing_trust:
+                        conn.execute(
+                            """
+                            UPDATE knowledge_items
+                            SET status = 'superseded', updated_at = ?
+                            WHERE id = ?
+                            """,
+                            (now, int(existing["id"])),
+                        )
+                    else:
+                        raise ValueError(
+                            "verification source is weaker than the active conflicting source"
+                        )
+
             conn.execute(
                 """
                 UPDATE knowledge_items
@@ -457,7 +482,8 @@ class KnowledgeStore:
                     confidence = ?,
                     verified_at = ?,
                     updated_at = ?,
-                    expires_at = ?
+                    expires_at = ?,
+                    conflicts_with_id = NULL
                 WHERE id = ?
                 """,
                 (
