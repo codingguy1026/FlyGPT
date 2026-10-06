@@ -450,17 +450,29 @@ def validated_fact_candidates(
         if len(statement) < 8 or len(statement) > 700:
             continue
 
-        supplied_urls = raw.get("support_urls") or []
-        if not isinstance(supplied_urls, list):
+        evidence = raw.get("evidence") or []
+        if not isinstance(evidence, list):
             continue
 
         matched: list[WebSource] = []
         seen_urls: set[str] = set()
-        for supplied in supplied_urls:
-            normalized = _normalize_url(str(supplied))
+        for evidence_item in evidence:
+            if not isinstance(evidence_item, dict):
+                continue
+
+            normalized = _normalize_url(str(evidence_item.get("url") or ""))
+            quote = " ".join(str(evidence_item.get("quote") or "").split())
             source = source_by_url.get(normalized)
             if source is None or normalized in seen_urls:
                 continue
+            if len(quote) < 12 or len(quote) > 320:
+                continue
+
+            normalized_quote = quote.casefold()
+            snippet_text = " ".join(source.snippets).casefold()
+            if normalized_quote not in snippet_text:
+                continue
+
             seen_urls.add(normalized)
             matched.append(source)
 
