@@ -1,4 +1,4 @@
-.PHONY: run reclaim disk train-setup train-v0.4 help stop
+.PHONY: run reclaim disk train-setup train-v0.4 train-v0.5 help stop
 
 run:
 	@bash scripts/run_all.sh
@@ -8,6 +8,9 @@ train-setup:
 
 train-v0.4:
 	@bash training/train_malecns_v0_4.sh
+
+train-v0.5:
+	@bash training/train_malecns_v0_5.sh
 
 reclaim:
 	@echo "🧹 Reclaiming safe FlyGPT development space..."
@@ -30,6 +33,7 @@ help:
 	@echo "  make run         Start Ollama, backend, and frontend"
 	@echo "  make train-setup Create isolated CPU PyTorch training environment"
 	@echo "  make train-v0.4  Build MaleCNS scaffold and train/evaluate router v0.4"
+	@echo "  make train-v0.5  Train calibrated v0.5 router on the frozen MaleCNS scaffold"
 	@echo "  make reclaim     Clear safe rebuildable caches and obsolete FlyWire data"
 	@echo "  make disk        Show disk usage for common large FlyGPT paths"
 	@echo "  Ctrl+C           Stop the running stack"
