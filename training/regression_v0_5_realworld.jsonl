@@ -1,0 +1,60 @@
+{"input":"공식이라는 표현이 정확히 무슨 뜻이야","route":"general"}
+{"input":"검색 엔진이 뭔지 개념만 설명해줘","route":"general"}
+{"input":"기억과 학습은 어떻게 달라?","route":"general"}
+{"input":"최신이라는 단어는 어떤 상황에서 써?","route":"general"}
+{"input":"API를 중학생도 알게 설명해줘","route":"general"}
+{"input":"ㅋㅋ 뭐하고있냐","route":"general"}
+{"input":"MaleCNS 설명 좀","route":"general"}
+{"input":"코드와 암호는 같은 말이야?","route":"general"}
+{"input":"요약이라는 게 정확히 뭐야","route":"general"}
+{"input":"왜 초파리로 뇌 연구를 해?","route":"general"}
+{"input":"원의 넓이는 어떻게 구함","route":"math"}
+{"input":"분산과 표준편차 차이를 수학적으로 설명","route":"math"}
+{"input":"5/8을 소수로 바꿔줘","route":"math"}
+{"input":"y=3x+1에서 기울기 뭐야","route":"math"}
+{"input":"피타고라스 정리 공식 알려줘","route":"math"}
+{"input":"루트 72를 간단히 하면","route":"math"}
+{"input":"20의 15퍼센트 계산해줘","route":"math"}
+{"input":"행렬 덧셈은 어떻게 해","route":"math"}
+{"input":"미분계수 뜻 알려줘","route":"math"}
+{"input":"log2 8 값은?","route":"math"}
+{"input":"파이썬 dict 정렬 코드 보여줘","route":"code"}
+{"input":"git merge conflict 해결 좀","route":"code"}
+{"input":"React에서 fetch 호출 예제","route":"code"}
+{"input":"검색 결과 저장하는 함수 만들어줘","route":"code"}
+{"input":"이 SyntaxError 어디가 문제인지 봐줘","route":"code"}
+{"input":"FastAPI에서 JSON 응답하는 코드","route":"code"}
+{"input":"SQL group by 예시 줘","route":"code"}
+{"input":"CSS에서 두 요소 양끝 정렬 어떻게 함","route":"code"}
+{"input":"이 코드 더 읽기 좋게 바꿔줘","route":"code"}
+{"input":"npm 패키지 버전 확인 명령어 뭐야","route":"code"}
+{"input":"조금 전에 내가 선택한 거 뭐였지","route":"memory"}
+{"input":"아까 보낸 에러 다시 말해봐","route":"memory"}
+{"input":"저번 대화에서 프로젝트 이름 뭐였어","route":"memory"}
+{"input":"방금 네가 말한 첫 번째 방법 기억나?","route":"memory"}
+{"input":"전에 정한 색상 다시 알려줘","route":"memory"}
+{"input":"아까 입력한 숫자 뭐였더라","route":"memory"}
+{"input":"이전 작업에서 마지막으로 한 게 뭐야","route":"memory"}
+{"input":"방금 전 질문 다시 찾아줘","route":"memory"}
+{"input":"우리가 예전에 정한 설정 뭐였지","route":"memory"}
+{"input":"아까 그 링크 다시","route":"memory"}
+{"input":"이거 두 문장으로만 정리해줘","route":"summarize"}
+{"input":"핵심 포인트 네 개만","route":"summarize"}
+{"input":"설명 길다 한줄요약","route":"summarize"}
+{"input":"위 로그에서 중요한 것만 뽑아줘","route":"summarize"}
+{"input":"이 코드가 하는 일만 짧게 요약","route":"summarize"}
+{"input":"방금 답변 더 짧게","route":"summarize"}
+{"input":"회의록 결론하고 할 일만 정리","route":"summarize"}
+{"input":"이 글 TLDR 줘","route":"summarize"}
+{"input":"아까 설명한 내용 세 문장으로 줄여줘","route":"summarize"}
+{"input":"장황하니까 요점만","route":"summarize"}
+{"input":"지금 최신 Node.js LTS 버전 찾아줘","route":"research"}
+{"input":"오늘 서울 날씨 확인해줘","route":"research"}
+{"input":"공식 문서에서 현재 지원 버전 찾아줘","route":"research"}
+{"input":"최근 AI 뉴스 검색해줘","route":"research"}
+{"input":"이 제품 현재 가격 웹에서 찾아줘","route":"research"}
+{"input":"GitHub에서 가장 최근 릴리스 확인해줘","route":"research"}
+{"input":"오늘 경기 스코어 찾아봐","route":"research"}
+{"input":"지금 장애 공지 떴는지 확인","route":"research"}
+{"input":"최근 발표된 관련 논문 출처까지 찾아줘","route":"research"}
+{"input":"현재 적용되는 규정인지 검색해서 확인해줘","route":"research"}
