@@ -25,6 +25,9 @@ class HealthEndpointTests(unittest.TestCase):
         self.assertTrue(payload["connectome"]["configured"])
         self.assertNotIn("data_dir", payload)
         self.assertNotIn("data_available", payload)
+        self.assertTrue(payload["knowledge"]["enabled"])
+        self.assertTrue(payload["knowledge"]["account_scoped"])
+        self.assertTrue(payload["knowledge"]["provenance_aware"])
 
 
 if __name__ == "__main__":

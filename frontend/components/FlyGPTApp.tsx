@@ -11,13 +11,16 @@ import {
 import BrainPanel from "./BrainPanel";
 import type { AuthUser } from "@/lib/auth";
 import {
+  clearKnowledge,
   clearMemory,
   clearRouteLearning,
   confirmRouteLearning,
   getHealth,
+  getKnowledgeStatus,
   getRouteLearningStatus,
   sendChat,
   type HealthResponse,
+  type KnowledgeStatus,
   type RouteLearningStatus,
   type RouterResult,
 } from "@/lib/api";
@@ -235,6 +238,7 @@ export default function FlyGPTApp({
   const [router, setRouter] = useState<RouterResult | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [learningStatus, setLearningStatus] = useState<RouteLearningStatus | null>(null);
+  const [knowledgeStatus, setKnowledgeStatus] = useState<KnowledgeStatus | null>(null);
   const [healthError, setHealthError] = useState(false);
   const [sessionId, setSessionId] = useState("");
   const [conversationTitle, setConversationTitle] = useState("Untitled flight");
@@ -287,6 +291,10 @@ export default function FlyGPTApp({
     getRouteLearningStatus()
       .then(setLearningStatus)
       .catch(() => setLearningStatus(null));
+
+    getKnowledgeStatus()
+      .then(setKnowledgeStatus)
+      .catch(() => setKnowledgeStatus(null));
   }, [user.id]);
 
   useEffect(() => {
@@ -451,6 +459,10 @@ export default function FlyGPTApp({
         });
       }
 
+      if ((response.data?.knowledge_learned?.length ?? 0) > 0) {
+        meta.push({ text: "KNOWLEDGE +1", tone: "info" });
+      }
+
       setMessages((current) => [
         ...current,
         {
@@ -469,6 +481,9 @@ export default function FlyGPTApp({
 
       if (response.router?.learning_observed) {
         getRouteLearningStatus().then(setLearningStatus).catch(() => undefined);
+      }
+      if ((response.data?.knowledge_learned?.length ?? 0) > 0) {
+        getKnowledgeStatus().then(setKnowledgeStatus).catch(() => undefined);
       }
     } catch (reason: unknown) {
       const detail = reason instanceof Error ? reason.message : String(reason);
@@ -517,6 +532,20 @@ export default function FlyGPTApp({
       const result = await clearRouteLearning();
       setLearningStatus(result.status);
       setRouter(null);
+    } catch {
+      // Keep settings usable even if the backend is unavailable.
+    }
+  }
+
+  async function resetKnowledge() {
+    const confirmed = window.confirm(
+      "이 계정의 장기 지식(검증 상태와 정정 이력 포함)을 모두 지울까요?",
+    );
+    if (!confirmed) return;
+
+    try {
+      const result = await clearKnowledge();
+      setKnowledgeStatus(result.status);
     } catch {
       // Keep settings usable even if the backend is unavailable.
     }
@@ -1001,10 +1030,26 @@ export default function FlyGPTApp({
                       : "pending"}
                 </strong>
               </div>
+              <div>
+                <span>Long-term knowledge</span>
+                <strong>
+                  {knowledgeStatus
+                    ? knowledgeStatus.items +
+                      " items · " +
+                      knowledgeStatus.verified +
+                      " verified"
+                    : health?.knowledge?.enabled
+                      ? "ready"
+                      : "pending"}
+                </strong>
+              </div>
             </div>
             <button className="settingsDanger" type="button" onClick={resetMemory}>Clear current memory</button>
             <button className="settingsDanger" type="button" onClick={() => void resetRouteLearning()}>
               Clear learned routing
+            </button>
+            <button className="settingsDanger" type="button" onClick={() => void resetKnowledge()}>
+              Clear long-term knowledge
             </button>
           </section>
         </div>

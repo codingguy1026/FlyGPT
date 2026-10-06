@@ -18,10 +18,11 @@ from dispatcher import dispatch, dispatch_math_fast_path, is_math_fast_path
 from generator_runtime import GENERATIVE_ROUTES, GeneratorRuntime
 from memory_store import MemoryStore, format_recall
 from route_learning import RouteLearningStore
+from knowledge_store import KnowledgeStore
 from auth_store import AuthStore, SESSION_TTL_SECONDS
 
 
-APP_VERSION = "0.9.0"
+APP_VERSION = "0.10.0"
 
 _model_override = os.environ.get("FLYGPT_MODEL_PATH")
 if _model_override:
@@ -69,6 +70,9 @@ _memory = MemoryStore(os.environ.get("FLYGPT_MEMORY_PATH", "data/flygpt_memory.s
 _route_learning = RouteLearningStore(
     os.environ.get("FLYGPT_ROUTE_LEARNING_PATH", "data/flygpt_route_learning.sqlite3")
 )
+_knowledge = KnowledgeStore(
+    os.environ.get("FLYGPT_KNOWLEDGE_PATH", "data/flygpt_knowledge.sqlite3")
+)
 _auth = AuthStore(os.environ.get("FLYGPT_AUTH_PATH", "data/flygpt_auth.sqlite3"))
 
 AUTH_COOKIE_NAME = "flygpt_session"
@@ -92,6 +96,14 @@ class MemoryRequest(BaseModel):
 class RouterFeedbackRequest(BaseModel):
     message: str
     route: str
+
+
+class KnowledgeRememberRequest(BaseModel):
+    statement: str
+
+
+class KnowledgeRejectRequest(BaseModel):
+    item_id: int
 
 
 class AuthCredentials(BaseModel):
@@ -410,6 +422,12 @@ def health():
             "stores_raw_prompts": False,
             "path": str(_route_learning.path),
         },
+        "knowledge": {
+            "enabled": True,
+            "account_scoped": True,
+            "provenance_aware": True,
+            "path": str(_knowledge.path),
+        },
         "auth": {
             "enabled": True,
             "cookie_secure": AUTH_COOKIE_SECURE,
@@ -457,6 +475,53 @@ def router_learning_feedback(req: RouterFeedbackRequest, request: Request):
     }
 
 
+@app.get("/api/knowledge/status")
+def knowledge_status(request: Request):
+    user = _require_user(request)
+    return _knowledge.stats(user["id"])
+
+
+@app.get("/api/knowledge/items")
+def knowledge_items(request: Request, limit: int = 50):
+    user = _require_user(request)
+    return {
+        "items": _knowledge.list_items(user["id"], limit=limit),
+        "status": _knowledge.stats(user["id"]),
+    }
+
+
+@app.post("/api/knowledge/remember")
+def knowledge_remember(req: KnowledgeRememberRequest, request: Request):
+    user = _require_user(request)
+    items = _knowledge.learn_from_user_text(
+        user["id"],
+        "기억해 " + req.statement.strip(),
+    )
+    return {
+        "learned": bool(items),
+        "items": items,
+        "status": _knowledge.stats(user["id"]),
+    }
+
+
+@app.post("/api/knowledge/reject")
+def knowledge_reject(req: KnowledgeRejectRequest, request: Request):
+    user = _require_user(request)
+    return {
+        "rejected": _knowledge.reject(user["id"], req.item_id),
+        "status": _knowledge.stats(user["id"]),
+    }
+
+
+@app.post("/api/knowledge/clear")
+def knowledge_clear(request: Request):
+    user = _require_user(request)
+    return {
+        "cleared": _knowledge.clear(user["id"]),
+        "status": _knowledge.stats(user["id"]),
+    }
+
+
 @app.get("/api/generator/status")
 def generator_status():
     return _generator.status()
@@ -490,6 +555,21 @@ def chat_endpoint(req: ChatRequest, request: Request):
 
     session_id = _scoped_session_id(user["id"], req.session_id)
     memory_context = _memory.recent(session_id, limit=12) if session_id else []
+
+    try:
+        knowledge_context, knowledge_hits = _knowledge.context_for_query(
+            user["id"],
+            msg,
+            limit=6,
+        )
+    except Exception:
+        knowledge_context, knowledge_hits = None, []
+
+    try:
+        knowledge_learned = _knowledge.learn_from_user_text(user["id"], msg)
+    except Exception:
+        knowledge_learned = []
+
     if session_id:
         _memory.add(session_id, "user", msg)
 
@@ -696,6 +776,8 @@ def chat_endpoint(req: ChatRequest, request: Request):
                         "dispatch": result.to_dict(),
                         "generation": None,
                         "memory_hits": None,
+                        "knowledge_hits": knowledge_hits,
+                        "knowledge_learned": knowledge_learned,
                         "ui_meta": {
                             "mode": result.handler,
                             "router_model": model_label,
@@ -760,6 +842,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 result.route,
                 memory_context=memory_context,
                 tool_context=tool_context,
+                knowledge_context=knowledge_context,
             )
 
             if generation.used and generation.answer:
@@ -789,6 +872,8 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 "dispatch": result.to_dict(),
                 "generation": generation.to_dict(),
                 "memory_hits": memory_hits,
+                "knowledge_hits": knowledge_hits,
+                "knowledge_learned": knowledge_learned,
                 "timings": {
                     "router_ms": router_ms,
                     "dispatch_ms": dispatch_ms,
