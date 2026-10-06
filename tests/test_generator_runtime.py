@@ -82,6 +82,31 @@ class GeneratorRuntimeTests(unittest.TestCase):
         self.assertEqual(runtime.temperature, 2.0)
         self.assertEqual(runtime.max_tokens, 32)
 
+    def test_reasoning_effort_is_validated_and_reported(self):
+        with patch.dict(
+            os.environ,
+            {
+                "FLYGPT_GENERATOR_URL": "https://example.invalid/v1/chat/completions",
+                "FLYGPT_GENERATOR_MODEL": "gemini-3.8-flash",
+                "FLYGPT_GENERATOR_REASONING_EFFORT": "low",
+            },
+            clear=True,
+        ):
+            runtime = GeneratorRuntime()
+            status = runtime.status()
+
+        self.assertEqual(runtime.reasoning_effort, "low")
+        self.assertEqual(status["reasoning_effort"], "low")
+
+        with patch.dict(
+            os.environ,
+            {"FLYGPT_GENERATOR_REASONING_EFFORT": "turbo"},
+            clear=True,
+        ):
+            invalid = GeneratorRuntime()
+
+        self.assertIsNone(invalid.reasoning_effort)
+
     def test_memory_context_is_built_without_exposing_extra_messages(self):
         with patch.dict(os.environ, {}, clear=True):
             runtime = GeneratorRuntime()
