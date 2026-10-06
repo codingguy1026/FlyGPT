@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import Any
 
@@ -27,8 +28,22 @@ class FlyRouterRuntime:
         self.n_nodes = int(checkpoint["n_nodes"])
         self.steps = int(checkpoint["steps"])
         self.best_val_accuracy = float(checkpoint.get("best_val_accuracy", 0.0))
+        self.best_val_balanced_accuracy = float(
+            checkpoint.get("best_val_balanced_accuracy", self.best_val_accuracy)
+        )
         self.vectorizer_version = str(checkpoint.get("vectorizer_version", "v1"))
         self.scaffold_meta = dict(checkpoint.get("scaffold_meta", {}))
+        self.temperature = max(0.05, min(float(checkpoint.get("temperature", 1.0)), 10.0))
+        self.calibration = dict(checkpoint.get("calibration", {}))
+
+        self.min_confidence = max(
+            0.0,
+            min(float(self.calibration.get("min_confidence", 0.55)), 1.0),
+        )
+        self.min_margin = max(
+            0.0,
+            min(float(self.calibration.get("min_margin", 0.10)), 1.0),
+        )
 
         self.src = checkpoint["src"].to(dtype=torch.long, device="cpu")
         self.dst = checkpoint["dst"].to(dtype=torch.long, device="cpu")
@@ -98,11 +113,15 @@ class FlyRouterRuntime:
             "steps": self.steps,
             "nodes": nodes,
             "edges": edges,
+            "temperature": self.temperature,
+            "min_confidence": self.min_confidence,
+            "min_margin": self.min_margin,
         }
 
     def predict(self, text: str, *, top_k: int = 3) -> dict[str, Any]:
         torch = self._torch
         x = self._vectorize(text, self.vocab_size, self.vectorizer_version).unsqueeze(0)
+        feature_signal = float(torch.linalg.vector_norm(x).item())
 
         with torch.no_grad():
             h = torch.tanh(self.model.encoder(x))
@@ -123,7 +142,14 @@ class FlyRouterRuntime:
                 trace.append(self._activation_frame(h, f"step_{step}"))
 
             logits = self.model.output(h)
-            probabilities = torch.softmax(logits, dim=1)[0]
+            if feature_signal <= 1e-8:
+                probabilities = torch.full(
+                    (len(self.routes),),
+                    1.0 / max(1, len(self.routes)),
+                    dtype=torch.float32,
+                )
+            else:
+                probabilities = torch.softmax(logits / self.temperature, dim=1)[0]
 
         k = max(1, min(int(top_k), len(self.routes)))
         values, indices = torch.topk(probabilities, k=k)
@@ -136,15 +162,39 @@ class FlyRouterRuntime:
             for value, index in zip(values.tolist(), indices.tolist())
         ]
 
+        confidence = ranked[0]["confidence"]
+        second = ranked[1]["confidence"] if len(ranked) > 1 else 0.0
+        margin = max(0.0, confidence - second)
+
+        entropy = 0.0
+        if len(self.routes) > 1:
+            safe = probabilities.clamp_min(1e-12)
+            entropy = float((-(safe * safe.log()).sum() / math.log(len(self.routes))).item())
+
+        accepted = (
+            feature_signal > 1e-8
+            and confidence >= self.min_confidence
+            and margin >= self.min_margin
+        )
+
         return {
             "model": self.model_path.name,
             "route": ranked[0]["route"],
-            "confidence": ranked[0]["confidence"],
+            "confidence": confidence,
+            "margin": margin,
+            "entropy": entropy,
+            "accepted": accepted,
+            "min_confidence": self.min_confidence,
+            "min_margin": self.min_margin,
+            "temperature": self.temperature,
+            "calibrated": not math.isclose(self.temperature, 1.0, abs_tol=1e-6),
             "top_routes": ranked,
             "n_nodes": self.n_nodes,
             "steps": self.steps,
             "best_val_accuracy": self.best_val_accuracy,
+            "best_val_balanced_accuracy": self.best_val_balanced_accuracy,
             "scaffold_kind": self.scaffold_meta.get("kind", "unknown"),
             "vectorizer_version": self.vectorizer_version,
+            "feature_signal": feature_signal,
             "trace": trace,
         }
