@@ -35,6 +35,8 @@ _PRIMARY_SUFFIXES = (
     ".gov.ca",
     ".gov.kr",
     ".go.kr",
+)
+_HIGH_QUALITY_SUFFIXES = (
     ".edu",
     ".edu.au",
     ".ac.kr",
@@ -107,6 +109,8 @@ def _authority_score(hostname: str) -> float:
         return 1.0
     if any(host.endswith(suffix) for suffix in _PRIMARY_SUFFIXES):
         return 0.99
+    if any(host.endswith(suffix) for suffix in _HIGH_QUALITY_SUFFIXES):
+        return 0.96
 
     # These are documentation/research hosts with strong editorial provenance,
     # but a single one is still not enough for automatic verification.
