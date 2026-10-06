@@ -1,8 +1,35 @@
+import io
+import json
 import os
 import unittest
+import urllib.error
 from unittest.mock import patch
 
 from generator_runtime import GeneratorRuntime, _clean_assistant_memory, _memory_messages
+
+
+class FakeHTTPResponse:
+    def __init__(self, payload: dict):
+        self._body = json.dumps(payload).encode("utf-8")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def read(self):
+        return self._body
+
+
+def unavailable_error() -> urllib.error.HTTPError:
+    return urllib.error.HTTPError(
+        url="https://example.invalid/v1/chat/completions",
+        code=503,
+        msg="Service Unavailable",
+        hdrs=None,
+        fp=io.BytesIO(b'{"error":{"message":"temporarily unavailable"}}'),
+    )
 
 
 class GeneratorRuntimeTests(unittest.TestCase):
@@ -106,6 +133,112 @@ class GeneratorRuntimeTests(unittest.TestCase):
             invalid = GeneratorRuntime()
 
         self.assertIsNone(invalid.reasoning_effort)
+
+    def test_transient_503_retries_primary_once(self):
+        calls: list[str] = []
+
+        def fake_urlopen(request, timeout):
+            payload = json.loads(request.data.decode("utf-8"))
+            calls.append(payload["model"])
+            if len(calls) == 1:
+                raise unavailable_error()
+            return FakeHTTPResponse(
+                {
+                    "choices": [
+                        {
+                            "message": {"content": "안녕!"},
+                            "finish_reason": "stop",
+                        }
+                    ]
+                }
+            )
+
+        with patch.dict(
+            os.environ,
+            {
+                "FLYGPT_GENERATOR_URL": "https://example.invalid/v1/chat/completions",
+                "FLYGPT_GENERATOR_MODEL": "gemini-3.8-flash",
+                "FLYGPT_GENERATOR_RETRY_DELAY": "0",
+            },
+            clear=True,
+        ), patch("generator_runtime.urllib.request.urlopen", side_effect=fake_urlopen):
+            runtime = GeneratorRuntime()
+            result = runtime.generate("안녕", "general")
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.model, "gemini-3.8-flash")
+        self.assertEqual(calls, ["gemini-3.8-flash", "gemini-3.8-flash"])
+
+    def test_repeated_503_uses_configured_fallback_model(self):
+        calls: list[str] = []
+
+        def fake_urlopen(request, timeout):
+            payload = json.loads(request.data.decode("utf-8"))
+            model = payload["model"]
+            calls.append(model)
+            if model == "gemini-3.8-flash":
+                raise unavailable_error()
+            return FakeHTTPResponse(
+                {
+                    "choices": [
+                        {
+                            "message": {"content": "fallback ok"},
+                            "finish_reason": "stop",
+                        }
+                    ]
+                }
+            )
+
+        with patch.dict(
+            os.environ,
+            {
+                "FLYGPT_GENERATOR_URL": "https://example.invalid/v1/chat/completions",
+                "FLYGPT_GENERATOR_MODEL": "gemini-3.8-flash",
+                "FLYGPT_GENERATOR_FALLBACK_MODEL": "gemini-3.7-flash",
+                "FLYGPT_GENERATOR_RETRY_DELAY": "0",
+            },
+            clear=True,
+        ), patch("generator_runtime.urllib.request.urlopen", side_effect=fake_urlopen):
+            runtime = GeneratorRuntime()
+            result = runtime.generate("안녕", "general")
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.model, "gemini-3.7-flash")
+        self.assertEqual(
+            calls,
+            ["gemini-3.8-flash", "gemini-3.8-flash", "gemini-3.7-flash"],
+        )
+
+    def test_non_retryable_http_error_is_not_retried(self):
+        calls = 0
+
+        def fake_urlopen(request, timeout):
+            nonlocal calls
+            calls += 1
+            raise urllib.error.HTTPError(
+                url="https://example.invalid/v1/chat/completions",
+                code=400,
+                msg="Bad Request",
+                hdrs=None,
+                fp=io.BytesIO(b'{"error":{"message":"bad request"}}'),
+            )
+
+        with patch.dict(
+            os.environ,
+            {
+                "FLYGPT_GENERATOR_URL": "https://example.invalid/v1/chat/completions",
+                "FLYGPT_GENERATOR_MODEL": "gemini-3.8-flash",
+                "FLYGPT_GENERATOR_FALLBACK_MODEL": "gemini-3.7-flash",
+                "FLYGPT_GENERATOR_RETRY_DELAY": "0",
+            },
+            clear=True,
+        ), patch("generator_runtime.urllib.request.urlopen", side_effect=fake_urlopen):
+            runtime = GeneratorRuntime()
+            result = runtime.generate("안녕", "general")
+
+        self.assertFalse(result.used)
+        self.assertEqual(result.http_status, 400)
+        self.assertEqual(calls, 1)
 
     def test_memory_context_is_built_without_exposing_extra_messages(self):
         with patch.dict(os.environ, {}, clear=True):

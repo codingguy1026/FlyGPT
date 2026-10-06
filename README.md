@@ -128,7 +128,14 @@ provider: gemini
 model: gemini-3.8-flash
 endpoint: https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
 reasoning effort: low
+fallback model: gemini-3.7-flash
 ```
+
+For transient `502`, `503`, or `504` responses, FlyGPT retries Gemini 3.8
+Flash once after a short delay. If the second attempt is still unavailable, it
+tries `gemini-3.7-flash` once before surfacing an error. Both the fallback
+model and retry delay can be overridden with
+`FLYGPT_GENERATOR_FALLBACK_MODEL` and `FLYGPT_GENERATOR_RETRY_DELAY`.
 
 Hosted generation skips the local Ollama startup and preload path. The API key
 is forwarded only by the backend in the Authorization header and is never
