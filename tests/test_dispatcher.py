@@ -55,6 +55,22 @@ class DispatcherTests(unittest.TestCase):
         self.assertEqual(result.handler, "math_fast_path")
         self.assertIn("391", result.answer)
 
+    def test_calibrated_checkpoint_thresholds_override_defaults(self):
+        info = route_info("general", confidence=0.60, second=0.20)
+        info["min_confidence"] = 0.70
+        info["min_margin"] = 0.15
+        info["accepted"] = False
+        result = dispatch("애매한 질문", info)
+        self.assertEqual(result.status, "uncertain")
+        self.assertIn("confidence≥70%", result.answer)
+
+    def test_zero_feature_signal_is_held(self):
+        info = route_info("general", confidence=0.95, second=0.02)
+        info["feature_signal"] = 0.0
+        info["accepted"] = False
+        result = dispatch("???", info)
+        self.assertEqual(result.status, "uncertain")
+
     def test_uncertain_route_is_not_executed(self):
         info = {
             "route": "general",
