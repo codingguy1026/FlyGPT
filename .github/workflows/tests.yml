@@ -20,7 +20,7 @@ jobs:
       - name: Check launcher syntax
         run: bash -n scripts/run_all.sh scripts/run_backend_v0_7_local.sh scripts/setup_train_env.sh training/train_malecns_v0_4.sh training/train_malecns_v0_5.sh
       - name: Check Python syntax
-        run: python -m py_compile training/train_router.py training/eval_router.py router_runtime.py dispatcher.py app.py
+        run: python -m py_compile training/train_router.py training/eval_router.py router_runtime.py route_learning.py dispatcher.py app.py
       - name: Run tests
         run: python -m unittest discover -s tests -v
       - uses: actions/setup-node@v4
