@@ -16,11 +16,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate a FlyGPT router checkpoint on JSONL examples")
     parser.add_argument("--model", type=Path, required=True)
     parser.add_argument("--dataset", type=Path, required=True)
-    parser.add_argument("--min-confidence", type=float, default=0.55)
-    parser.add_argument("--min-margin", type=float, default=0.10)
+    parser.add_argument("--min-confidence", type=float, default=None)
+    parser.add_argument("--min-margin", type=float, default=None)
     args = parser.parse_args()
 
     runtime = FlyRouterRuntime(args.model)
+    min_confidence = runtime.min_confidence if args.min_confidence is None else args.min_confidence
+    min_margin = runtime.min_margin if args.min_margin is None else args.min_margin
     total = 0
     correct = 0
     gate_pass = 0
@@ -41,7 +43,7 @@ def main() -> None:
             ranked = pred.get("top_routes") or []
             second = float(ranked[1]["confidence"]) if len(ranked) > 1 else 0.0
             margin = max(0.0, confidence - second)
-            passes = confidence >= args.min_confidence and margin >= args.min_margin
+            passes = confidence >= min_confidence and margin >= min_margin
             is_correct = actual == expected
 
             total += 1
@@ -65,7 +67,11 @@ def main() -> None:
     gate_rate = gate_pass / total if total else 0.0
     usable_rate = usable / total if total else 0.0
 
-    print(f"\nraw_accuracy={accuracy:.1%} ({correct}/{total})")
+    print(
+        f"\ngate_thresholds confidence>={min_confidence:.1%} "
+        f"margin>={min_margin:.1%} temperature={runtime.temperature:.3f}"
+    )
+    print(f"raw_accuracy={accuracy:.1%} ({correct}/{total})")
     print(f"gate_pass_rate={gate_rate:.1%} ({gate_pass}/{total})")
     print(f"usable_accuracy={usable_rate:.1%} ({usable}/{total})")
     print(f"vectorizer={runtime.vectorizer_version} scaffold={runtime.scaffold_meta.get('kind', 'unknown')}")

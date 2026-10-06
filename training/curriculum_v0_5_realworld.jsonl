@@ -1,0 +1,108 @@
+{"input":"검색이라는 단어가 뭐임","route":"general","dataset_version":"v0.5","focus":"hard-negative"}
+{"input":"기억은 뇌에서 왜 생겨?","route":"general","dataset_version":"v0.5","focus":"hard-negative"}
+{"input":"공식이라는 말은 무슨 뜻이야","route":"general","dataset_version":"v0.5","focus":"hard-negative"}
+{"input":"코드라는 단어 뜻부터 알려줘","route":"general","dataset_version":"v0.5","focus":"hard-negative"}
+{"input":"요약이랑 정리는 뭐가 달라","route":"general","dataset_version":"v0.5","focus":"hard-negative"}
+{"input":"루트가 무슨 뜻이야 수학 말고","route":"general","dataset_version":"v0.5","focus":"ambiguity"}
+{"input":"git이 대체 뭐야 명령어 말고 개념만","route":"general","dataset_version":"v0.5","focus":"ambiguity"}
+{"input":"API가 뭐임","route":"general","dataset_version":"v0.5","focus":"short"}
+{"input":"최신이라는 표현은 무슨 의미야","route":"general","dataset_version":"v0.5","focus":"hard-negative"}
+{"input":"오늘이라는 말은 자정 지나면 바로 바뀌는 거야?","route":"general","dataset_version":"v0.5","focus":"hard-negative"}
+{"input":"뭐함ㅋㅋ","route":"general","dataset_version":"v0.5","focus":"colloquial"}
+{"input":"ㅇㅋㅇㅋ","route":"general","dataset_version":"v0.5","focus":"short"}
+{"input":"ㄱㄱ","route":"general","dataset_version":"v0.5","focus":"short"}
+{"input":"헐ㅋㅋㅋ","route":"general","dataset_version":"v0.5","focus":"short"}
+{"input":"왜 비 온 뒤에는 냄새가 달라?","route":"general","dataset_version":"v0.5","focus":"knowledge"}
+{"input":"MaleCNS가 뭐야?","route":"general","dataset_version":"v0.5","focus":"knowledge"}
+{"input":"파피티는 뭐하는 챗봇임","route":"general","dataset_version":"v0.5","focus":"product"}
+{"input":"초파리가 연구에 자주 쓰이는 이유 설명해줘","route":"general","dataset_version":"v0.5","focus":"knowledge"}
+{"input":"원넓이공식 뭐임","route":"math","dataset_version":"v0.5","focus":"colloquial"}
+{"input":"삼각형 넓이 공식 알려줘","route":"math","dataset_version":"v0.5","focus":"formula"}
+{"input":"근의 공식이 뭐야","route":"math","dataset_version":"v0.5","focus":"formula"}
+{"input":"평균 구하는 법 알려줘","route":"math","dataset_version":"v0.5","focus":"concept"}
+{"input":"표준편차 계산법 쉽게","route":"math","dataset_version":"v0.5","focus":"concept"}
+{"input":"기울기 2인 직선 식 예시 하나","route":"math","dataset_version":"v0.5","focus":"concept"}
+{"input":"2차방정식 푸는 방법","route":"math","dataset_version":"v0.5","focus":"concept"}
+{"input":"3/5를 퍼센트로 바꾸면?","route":"math","dataset_version":"v0.5","focus":"calculation"}
+{"input":"sin 30도 값 알려줘","route":"math","dataset_version":"v0.5","focus":"calculation"}
+{"input":"밑이 10인 log 100은?","route":"math","dataset_version":"v0.5","focus":"calculation"}
+{"input":"3/4 더하기 1/8 계산해줘","route":"math","dataset_version":"v0.5","focus":"calculation"}
+{"input":"루트 50 간단히 해줘","route":"math","dataset_version":"v0.5","focus":"calculation"}
+{"input":"x+3=9 풀어줘","route":"math","dataset_version":"v0.5","focus":"equation"}
+{"input":"12명의 25퍼센트는 몇 명?","route":"math","dataset_version":"v0.5","focus":"word-problem"}
+{"input":"원의 둘레 구하는 공식","route":"math","dataset_version":"v0.5","focus":"formula"}
+{"input":"벡터 내적이 뭔지 알려줘","route":"math","dataset_version":"v0.5","focus":"concept"}
+{"input":"미분이 뭔지 수학적으로 쉽게 설명","route":"math","dataset_version":"v0.5","focus":"concept"}
+{"input":"행렬 곱셈 순서 알려줘","route":"math","dataset_version":"v0.5","focus":"concept"}
+{"input":"파이썬으로 json 읽는 코드 줘","route":"code","dataset_version":"v0.5","focus":"implementation"}
+{"input":"이 TypeError 왜 나는지 봐줘","route":"code","dataset_version":"v0.5","focus":"debug"}
+{"input":"git pull 충돌 해결하는 순서 알려줘","route":"code","dataset_version":"v0.5","focus":"devtool"}
+{"input":"npm run dev가 안돼 원인 찾는 법","route":"code","dataset_version":"v0.5","focus":"debug"}
+{"input":"리액트 버튼 컴포넌트 짜쥬","route":"code","dataset_version":"v0.5","focus":"colloquial"}
+{"input":"FastAPI POST 엔드포인트 예시","route":"code","dataset_version":"v0.5","focus":"implementation"}
+{"input":"SQL join 예제 코드","route":"code","dataset_version":"v0.5","focus":"implementation"}
+{"input":"CSS grid로 가운데 정렬하는 코드","route":"code","dataset_version":"v0.5","focus":"implementation"}
+{"input":"검색창 구현 코드 만들어줘","route":"code","dataset_version":"v0.5","focus":"hard-negative"}
+{"input":"기억 저장 기능 파이썬으로 만들어줘","route":"code","dataset_version":"v0.5","focus":"hard-negative"}
+{"input":"요약 API 엔드포인트 만들어줘","route":"code","dataset_version":"v0.5","focus":"hard-negative"}
+{"input":"최신 뉴스 검색하는 함수 틀 짜줘","route":"code","dataset_version":"v0.5","focus":"hard-negative"}
+{"input":"README 자동 생성 스크립트 만들어줘","route":"code","dataset_version":"v0.5","focus":"implementation"}
+{"input":"bash에서 환경변수 읽는 법","route":"code","dataset_version":"v0.5","focus":"devtool"}
+{"input":"torch softmax 쓰는 코드 예시","route":"code","dataset_version":"v0.5","focus":"implementation"}
+{"input":"이 정규식 좀 고쳐줘","route":"code","dataset_version":"v0.5","focus":"debug"}
+{"input":"이 함수 리팩터링 해줘","route":"code","dataset_version":"v0.5","focus":"transform"}
+{"input":"파이썬 함수 이름 좀 추천해줘","route":"code","dataset_version":"v0.5","focus":"devtool"}
+{"input":"아까 내가 뭐 골랐지","route":"memory","dataset_version":"v0.5","focus":"short"}
+{"input":"방금 정한 이름 다시 알려줘","route":"memory","dataset_version":"v0.5","focus":"recent"}
+{"input":"전에 말한 저장소 이름 뭐였더라","route":"memory","dataset_version":"v0.5","focus":"recall"}
+{"input":"지난번 오류 메시지 기억해?","route":"memory","dataset_version":"v0.5","focus":"recall"}
+{"input":"우리가 아까 정한 색 뭐였지","route":"memory","dataset_version":"v0.5","focus":"recent"}
+{"input":"내가 조금 전에 보낸 숫자 다시 알려줘","route":"memory","dataset_version":"v0.5","focus":"recent"}
+{"input":"앞에서 말한 계획 다시 꺼내줘","route":"memory","dataset_version":"v0.5","focus":"recent"}
+{"input":"아까 링크 뭐였지","route":"memory","dataset_version":"v0.5","focus":"recent"}
+{"input":"이전 대화에서 내가 원한 기능 뭐였어","route":"memory","dataset_version":"v0.5","focus":"recall"}
+{"input":"지난번에 어디까지 했지","route":"memory","dataset_version":"v0.5","focus":"recall"}
+{"input":"방금 내가 한 질문 뭐였어","route":"memory","dataset_version":"v0.5","focus":"recent"}
+{"input":"아까 그 모델 이름 뭐였지","route":"memory","dataset_version":"v0.5","focus":"recent"}
+{"input":"전에 네가 추천한 두 번째 옵션 뭐였어","route":"memory","dataset_version":"v0.5","focus":"recall"}
+{"input":"저번에 정한 버전 기억나?","route":"memory","dataset_version":"v0.5","focus":"recall"}
+{"input":"방금 쓴 명령어 다시 보여줘","route":"memory","dataset_version":"v0.5","focus":"recent"}
+{"input":"아까 내가 틀렸다고 한 부분 뭐였지","route":"memory","dataset_version":"v0.5","focus":"recent"}
+{"input":"예전에 말한 프로젝트 다시 찾아줘","route":"memory","dataset_version":"v0.5","focus":"recall"}
+{"input":"아까 내가 머라햇지","route":"memory","dataset_version":"v0.5","focus":"typo"}
+{"input":"세줄요약 해줘","route":"summarize","dataset_version":"v0.5","focus":"short"}
+{"input":"한 문장으로 줄여줘","route":"summarize","dataset_version":"v0.5","focus":"short"}
+{"input":"tl;dr 부탁","route":"summarize","dataset_version":"v0.5","focus":"english"}
+{"input":"이 로그 핵심만 정리","route":"summarize","dataset_version":"v0.5","focus":"logs"}
+{"input":"이 내용 결론만 말해줘","route":"summarize","dataset_version":"v0.5","focus":"compression"}
+{"input":"긴거 못읽겠어 짧게 해줘","route":"summarize","dataset_version":"v0.5","focus":"colloquial"}
+{"input":"핵심 세 개만 뽑아줘","route":"summarize","dataset_version":"v0.5","focus":"compression"}
+{"input":"요지만 말해","route":"summarize","dataset_version":"v0.5","focus":"short"}
+{"input":"이 코드 설명 짧게 정리해줘","route":"summarize","dataset_version":"v0.5","focus":"hard-negative"}
+{"input":"위 내용 한줄로","route":"summarize","dataset_version":"v0.5","focus":"context"}
+{"input":"방금 설명 요약해줘","route":"summarize","dataset_version":"v0.5","focus":"context"}
+{"input":"아까 말한 내용만 두 문장으로 정리","route":"summarize","dataset_version":"v0.5","focus":"multi-intent"}
+{"input":"기사 내용을 다섯 줄로 압축해줘","route":"summarize","dataset_version":"v0.5","focus":"compression"}
+{"input":"회의 내용에서 액션아이템만 정리","route":"summarize","dataset_version":"v0.5","focus":"structured"}
+{"input":"이 에러 로그 요약해줘","route":"summarize","dataset_version":"v0.5","focus":"hard-negative"}
+{"input":"장단점만 짧게 정리해줘","route":"summarize","dataset_version":"v0.5","focus":"structured"}
+{"input":"설명 너무 길어 핵심만 다시","route":"summarize","dataset_version":"v0.5","focus":"followup"}
+{"input":"세줄로 정리좀","route":"summarize","dataset_version":"v0.5","focus":"colloquial"}
+{"input":"오늘 원달러 환율 찾아줘","route":"research","dataset_version":"v0.5","focus":"fresh"}
+{"input":"현재 Python 최신 버전 확인해줘","route":"research","dataset_version":"v0.5","focus":"fresh"}
+{"input":"공식 문서에서 FastAPI 최신 릴리스 찾아봐","route":"research","dataset_version":"v0.5","focus":"source"}
+{"input":"이 회사 오늘 뉴스 검색해줘","route":"research","dataset_version":"v0.5","focus":"fresh"}
+{"input":"지금 이 서비스 장애인지 확인해줘","route":"research","dataset_version":"v0.5","focus":"fresh"}
+{"input":"웹에서 가격 비교해줘","route":"research","dataset_version":"v0.5","focus":"web"}
+{"input":"최근 논문 찾아줘","route":"research","dataset_version":"v0.5","focus":"fresh"}
+{"input":"공식 홈페이지 주소 찾아줘","route":"research","dataset_version":"v0.5","focus":"source"}
+{"input":"2026년 현재 규정 확인해줘","route":"research","dataset_version":"v0.5","focus":"fresh"}
+{"input":"최신 업데이트 날짜 검색해줘","route":"research","dataset_version":"v0.5","focus":"fresh"}
+{"input":"인터넷에서 출처 찾아줘","route":"research","dataset_version":"v0.5","focus":"source"}
+{"input":"이 제품 지금 팔아? 찾아봐","route":"research","dataset_version":"v0.5","focus":"availability"}
+{"input":"오늘 경기 결과 알려줘","route":"research","dataset_version":"v0.5","focus":"fresh"}
+{"input":"현재 날씨 찾아줘","route":"research","dataset_version":"v0.5","focus":"fresh"}
+{"input":"이번 주 기술 뉴스 조사해줘","route":"research","dataset_version":"v0.5","focus":"fresh"}
+{"input":"최근 보안 취약점 확인해줘","route":"research","dataset_version":"v0.5","focus":"fresh"}
+{"input":"GitHub 최신 release notes 찾아줘","route":"research","dataset_version":"v0.5","focus":"fresh"}
+{"input":"최신 파이썬버전 머임 검색해서 알려줘","route":"research","dataset_version":"v0.5","focus":"typo"}
