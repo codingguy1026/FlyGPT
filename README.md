@@ -109,7 +109,34 @@ Chat memory is scoped by authenticated user plus conversation session.
 ## Answer generation
 
 FlyGPT can forward generative routes to an OpenAI-compatible
-`/v1/chat/completions` endpoint.
+chat-completions endpoint.
+
+### Gemini 3.8 Flash
+
+`make run` has a Gemini preset. Put the real key in the ignored local
+`.env` file:
+
+```bash
+GEMINI_API_KEY=your-key-here
+```
+
+When `GEMINI_API_KEY` is present and no explicit generator URL is set,
+FlyGPT automatically selects:
+
+```text
+provider: gemini
+model: gemini-3.8-flash
+endpoint: https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+reasoning effort: low
+```
+
+Hosted generation skips the local Ollama startup and preload path. The API key
+is forwarded only by the backend in the Authorization header and is never
+included in generator status responses.
+
+### Other OpenAI-compatible providers
+
+Override the generator settings when needed:
 
 ```bash
 export FLYGPT_GENERATOR_URL=http://127.0.0.1:11434/v1/chat/completions
@@ -117,8 +144,9 @@ export FLYGPT_GENERATOR_MODEL=llama3.2:3b
 export FLYGPT_GENERATOR_PROVIDER=ollama
 ```
 
-Hosted providers can additionally use `FLYGPT_GENERATOR_API_KEY`. Keep real
-API keys out of Git.
+Hosted providers can additionally use `FLYGPT_GENERATOR_API_KEY`.
+`FLYGPT_GENERATOR_REASONING_EFFORT` accepts `low`, `medium`, or `high`
+for compatible providers. Keep real API keys out of Git.
 
 ## Python API
 
