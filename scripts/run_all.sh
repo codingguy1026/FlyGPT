@@ -58,7 +58,7 @@ cleanup() {
 
 trap cleanup INT TERM EXIT
 
-echo "🪰 FlyGPT v0.8.0 full stack"
+echo "🪰 FlyGPT v0.8.1 full stack"
 echo
 
 USE_OLLAMA=1
@@ -108,6 +108,9 @@ else
   echo "☁️  Hosted generator: ${FLYGPT_GENERATOR_PROVIDER:-compatible-http} / ${FLYGPT_GENERATOR_MODEL:-unset}"
   if [[ -n "${FLYGPT_GENERATOR_FALLBACK_MODEL:-}" ]]; then
     echo "🛟 Generator fallback: ${FLYGPT_GENERATOR_FALLBACK_MODEL}"
+  fi
+  if [[ -n "${FLYGPT_SMART_GENERATOR_MODEL:-}" ]]; then
+    echo "🧠 Deep generator: ${FLYGPT_SMART_GENERATOR_PROVIDER:-compatible-http} / ${FLYGPT_SMART_GENERATOR_MODEL}"
   fi
   if [[ "${FLYGPT_GENERATOR_PROVIDER:-}" == "gemini" && -z "${FLYGPT_GENERATOR_API_KEY:-}" ]]; then
     echo "⚠️  Gemini is selected but no API key is configured."

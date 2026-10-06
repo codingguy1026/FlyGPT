@@ -134,6 +134,165 @@ class GeneratorRuntimeTests(unittest.TestCase):
 
         self.assertIsNone(invalid.reasoning_effort)
 
+    def test_adaptive_intelligence_keeps_casual_turns_on_standard_provider(self):
+        calls = []
+
+        def fake_urlopen(request, timeout):
+            payload = json.loads(request.data.decode("utf-8"))
+            calls.append((request.full_url, payload))
+            return FakeHTTPResponse(
+                {
+                    "choices": [
+                        {
+                            "message": {"content": "안녕!"},
+                            "finish_reason": "stop",
+                        }
+                    ]
+                }
+            )
+
+        with patch.dict(
+            os.environ,
+            {
+                "FLYGPT_GENERATOR_URL": "https://fast.example/v1/chat/completions",
+                "FLYGPT_GENERATOR_MODEL": "fast-model",
+                "FLYGPT_GENERATOR_API_KEY": "fast-secret",
+                "FLYGPT_SMART_GENERATOR_URL": "https://deep.example/v1/chat/completions",
+                "FLYGPT_SMART_GENERATOR_MODEL": "deep-model",
+                "FLYGPT_SMART_GENERATOR_PROVIDER": "deep-provider",
+                "FLYGPT_SMART_GENERATOR_API_KEY": "deep-secret",
+            },
+            clear=True,
+        ), patch("generator_runtime.urllib.request.urlopen", side_effect=fake_urlopen):
+            runtime = GeneratorRuntime()
+            result = runtime.generate("안녕", "general")
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.profile, "standard")
+        self.assertEqual(result.model, "fast-model")
+        self.assertEqual(calls[0][0], "https://fast.example/v1/chat/completions")
+
+    def test_adaptive_intelligence_promotes_hard_turns_to_smart_provider(self):
+        calls = []
+
+        def fake_urlopen(request, timeout):
+            payload = json.loads(request.data.decode("utf-8"))
+            calls.append(
+                {
+                    "url": request.full_url,
+                    "authorization": request.headers.get("Authorization"),
+                    "payload": payload,
+                }
+            )
+            return FakeHTTPResponse(
+                {
+                    "choices": [
+                        {
+                            "message": {"content": "분석 완료"},
+                            "finish_reason": "stop",
+                        }
+                    ]
+                }
+            )
+
+        with patch.dict(
+            os.environ,
+            {
+                "FLYGPT_GENERATOR_URL": "https://fast.example/v1/chat/completions",
+                "FLYGPT_GENERATOR_MODEL": "fast-model",
+                "FLYGPT_GENERATOR_API_KEY": "fast-secret",
+                "FLYGPT_SMART_GENERATOR_URL": "https://deep.example/v1/chat/completions",
+                "FLYGPT_SMART_GENERATOR_MODEL": "deep-model",
+                "FLYGPT_SMART_GENERATOR_PROVIDER": "deep-provider",
+                "FLYGPT_SMART_GENERATOR_API_KEY": "deep-secret",
+                "FLYGPT_SMART_GENERATOR_REASONING_EFFORT": "high",
+                "FLYGPT_SMART_GENERATOR_MAX_TOKENS": "2048",
+                "FLYGPT_SMART_GENERATOR_TEMPERATURE": "0.15",
+            },
+            clear=True,
+        ), patch("generator_runtime.urllib.request.urlopen", side_effect=fake_urlopen):
+            runtime = GeneratorRuntime()
+            result = runtime.generate(
+                "이 코드 구조를 분석해서 병목 원인과 리팩터링 계획을 짜줘",
+                "code",
+            )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.profile, "deep")
+        self.assertEqual(result.provider, "deep-provider")
+        self.assertEqual(result.model, "deep-model")
+        self.assertEqual(calls[0]["url"], "https://deep.example/v1/chat/completions")
+        self.assertEqual(calls[0]["authorization"], "Bearer deep-secret")
+        self.assertEqual(calls[0]["payload"]["max_tokens"], 2048)
+        self.assertEqual(calls[0]["payload"]["temperature"], 0.15)
+        self.assertEqual(calls[0]["payload"]["reasoning_effort"], "high")
+
+    def test_failed_smart_provider_falls_back_to_standard_provider(self):
+        calls = []
+
+        def fake_urlopen(request, timeout):
+            calls.append(request.full_url)
+            if request.full_url.startswith("https://deep.example"):
+                raise unavailable_error()
+            return FakeHTTPResponse(
+                {
+                    "choices": [
+                        {
+                            "message": {"content": "standard fallback ok"},
+                            "finish_reason": "stop",
+                        }
+                    ]
+                }
+            )
+
+        with patch.dict(
+            os.environ,
+            {
+                "FLYGPT_GENERATOR_URL": "https://fast.example/v1/chat/completions",
+                "FLYGPT_GENERATOR_MODEL": "fast-model",
+                "FLYGPT_SMART_GENERATOR_URL": "https://deep.example/v1/chat/completions",
+                "FLYGPT_SMART_GENERATOR_MODEL": "deep-model",
+                "FLYGPT_GENERATOR_RETRY_DELAY": "0",
+            },
+            clear=True,
+        ), patch("generator_runtime.urllib.request.urlopen", side_effect=fake_urlopen):
+            runtime = GeneratorRuntime()
+            result = runtime.generate(
+                "이 코드 구조를 분석하고 왜 느린지 원인을 찾아줘",
+                "code",
+            )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.profile, "standard-fallback")
+        self.assertEqual(result.model, "fast-model")
+        self.assertEqual(
+            calls,
+            [
+                "https://deep.example/v1/chat/completions",
+                "https://deep.example/v1/chat/completions",
+                "https://fast.example/v1/chat/completions",
+            ],
+        )
+
+    def test_smart_status_does_not_expose_api_key(self):
+        with patch.dict(
+            os.environ,
+            {
+                "FLYGPT_GENERATOR_URL": "https://fast.example/v1/chat/completions",
+                "FLYGPT_GENERATOR_MODEL": "fast-model",
+                "FLYGPT_SMART_GENERATOR_URL": "https://deep.example/v1/chat/completions",
+                "FLYGPT_SMART_GENERATOR_MODEL": "deep-model",
+                "FLYGPT_SMART_GENERATOR_API_KEY": "deep-secret-value",
+            },
+            clear=True,
+        ):
+            runtime = GeneratorRuntime()
+            status = runtime.status()
+
+        self.assertTrue(status["adaptive_intelligence"]["enabled"])
+        self.assertTrue(status["adaptive_intelligence"]["api_key_configured"])
+        self.assertNotIn("deep-secret-value", repr(status))
+
     def test_transient_503_retries_primary_once(self):
         calls: list[str] = []
 
