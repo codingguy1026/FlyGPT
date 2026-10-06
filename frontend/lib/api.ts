@@ -44,8 +44,28 @@ export type ChatTimings = {
   query_ms?: number | null;
   router_ms?: number | null;
   dispatch_ms?: number | null;
+  search_ms?: number | null;
   generation_ms?: number | null;
+  verification_ms?: number | null;
   total_ms?: number | null;
+};
+
+export type ResearchSource = {
+  url: string;
+  title: string;
+  hostname: string;
+  root_domain?: string;
+  authority?: number;
+  age?: string[];
+};
+
+export type ResearchResult = {
+  query: string;
+  provider: string;
+  sources: ResearchSource[];
+  retrieved_at: number;
+  error?: string | null;
+  http_status?: number | null;
 };
 
 export type ChatData = {
@@ -55,6 +75,8 @@ export type ChatData = {
   memory_hits?: unknown;
   knowledge_hits?: unknown[];
   knowledge_learned?: unknown[];
+  research?: ResearchResult | null;
+  web_verified_facts?: unknown[];
   ui_meta?: {
     mode?: string;
     router_model?: string;
@@ -118,6 +140,15 @@ export type HealthResponse = {
     enabled?: boolean;
     account_scoped?: boolean;
     provenance_aware?: boolean;
+  };
+  research?: {
+    configured?: boolean;
+    provider?: string;
+    timeout_seconds?: number;
+    count?: number;
+    max_urls?: number;
+    search_lang?: string;
+    safesearch?: string;
   };
 };
 
