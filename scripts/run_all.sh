@@ -19,6 +19,8 @@ if [[ -n "${GEMINI_API_KEY:-}" && -z "${FLYGPT_GENERATOR_URL:-}" ]]; then
   export FLYGPT_GENERATOR_PROVIDER="gemini"
   export FLYGPT_GENERATOR_API_KEY="${FLYGPT_GENERATOR_API_KEY:-$GEMINI_API_KEY}"
   export FLYGPT_GENERATOR_REASONING_EFFORT="${FLYGPT_GENERATOR_REASONING_EFFORT:-low}"
+  export FLYGPT_GENERATOR_FALLBACK_MODEL="${FLYGPT_GENERATOR_FALLBACK_MODEL:-gemini-3.7-flash}"
+  export FLYGPT_GENERATOR_RETRY_DELAY="${FLYGPT_GENERATOR_RETRY_DELAY:-0.6}"
 fi
 
 MODEL="${FLYGPT_LOCAL_MODEL:-qwen2.5:0.5b-instruct}"
@@ -104,6 +106,9 @@ if [[ "$USE_OLLAMA" -eq 1 ]]; then
     >/dev/null || echo "⚠️  Model preload failed; FlyGPT can still start, but the first response may be slow."
 else
   echo "☁️  Hosted generator: ${FLYGPT_GENERATOR_PROVIDER:-compatible-http} / ${FLYGPT_GENERATOR_MODEL:-unset}"
+  if [[ -n "${FLYGPT_GENERATOR_FALLBACK_MODEL:-}" ]]; then
+    echo "🛟 Generator fallback: ${FLYGPT_GENERATOR_FALLBACK_MODEL}"
+  fi
   if [[ "${FLYGPT_GENERATOR_PROVIDER:-}" == "gemini" && -z "${FLYGPT_GENERATOR_API_KEY:-}" ]]; then
     echo "⚠️  Gemini is selected but no API key is configured."
   fi
