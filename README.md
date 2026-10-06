@@ -3,7 +3,7 @@
 FlyGPT is an experimental Drosophila connectome interface and connectome-routed
 task router.
 
-As of v0.8.0, interactive connectome queries target the **Janelia MaleCNS v1.0**
+As of v0.8.1, interactive connectome queries target the **Janelia MaleCNS v1.0**
 dataset through the official neuPrint service instead of requiring local
 FlyWire v783 Parquet files.
 
@@ -140,6 +140,40 @@ model and retry delay can be overridden with
 Hosted generation skips the local Ollama startup and preload path. The API key
 is forwarded only by the backend in the Authorization header and is never
 included in generator status responses.
+
+### Adaptive Intelligence: fast + deep providers
+
+FlyGPT can keep a fast model as the normal generator and promote harder turns
+to a second OpenAI-compatible provider. The promotion heuristic considers the
+router route, prompt length, multi-part questions, code blocks, and reasoning
+keywords such as analysis, debugging, comparison, proof, design, and planning.
+
+Example:
+
+```bash
+# Standard / fast generator
+FLYGPT_GENERATOR_URL=https://fast-provider.example/v1/chat/completions
+FLYGPT_GENERATOR_MODEL=fast-model
+FLYGPT_GENERATOR_PROVIDER=fast-provider
+FLYGPT_GENERATOR_API_KEY=...
+
+# Optional deep generator, which may be a completely different provider
+FLYGPT_SMART_GENERATOR_URL=https://deep-provider.example/v1/chat/completions
+FLYGPT_SMART_GENERATOR_MODEL=deep-model
+FLYGPT_SMART_GENERATOR_PROVIDER=deep-provider
+FLYGPT_SMART_GENERATOR_API_KEY=...
+FLYGPT_SMART_GENERATOR_REASONING_EFFORT=high
+FLYGPT_SMART_GENERATOR_MAX_TOKENS=2048
+FLYGPT_SMART_GENERATOR_TEMPERATURE=0.15
+```
+
+Short casual turns stay on the standard generator. Harder code, math, research,
+or analysis-heavy turns can be promoted automatically. If the deep provider
+fails or becomes unavailable, FlyGPT falls back to the standard generator
+instead of dropping the whole chat turn.
+
+The smart provider is optional. If it is not configured, behavior remains
+compatible with the existing single-provider setup.
 
 ### Other OpenAI-compatible providers
 
