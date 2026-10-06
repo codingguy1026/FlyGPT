@@ -118,9 +118,15 @@ class BraveResearchRuntimeTests(unittest.TestCase):
                 "predicate": "value",
                 "value": "Y",
                 "slot_key": "X:value",
-                "support_urls": [
-                    "https://alpha.example/fact",
-                    "https://beta.test/fact",
+                "evidence": [
+                    {
+                        "url": "https://alpha.example/fact",
+                        "quote": "supporting evidence",
+                    },
+                    {
+                        "url": "https://beta.test/fact",
+                        "quote": "supporting evidence",
+                    },
                 ],
                 "confidence": 0.96,
                 "volatility": "stable",
@@ -161,9 +167,48 @@ class BraveResearchRuntimeTests(unittest.TestCase):
         facts = [
             {
                 "statement": "A supported statement.",
-                "support_urls": [
-                    "https://a.example.com/fact",
-                    "https://b.example.com/fact",
+                "evidence": [
+                    {
+                        "url": "https://a.example.com/fact",
+                        "quote": "supporting evidence",
+                    },
+                    {
+                        "url": "https://b.example.com/fact",
+                        "quote": "supporting evidence",
+                    },
+                ],
+                "confidence": 0.99,
+            }
+        ]
+
+        self.assertEqual(
+            validated_fact_candidates(facts, research, query="fact"),
+            [],
+        )
+
+
+    def test_quote_must_exist_in_retrieved_source_text(self):
+        research = ResearchResult(
+            query="fact",
+            provider="brave-llm-context",
+            sources=[
+                source("https://alpha.example/fact"),
+                source("https://beta.test/fact"),
+            ],
+            retrieved_at=1000.0,
+        )
+        facts = [
+            {
+                "statement": "A supported-looking statement.",
+                "evidence": [
+                    {
+                        "url": "https://alpha.example/fact",
+                        "quote": "a quote that never appeared",
+                    },
+                    {
+                        "url": "https://beta.test/fact",
+                        "quote": "another invented quote",
+                    },
                 ],
                 "confidence": 0.99,
             }
@@ -184,7 +229,12 @@ class BraveResearchRuntimeTests(unittest.TestCase):
         facts = [
             {
                 "statement": "A primary-source statistic is reported.",
-                "support_urls": ["https://cdc.gov/fact"],
+                "evidence": [
+                    {
+                        "url": "https://cdc.gov/fact",
+                        "quote": "supporting evidence",
+                    }
+                ],
                 "confidence": 0.95,
                 "volatility": "medium",
             }
