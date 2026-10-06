@@ -11,6 +11,16 @@ if [[ -f ".env" ]]; then
   set +a
 fi
 
+# If a Gemini API key is present and no explicit generator endpoint was chosen,
+# use Gemini 3.8 Flash through Google's OpenAI-compatible chat endpoint.
+if [[ -n "${GEMINI_API_KEY:-}" && -z "${FLYGPT_GENERATOR_URL:-}" ]]; then
+  export FLYGPT_GENERATOR_URL="https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+  export FLYGPT_GENERATOR_MODEL="${FLYGPT_GENERATOR_MODEL:-gemini-3.8-flash}"
+  export FLYGPT_GENERATOR_PROVIDER="gemini"
+  export FLYGPT_GENERATOR_API_KEY="${FLYGPT_GENERATOR_API_KEY:-$GEMINI_API_KEY}"
+  export FLYGPT_GENERATOR_REASONING_EFFORT="${FLYGPT_GENERATOR_REASONING_EFFORT:-low}"
+fi
+
 MODEL="${FLYGPT_LOCAL_MODEL:-qwen2.5:0.5b-instruct}"
 export OLLAMA_KEEP_ALIVE="${OLLAMA_KEEP_ALIVE:-30m}"
 
@@ -49,40 +59,55 @@ trap cleanup INT TERM EXIT
 echo "🪰 FlyGPT v0.8.0 full stack"
 echo
 
-if ! command -v ollama >/dev/null 2>&1; then
-  echo "❌ Ollama is not installed."
-  echo "Run: bash scripts/setup_ollama_generator.sh"
-  exit 1
+USE_OLLAMA=1
+if [[ -n "${FLYGPT_GENERATOR_URL:-}" ]]; then
+  case "$FLYGPT_GENERATOR_URL" in
+    http://127.0.0.1:11434/*|http://localhost:11434/*) ;;
+    *) USE_OLLAMA=0 ;;
+  esac
 fi
 
-if ! curl -fsS "$OLLAMA_URL" >/dev/null 2>&1; then
-  echo "🧠 Starting Ollama on :11434... (keep-alive: $OLLAMA_KEEP_ALIVE)"
-  ollama serve >/tmp/flygpt-ollama.log 2>&1 &
-  OLLAMA_PID=$!
+if [[ "$USE_OLLAMA" -eq 1 ]]; then
+  if ! command -v ollama >/dev/null 2>&1; then
+    echo "❌ Ollama is not installed."
+    echo "Run: bash scripts/setup_ollama_generator.sh"
+    exit 1
+  fi
 
-  for _ in $(seq 1 30); do
-    if curl -fsS "$OLLAMA_URL" >/dev/null 2>&1; then
-      break
-    fi
-    sleep 1
-  done
+  if ! curl -fsS "$OLLAMA_URL" >/dev/null 2>&1; then
+    echo "🧠 Starting Ollama on :11434... (keep-alive: $OLLAMA_KEEP_ALIVE)"
+    ollama serve >/tmp/flygpt-ollama.log 2>&1 &
+    OLLAMA_PID=$!
+
+    for _ in $(seq 1 30); do
+      if curl -fsS "$OLLAMA_URL" >/dev/null 2>&1; then
+        break
+      fi
+      sleep 1
+    done
+  fi
+
+  if ! curl -fsS "$OLLAMA_URL" >/dev/null 2>&1; then
+    echo "❌ Ollama did not start. Check /tmp/flygpt-ollama.log"
+    exit 1
+  fi
+
+  if ! ollama list 2>/dev/null | awk 'NR > 1 {print $1}' | grep -Fxq "$MODEL"; then
+    echo "📦 Local model not found. Pulling $MODEL..."
+    ollama pull "$MODEL"
+  fi
+
+  echo "🔥 Preloading $MODEL so the first chat does not pay the cold-start cost..."
+  curl -fsS http://127.0.0.1:11434/api/generate \
+    -H "Content-Type: application/json" \
+    -d "{\"model\":\"${MODEL}\",\"prompt\":\"\",\"keep_alive\":\"${OLLAMA_KEEP_ALIVE}\"}" \
+    >/dev/null || echo "⚠️  Model preload failed; FlyGPT can still start, but the first response may be slow."
+else
+  echo "☁️  Hosted generator: ${FLYGPT_GENERATOR_PROVIDER:-compatible-http} / ${FLYGPT_GENERATOR_MODEL:-unset}"
+  if [[ "${FLYGPT_GENERATOR_PROVIDER:-}" == "gemini" && -z "${FLYGPT_GENERATOR_API_KEY:-}" ]]; then
+    echo "⚠️  Gemini is selected but no API key is configured."
+  fi
 fi
-
-if ! curl -fsS "$OLLAMA_URL" >/dev/null 2>&1; then
-  echo "❌ Ollama did not start. Check /tmp/flygpt-ollama.log"
-  exit 1
-fi
-
-if ! ollama list 2>/dev/null | awk 'NR > 1 {print $1}' | grep -Fxq "$MODEL"; then
-  echo "📦 Local model not found. Pulling $MODEL..."
-  ollama pull "$MODEL"
-fi
-
-echo "🔥 Preloading $MODEL so the first chat does not pay the cold-start cost..."
-curl -fsS http://127.0.0.1:11434/api/generate \
-  -H "Content-Type: application/json" \
-  -d "{\"model\":\"${MODEL}\",\"prompt\":\"\",\"keep_alive\":\"${OLLAMA_KEEP_ALIVE}\"}" \
-  >/dev/null || echo "⚠️  Model preload failed; FlyGPT can still start, but the first response may be slow."
 
 if [[ ! -x ".venv/bin/python" ]]; then
   echo "🐍 Creating Python virtual environment..."
@@ -145,7 +170,11 @@ FRONTEND_PID=$!
 
 echo
 echo "✅ FlyGPT is launching"
-echo "   Ollama   :11434"
+if [[ "$USE_OLLAMA" -eq 1 ]]; then
+  echo "   Generator: Ollama :11434 / $MODEL"
+else
+  echo "   Generator: ${FLYGPT_GENERATOR_PROVIDER:-compatible-http} / ${FLYGPT_GENERATOR_MODEL:-unset}"
+fi
 echo "   Backend  :8000"
 echo "   Frontend :3000"
 echo
