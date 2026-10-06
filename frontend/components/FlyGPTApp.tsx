@@ -459,6 +459,10 @@ export default function FlyGPTApp({
         });
       }
 
+      if ((response.data?.knowledge_learned?.length ?? 0) > 0) {
+        meta.push({ text: "KNOWLEDGE +1", tone: "info" });
+      }
+
       setMessages((current) => [
         ...current,
         {
@@ -479,7 +483,6 @@ export default function FlyGPTApp({
         getRouteLearningStatus().then(setLearningStatus).catch(() => undefined);
       }
       if ((response.data?.knowledge_learned?.length ?? 0) > 0) {
-        meta.push({ text: "KNOWLEDGE +1", tone: "info" });
         getKnowledgeStatus().then(setKnowledgeStatus).catch(() => undefined);
       }
     } catch (reason: unknown) {
