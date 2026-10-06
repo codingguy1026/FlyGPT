@@ -49,8 +49,15 @@ class RouteLearningStoreTests(unittest.TestCase):
         )
 
         self.assertTrue(result["personalization"]["applied"])
-        self.assertGreater(result["confidence"], 0)
-        self.assertEqual(result["route"], "code")
+        code_score = next(
+            item["confidence"]
+            for item in result["top_routes"]
+            if item["route"] == "code"
+        )
+        self.assertGreater(code_score, 0.12)
+        # Personalization is intentionally bounded: a couple of examples
+        # should nudge a strong frozen-router decision, not instantly hijack it.
+        self.assertEqual(result["route"], "general")
 
         untouched = self.store.personalize(
             "user-b",
