@@ -19,10 +19,11 @@ from generator_runtime import GENERATIVE_ROUTES, GeneratorRuntime
 from memory_store import MemoryStore, format_recall
 from route_learning import RouteLearningStore
 from knowledge_store import KnowledgeStore
+from research_runtime import BraveResearchRuntime, validated_fact_candidates
 from auth_store import AuthStore, SESSION_TTL_SECONDS
 
 
-APP_VERSION = "0.10.0"
+APP_VERSION = "0.11.0"
 
 _model_override = os.environ.get("FLYGPT_MODEL_PATH")
 if _model_override:
@@ -73,6 +74,7 @@ _route_learning = RouteLearningStore(
 _knowledge = KnowledgeStore(
     os.environ.get("FLYGPT_KNOWLEDGE_PATH", "data/flygpt_knowledge.sqlite3")
 )
+_research = BraveResearchRuntime()
 _auth = AuthStore(os.environ.get("FLYGPT_AUTH_PATH", "data/flygpt_auth.sqlite3"))
 
 AUTH_COOKIE_NAME = "flygpt_session"
@@ -428,6 +430,7 @@ def health():
             "provenance_aware": True,
             "path": str(_knowledge.path),
         },
+        "research": _research.status(),
         "auth": {
             "enabled": True,
             "cookie_secure": AUTH_COOKIE_SECURE,
@@ -806,6 +809,11 @@ def chat_endpoint(req: ChatRequest, request: Request):
 
             memory_hits = None
             tool_context = result.tool_context
+            research_result = None
+            research_data = None
+            search_ms = None
+            verification_ms = None
+            web_verified_facts: list[dict[str, Any]] = []
 
             if result.route == "memory":
                 memory_hits = (
@@ -829,13 +837,21 @@ def chat_endpoint(req: ChatRequest, request: Request):
                     tool_context = "No relevant prior-session messages were retrieved."
 
             elif result.route == "research":
-                # Generator integration establishes the retrieval contract without pretending
-                # that a live search backend already exists.
-                tool_context = (
-                    "No live search backend is connected in this build. "
-                    "Do not invent current search results, prices, releases, news, "
-                    "or other fresh external facts."
-                )
+                search_started = time.perf_counter()
+                research_result = _research.search(msg)
+                search_ms = round((time.perf_counter() - search_started) * 1000)
+                research_data = research_result.to_dict()
+
+                if research_result.used:
+                    tool_context = research_result.context()
+                else:
+                    detail = research_result.error or "no relevant web evidence was found"
+                    tool_context = (
+                        "Live web retrieval was unavailable for this request. "
+                        f"Reason: {detail}. "
+                        "Do not fabricate current search results, citations, prices, "
+                        "releases, news, or other fresh external facts."
+                    )
 
             generation = _generator.generate(
                 msg,
@@ -848,6 +864,49 @@ def chat_endpoint(req: ChatRequest, request: Request):
             if generation.used and generation.answer:
                 answer = generation.answer
                 mode_label = f"{result.route} · generated"
+
+                if result.route == "research" and research_result is not None and research_result.used:
+                    verification_started = time.perf_counter()
+                    try:
+                        raw_facts = _generator.extract_supported_facts(
+                            query=msg,
+                            answer=answer,
+                            evidence_context=research_result.context(),
+                            allowed_urls=[source.url for source in research_result.sources],
+                        )
+                        candidates = validated_fact_candidates(
+                            raw_facts,
+                            research_result,
+                            query=msg,
+                        )
+
+                        for candidate in candidates:
+                            stored = _knowledge.add(
+                                user["id"],
+                                candidate["statement"],
+                                kind="fact",
+                                source_type="web",
+                                source_ref=candidate["source_ref"],
+                                confidence=candidate["confidence"],
+                                verified=True,
+                                expires_at=candidate["expires_at"],
+                                subject=candidate.get("subject"),
+                                predicate=candidate.get("predicate"),
+                                value=candidate.get("value"),
+                                slot_key=candidate.get("slot_key"),
+                            )
+                            if stored is not None and stored.get("status") == "verified":
+                                web_verified_facts.append(stored)
+                    except Exception:
+                        web_verified_facts = []
+                    verification_ms = round(
+                        (time.perf_counter() - verification_started) * 1000
+                    )
+
+                    if web_verified_facts:
+                        mode_label = f"{result.route} · web-grounded · learned"
+                    else:
+                        mode_label = f"{result.route} · web-grounded"
             else:
                 detail = generation.error or "generator is not configured"
                 answer = (
@@ -863,7 +922,8 @@ def chat_endpoint(req: ChatRequest, request: Request):
             print(
                 "[PERF] /api/chat "
                 f"route={result.route} router={router_ms}ms "
-                f"dispatch={dispatch_ms}ms generation={generation_ms}ms "
+                f"dispatch={dispatch_ms}ms search={search_ms}ms "
+                f"generation={generation_ms}ms verify={verification_ms}ms "
                 f"total={total_ms}ms",
                 flush=True,
             )
@@ -874,10 +934,14 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 "memory_hits": memory_hits,
                 "knowledge_hits": knowledge_hits,
                 "knowledge_learned": knowledge_learned,
+                "research": research_data,
+                "web_verified_facts": web_verified_facts,
                 "timings": {
                     "router_ms": router_ms,
                     "dispatch_ms": dispatch_ms,
+                    "search_ms": search_ms,
                     "generation_ms": generation_ms,
+                    "verification_ms": verification_ms,
                     "total_ms": total_ms,
                 },
                 "ui_meta": {

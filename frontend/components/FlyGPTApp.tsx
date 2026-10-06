@@ -460,7 +460,25 @@ export default function FlyGPTApp({
       }
 
       if ((response.data?.knowledge_learned?.length ?? 0) > 0) {
-        meta.push({ text: "KNOWLEDGE +1", tone: "info" });
+        meta.push({
+          text: "KNOWLEDGE +" + (response.data?.knowledge_learned?.length ?? 0),
+          tone: "info",
+        });
+      }
+
+      const research = response.data?.research;
+      if ((research?.sources?.length ?? 0) > 0) {
+        meta.push({
+          text: "WEB · " + research!.sources.length + " sources",
+          tone: "info",
+        });
+      } else if (response.router?.route === "research" && research?.error) {
+        meta.push({ text: "WEB unavailable", tone: "warn" });
+      }
+
+      const verifiedCount = response.data?.web_verified_facts?.length ?? 0;
+      if (verifiedCount > 0) {
+        meta.push({ text: "VERIFIED +" + verifiedCount, tone: "good" });
       }
 
       setMessages((current) => [
@@ -482,7 +500,10 @@ export default function FlyGPTApp({
       if (response.router?.learning_observed) {
         getRouteLearningStatus().then(setLearningStatus).catch(() => undefined);
       }
-      if ((response.data?.knowledge_learned?.length ?? 0) > 0) {
+      if (
+        (response.data?.knowledge_learned?.length ?? 0) > 0 ||
+        (response.data?.web_verified_facts?.length ?? 0) > 0
+      ) {
         getKnowledgeStatus().then(setKnowledgeStatus).catch(() => undefined);
       }
     } catch (reason: unknown) {
@@ -1041,6 +1062,14 @@ export default function FlyGPTApp({
                     : health?.knowledge?.enabled
                       ? "ready"
                       : "pending"}
+                </strong>
+              </div>
+              <div>
+                <span>Web research</span>
+                <strong>
+                  {health?.research?.configured
+                    ? (health.research.provider ?? "ready")
+                    : "API key needed"}
                 </strong>
               </div>
             </div>

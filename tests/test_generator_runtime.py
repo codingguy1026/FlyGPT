@@ -5,7 +5,13 @@ import unittest
 import urllib.error
 from unittest.mock import patch
 
-from generator_runtime import GeneratorRuntime, _clean_assistant_memory, _memory_messages
+from generator_runtime import (
+    GenerationResult,
+    GeneratorRuntime,
+    _clean_assistant_memory,
+    _extract_json_object,
+    _memory_messages,
+)
 
 
 class FakeHTTPResponse:
@@ -310,6 +316,62 @@ class GeneratorRuntimeTests(unittest.TestCase):
 
         assistant_items = [item for item in history if item["role"] == "assistant"]
         self.assertEqual(len(assistant_items), 1)
+
+    def test_extract_json_object_accepts_fenced_json(self):
+        payload = _extract_json_object(
+            '```json\n{"facts":[{"statement":"supported"}]}\n```'
+        )
+        self.assertIsNotNone(payload)
+        self.assertEqual(payload["facts"][0]["statement"], "supported")
+
+    def test_supported_fact_extraction_returns_only_json_fact_objects(self):
+        with patch.dict(
+            os.environ,
+            {
+                "FLYGPT_GENERATOR_URL": "https://example.invalid/v1/chat/completions",
+                "FLYGPT_GENERATOR_MODEL": "test-model",
+            },
+            clear=True,
+        ):
+            runtime = GeneratorRuntime()
+
+        fake_result = GenerationResult(
+            used=True,
+            provider="test",
+            model="test-model",
+            answer=(
+                '{"facts":['
+                '{"statement":"Fact A","evidence":['
+                '{"url":"https://a.test","quote":"exact supporting phrase"}],'
+                '"confidence":0.9,"volatility":"stable"},'
+                '"ignore-me"]}'
+            ),
+        )
+
+        with patch.object(runtime, "_generate_once", return_value=fake_result) as mocked:
+            facts = runtime.extract_supported_facts(
+                query="question",
+                answer="answer",
+                evidence_context="[source 1] evidence",
+                allowed_urls=["https://a.test"],
+            )
+
+        self.assertEqual(len(facts), 1)
+        self.assertEqual(facts[0]["statement"], "Fact A")
+        messages = mocked.call_args.kwargs["messages"]
+        joined = "\n".join(item["content"] for item in messages)
+        self.assertIn("https://a.test", joined)
+        self.assertIn("verbatim phrase", joined)
+        self.assertIn("Prefer zero facts", joined)
+
+    def test_research_prompt_requires_exact_source_labels(self):
+        with patch.dict(os.environ, {}, clear=True):
+            runtime = GeneratorRuntime()
+            prompt = runtime._system_prompt("research")
+
+        self.assertIn("[source 1]", prompt)
+        self.assertIn("never invent a source number", prompt)
+        self.assertIn("If sources disagree", prompt)
 
     def test_tool_context_is_injected_before_user_message(self):
         with patch.dict(os.environ, {}, clear=True):
