@@ -18,9 +18,11 @@ class ModelCandidateTests(unittest.TestCase):
             app._model_candidates[0],
             "artifacts/fly_router_malecns_v0_5.pt",
         )
+        # v0.5 is preferred once its checkpoint exists, but a checkout that
+        # has not trained v0.5 yet must keep using the committed v0.4 model.
         self.assertEqual(
             Path(app.MODEL_PATH),
-            Path("artifacts/fly_router_malecns_v0_5.pt"),
+            Path("artifacts/fly_router_malecns_v0_4.pt"),
         )
 
 
