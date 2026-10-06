@@ -3,7 +3,7 @@
 FlyGPT is an experimental Drosophila connectome interface and connectome-routed
 task router.
 
-As of v0.8.0, interactive connectome queries target the **Janelia MaleCNS v1.0**
+As of v0.10.0, interactive connectome queries target the **Janelia MaleCNS v1.0**
 dataset through the official neuPrint service instead of requiring local
 FlyWire v783 Parquet files.
 
@@ -207,3 +207,57 @@ GET  /api/router/learning/status
 POST /api/router/learning/feedback
 POST /api/router/learning/clear
 ```
+
+
+## Provenance-aware long-term knowledge
+
+FlyGPT v0.10 separates conversation memory from durable knowledge. The
+`KnowledgeStore` keeps account-scoped items with provenance, confidence,
+verification state, timestamps, optional expiry, and correction history.
+
+Normal chat traffic follows a deliberately conservative policy:
+
+- first-person profile/project statements can be stored as `user-asserted`
+  context
+- general claims supplied by a user remain unverified claims and are **not**
+  used as factual evidence
+- trusted evidence can promote an item to `verified` when it comes from a
+  repository, official source, verified manual source, or web retrieval layer
+- lower-trust contradictory claims cannot override a stronger verified item
+- corrected structured facts supersede old values without deleting history
+- expired verified facts are excluded from retrieval
+- secret-like strings such as passwords, API keys, access tokens, and private
+  keys are rejected from automatic long-term learning
+- knowledge failures are non-critical; chat can continue without the optional
+  context layer
+
+The generator receives provenance labels separately from conversation history.
+It may use `[verified]` items as factual evidence. `[user-asserted]` items
+are only the user's own profile/project context and must not be presented as
+independently verified external facts.
+
+Default storage:
+
+```bash
+data/flygpt_knowledge.sqlite3
+```
+
+Override it with:
+
+```bash
+export FLYGPT_KNOWLEDGE_PATH=data/flygpt_knowledge.sqlite3
+```
+
+Account APIs:
+
+```text
+GET  /api/knowledge/status
+GET  /api/knowledge/items
+POST /api/knowledge/remember
+POST /api/knowledge/reject
+POST /api/knowledge/clear
+```
+
+Objective facts are intentionally **not** exposed to the client as an arbitrary
+"mark verified" action. Verification is reserved for trusted retrieval/source
+code paths so the UI cannot turn an unsupported claim into a fact.
