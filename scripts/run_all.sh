@@ -141,8 +141,8 @@ BACKEND_PID=$!
 
 echo "⏳ Waiting for backend health check..."
 BACKEND_READY=0
-for _ in $(seq 1 40); do
-  if curl -fsS http://127.0.0.1:8000/api/health >/dev/null 2>&1; then
+for _ in $(seq 1 180); do
+  if curl -fsS --max-time 2 http://127.0.0.1:8000/api/health >/dev/null 2>&1; then
     BACKEND_READY=1
     break
   fi
@@ -155,7 +155,8 @@ for _ in $(seq 1 40); do
 done
 
 if [[ "$BACKEND_READY" -ne 1 ]]; then
-  echo "❌ Backend did not become ready on port 8000."
+  echo "❌ Backend did not become ready on port 8000 after 90 seconds."
+  echo "   Try: curl -i http://127.0.0.1:8000/api/health"
   exit 1
 fi
 
