@@ -20,7 +20,7 @@ from memory_store import MemoryStore, format_recall
 from auth_store import AuthStore, SESSION_TTL_SECONDS
 
 
-APP_VERSION = "0.8.0"
+APP_VERSION = "0.8.1"
 
 _model_override = os.environ.get("FLYGPT_MODEL_PATH")
 if _model_override:
