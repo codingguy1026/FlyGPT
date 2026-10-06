@@ -20,7 +20,11 @@ if [[ -n "${GEMINI_API_KEY:-}" && -z "${FLYGPT_GENERATOR_URL:-}" ]]; then
   export FLYGPT_GENERATOR_API_KEY="${FLYGPT_GENERATOR_API_KEY:-$GEMINI_API_KEY}"
   export FLYGPT_GENERATOR_REASONING_EFFORT="${FLYGPT_GENERATOR_REASONING_EFFORT:-low}"
   export FLYGPT_GENERATOR_FALLBACK_MODEL="${FLYGPT_GENERATOR_FALLBACK_MODEL:-gemini-3.7-flash}"
-  export FLYGPT_GENERATOR_RETRY_DELAY="${FLYGPT_GENERATOR_RETRY_DELAY:-0.6}"
+fi
+
+if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+  export FLYGPT_OPENAI_MODEL="${FLYGPT_OPENAI_MODEL:-gpt-6-luna}"
+  export FLYGPT_OPENAI_URL="${FLYGPT_OPENAI_URL:-https://api.openai.com/v1/responses}"
 fi
 
 MODEL="${FLYGPT_LOCAL_MODEL:-qwen2.5:0.5b-instruct}"
@@ -62,7 +66,9 @@ echo "🪰 FlyGPT v0.8.0 full stack"
 echo
 
 USE_OLLAMA=1
-if [[ -n "${FLYGPT_GENERATOR_URL:-}" ]]; then
+if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+  USE_OLLAMA=0
+elif [[ -n "${FLYGPT_GENERATOR_URL:-}" ]]; then
   case "$FLYGPT_GENERATOR_URL" in
     http://127.0.0.1:11434/*|http://localhost:11434/*) ;;
     *) USE_OLLAMA=0 ;;
@@ -105,9 +111,14 @@ if [[ "$USE_OLLAMA" -eq 1 ]]; then
     -d "{\"model\":\"${MODEL}\",\"prompt\":\"\",\"keep_alive\":\"${OLLAMA_KEEP_ALIVE}\"}" \
     >/dev/null || echo "⚠️  Model preload failed; FlyGPT can still start, but the first response may be slow."
 else
-  echo "☁️  Hosted generator: ${FLYGPT_GENERATOR_PROVIDER:-compatible-http} / ${FLYGPT_GENERATOR_MODEL:-unset}"
+  if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+    echo "🧠 Route generator: OpenAI / ${FLYGPT_OPENAI_MODEL:-gpt-6-luna} (general, memory, summarize, math)"
+  fi
+  if [[ -n "${FLYGPT_GENERATOR_URL:-}" ]]; then
+    echo "🧠 Route generator: ${FLYGPT_GENERATOR_PROVIDER:-compatible-http} / ${FLYGPT_GENERATOR_MODEL:-unset} (code, research)"
+  fi
   if [[ -n "${FLYGPT_GENERATOR_FALLBACK_MODEL:-}" ]]; then
-    echo "🛟 Generator fallback: ${FLYGPT_GENERATOR_FALLBACK_MODEL}"
+    echo "🛟 Last-resort Gemini fallback: ${FLYGPT_GENERATOR_FALLBACK_MODEL}"
   fi
   if [[ "${FLYGPT_GENERATOR_PROVIDER:-}" == "gemini" && -z "${FLYGPT_GENERATOR_API_KEY:-}" ]]; then
     echo "⚠️  Gemini is selected but no API key is configured."
@@ -179,7 +190,12 @@ echo "✅ FlyGPT is launching"
 if [[ "$USE_OLLAMA" -eq 1 ]]; then
   echo "   Generator: Ollama :11434 / $MODEL"
 else
-  echo "   Generator: ${FLYGPT_GENERATOR_PROVIDER:-compatible-http} / ${FLYGPT_GENERATOR_MODEL:-unset}"
+  if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+    echo "   OpenAI  : ${FLYGPT_OPENAI_MODEL:-gpt-6-luna}"
+  fi
+  if [[ -n "${FLYGPT_GENERATOR_URL:-}" ]]; then
+    echo "   Gemini  : ${FLYGPT_GENERATOR_MODEL:-unset}"
+  fi
 fi
 echo "   Backend  :8000"
 echo "   Frontend :3000"
