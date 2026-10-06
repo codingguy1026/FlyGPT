@@ -108,52 +108,63 @@ Chat memory is scoped by authenticated user plus conversation session.
 
 ## Answer generation
 
-FlyGPT can forward generative routes to an OpenAI-compatible
-chat-completions endpoint.
+FlyGPT can use both OpenAI and Gemini at the same time. The MaleCNS router's
+task route also selects the preferred language-model provider.
 
-### Gemini 3.8 Flash
-
-`make run` has a Gemini preset. Put the real key in the ignored local
-`.env` file:
+Put the real keys in the ignored local `.env` file:
 
 ```bash
-GEMINI_API_KEY=your-key-here
+OPENAI_API_KEY=your-openai-key
+GEMINI_API_KEY=your-gemini-key
 ```
 
-When `GEMINI_API_KEY` is present and no explicit generator URL is set,
-FlyGPT automatically selects:
+Default route plan:
 
 ```text
-provider: gemini
-model: gemini-3.8-flash
-endpoint: https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
-reasoning effort: low
-fallback model: gemini-3.7-flash
+general   -> OpenAI / gpt-6-luna
+memory    -> OpenAI / gpt-6-luna
+summarize -> OpenAI / gpt-6-luna
+math      -> local math fast-path first, then OpenAI if generation is needed
+
+code      -> Gemini / gemini-3.8-flash
+research  -> Gemini / gemini-3.8-flash
+
+connectome queries -> MaleCNS direct handlers, no LLM when a direct query matches
 ```
 
-For transient `502`, `503`, or `504` responses, FlyGPT retries Gemini 3.8
-Flash once after a short delay. If the second attempt is still unavailable, it
-tries `gemini-3.7-flash` once before surfacing an error. Both the fallback
-model and retry delay can be overridden with
-`FLYGPT_GENERATOR_FALLBACK_MODEL` and `FLYGPT_GENERATOR_RETRY_DELAY`.
+OpenAI uses the Responses API by default:
 
-Hosted generation skips the local Ollama startup and preload path. The API key
-is forwarded only by the backend in the Authorization header and is never
-included in generator status responses.
+```text
+https://api.openai.com/v1/responses
+```
 
-### Other OpenAI-compatible providers
+Gemini uses Google's OpenAI-compatible chat-completions endpoint:
 
-Override the generator settings when needed:
+```text
+https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+```
+
+If the preferred provider returns a transient `429`, `502`, `503`, `504`,
+or a network timeout, FlyGPT immediately switches to the other configured
+provider instead of retrying the same slow request. If both providers are
+temporarily unavailable, `gemini-3.7-flash` remains the last-resort Gemini
+fallback.
+
+Optional overrides:
 
 ```bash
-export FLYGPT_GENERATOR_URL=http://127.0.0.1:11434/v1/chat/completions
-export FLYGPT_GENERATOR_MODEL=llama3.2:3b
-export FLYGPT_GENERATOR_PROVIDER=ollama
+FLYGPT_OPENAI_MODEL=gpt-6-luna
+FLYGPT_OPENAI_URL=https://api.openai.com/v1/responses
+
+FLYGPT_GENERATOR_URL=https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+FLYGPT_GENERATOR_MODEL=gemini-3.8-flash
+FLYGPT_GENERATOR_PROVIDER=gemini
+FLYGPT_GENERATOR_FALLBACK_MODEL=gemini-3.7-flash
+FLYGPT_GENERATOR_REASONING_EFFORT=low
 ```
 
-Hosted providers can additionally use `FLYGPT_GENERATOR_API_KEY`.
-`FLYGPT_GENERATOR_REASONING_EFFORT` accepts `low`, `medium`, or `high`
-for compatible providers. Keep real API keys out of Git.
+API keys are read only by the backend and are never included in generator
+status responses. Keep real API keys out of Git.
 
 ## Python API
 
