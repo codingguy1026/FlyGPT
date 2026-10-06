@@ -161,6 +161,15 @@ class GeneratorRuntime:
             minimum=32,
             maximum=8192,
         )
+        reasoning_effort = os.environ.get(
+            "FLYGPT_GENERATOR_REASONING_EFFORT",
+            "",
+        ).strip().lower()
+        self.reasoning_effort = (
+            reasoning_effort
+            if reasoning_effort in {"low", "medium", "high"}
+            else None
+        )
 
     @property
     def configured(self) -> bool:
@@ -185,6 +194,7 @@ class GeneratorRuntime:
             "timeout_seconds": self.timeout,
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
+            "reasoning_effort": self.reasoning_effort,
         }
 
     def _system_prompt(self, route: str) -> str:
@@ -321,6 +331,8 @@ class GeneratorRuntime:
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
         }
+        if self.reasoning_effort is not None:
+            body["reasoning_effort"] = self.reasoning_effort
 
         headers = {
             "Content-Type": "application/json",
