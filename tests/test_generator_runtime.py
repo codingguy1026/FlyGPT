@@ -341,7 +341,8 @@ class GeneratorRuntimeTests(unittest.TestCase):
             model="test-model",
             answer=(
                 '{"facts":['
-                '{"statement":"Fact A","support_urls":["https://a.test"],'
+                '{"statement":"Fact A","evidence":['
+                '{"url":"https://a.test","quote":"exact supporting phrase"}],'
                 '"confidence":0.9,"volatility":"stable"},'
                 '"ignore-me"]}'
             ),
@@ -360,6 +361,7 @@ class GeneratorRuntimeTests(unittest.TestCase):
         messages = mocked.call_args.kwargs["messages"]
         joined = "\n".join(item["content"] for item in messages)
         self.assertIn("https://a.test", joined)
+        self.assertIn("verbatim phrase", joined)
         self.assertIn("Prefer zero facts", joined)
 
     def test_research_prompt_requires_exact_source_labels(self):
