@@ -106,8 +106,8 @@ def _env_float(name: str, default: float, *, minimum: float, maximum: float) -> 
 def _extract_json_object(text: str) -> dict[str, Any] | None:
     clean = text.strip()
     if clean.startswith("```"):
-        clean = re.sub(r"^```(?:json)?\\s*", "", clean, flags=re.IGNORECASE)
-        clean = re.sub(r"\\s*```$", "", clean)
+        clean = re.sub(r"^```(?:json)?\s*", "", clean, flags=re.IGNORECASE)
+        clean = re.sub(r"\s*```$", "", clean)
 
     try:
         payload = json.loads(clean)
@@ -474,9 +474,13 @@ class GeneratorRuntime:
                     "{\"facts\":[{\"statement\":\"...\",\"subject\":\"...\","
                     "\"predicate\":\"...\",\"value\":\"...\","
                     "\"slot_key\":\"subject:predicate\","
-                    "\"support_urls\":[\"https://...\"],\"confidence\":0.0,"
+                    "\"evidence\":[{\"url\":\"https://...\","
+                    "\"quote\":\"exact short phrase copied from that source\"}],"
+                    "\"confidence\":0.0,"
                     "\"volatility\":\"rapid|medium|stable\"}]}. "
-                    "support_urls must be copied exactly from ALLOWED URLS. Omit any "
+                    "Every evidence.url must be copied exactly from ALLOWED URLS, and "
+                    "every evidence.quote must be a short verbatim phrase copied from "
+                    "that URL's WEB EVIDENCE. Do not paraphrase evidence quotes. Omit any "
                     "claim that is weakly supported, contradictory, inferential, "
                     "opinion-like, or absent from the evidence. Prefer zero facts over "
                     "an uncertain fact. Use rapid for highly time-sensitive facts, "
