@@ -17,10 +17,11 @@ from connectome import MaleCNSConnectome
 from dispatcher import dispatch, dispatch_math_fast_path, is_math_fast_path
 from generator_runtime import GENERATIVE_ROUTES, GeneratorRuntime
 from memory_store import MemoryStore, format_recall
+from route_learning import RouteLearningStore
 from auth_store import AuthStore, SESSION_TTL_SECONDS
 
 
-APP_VERSION = "0.8.0"
+APP_VERSION = "0.9.0"
 
 _model_override = os.environ.get("FLYGPT_MODEL_PATH")
 if _model_override:
@@ -65,6 +66,9 @@ _router_error: str | None = None
 
 _generator = GeneratorRuntime()
 _memory = MemoryStore(os.environ.get("FLYGPT_MEMORY_PATH", "data/flygpt_memory.sqlite3"))
+_route_learning = RouteLearningStore(
+    os.environ.get("FLYGPT_ROUTE_LEARNING_PATH", "data/flygpt_route_learning.sqlite3")
+)
 _auth = AuthStore(os.environ.get("FLYGPT_AUTH_PATH", "data/flygpt_auth.sqlite3"))
 
 AUTH_COOKIE_NAME = "flygpt_session"
@@ -83,6 +87,11 @@ class ChatRequest(BaseModel):
 
 class MemoryRequest(BaseModel):
     session_id: str
+
+
+class RouterFeedbackRequest(BaseModel):
+    message: str
+    route: str
 
 
 class AuthCredentials(BaseModel):
@@ -156,17 +165,34 @@ def get_router() -> Any | None:
     return _router
 
 
-def predict_route(text: str) -> dict[str, Any] | None:
+def predict_route(text: str, user_id: str | None = None) -> dict[str, Any] | None:
     router = get_router()
     if router is None:
         return None
 
     try:
-        return router.predict(text)
+        result = router.predict(text, top_k=len(router.routes))
     except Exception as exc:
         global _router_error
         _router_error = f"{type(exc).__name__}: {exc}"
         return None
+
+    if user_id:
+        try:
+            result = _route_learning.personalize(user_id, text, result)
+        except Exception:
+            # Personalization is an optional layer. A corrupt/locked learning
+            # database must never take the frozen router or chat endpoint down.
+            result["personalization"] = {
+                "applied": False,
+                "examples_considered": 0,
+                "neighbors_used": 0,
+                "blend": 0.0,
+                "nearest_similarity": 0.0,
+                "error": "unavailable",
+            }
+
+    return result
 
 
 def extract_root_ids(text: str) -> list[int]:
@@ -378,10 +404,56 @@ def health():
             "path": str(_memory.path),
             "max_messages_per_session": 200,
         },
+        "adaptive_learning": {
+            "enabled": True,
+            "account_scoped": True,
+            "stores_raw_prompts": False,
+            "path": str(_route_learning.path),
+        },
         "auth": {
             "enabled": True,
             "cookie_secure": AUTH_COOKIE_SECURE,
         },
+    }
+
+
+@app.get("/api/router/learning/status")
+def router_learning_status(request: Request):
+    user = _require_user(request)
+    return _route_learning.stats(user["id"])
+
+
+@app.post("/api/router/learning/clear")
+def router_learning_clear(request: Request):
+    user = _require_user(request)
+    return {
+        "cleared": _route_learning.clear(user["id"]),
+        "status": _route_learning.stats(user["id"]),
+    }
+
+
+@app.post("/api/router/learning/feedback")
+def router_learning_feedback(req: RouterFeedbackRequest, request: Request):
+    user = _require_user(request)
+    message = req.message.strip()
+    route = req.route.strip()
+
+    if not message:
+        raise HTTPException(status_code=400, detail="학습할 메시지가 비어 있습니다.")
+
+    router = get_router()
+    valid_routes = set(router.routes) if router is not None else set(GENERATIVE_ROUTES)
+    if route not in valid_routes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"지원하지 않는 라우트입니다: {route}",
+        )
+
+    learned = _route_learning.feedback(user["id"], message, route)
+    return {
+        "learned": learned,
+        "route": route,
+        "status": _route_learning.stats(user["id"]),
     }
 
 
@@ -607,7 +679,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
             )
 
         router_started = time.perf_counter()
-        route = predict_route(msg)
+        route = predict_route(msg, user["id"])
         router_ms = round((time.perf_counter() - router_started) * 1000)
 
         if route is not None:
@@ -639,6 +711,16 @@ def chat_endpoint(req: ChatRequest, request: Request):
                     route=route,
                     session_id=session_id,
                 )
+
+            try:
+                learned_from_user = _route_learning.observe_if_confident(
+                    user["id"],
+                    msg,
+                    route,
+                )
+            except Exception:
+                learned_from_user = False
+            route["learning_observed"] = learned_from_user
 
             memory_hits = None
             tool_context = result.tool_context

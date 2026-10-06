@@ -18,6 +18,16 @@ export type RouterResult = {
   steps?: number;
   scaffold_kind?: string;
   vectorizer_version?: string;
+  margin?: number;
+  accepted?: boolean;
+  learning_observed?: boolean;
+  personalization?: {
+    applied?: boolean;
+    examples_considered?: number;
+    neighbors_used?: number;
+    blend?: number;
+    nearest_similarity?: number;
+  };
 };
 
 export type GenerationResult = {
@@ -97,6 +107,23 @@ export type HealthResponse = {
     enabled?: boolean;
     max_messages_per_session?: number;
   };
+  adaptive_learning?: {
+    enabled?: boolean;
+    account_scoped?: boolean;
+    stores_raw_prompts?: boolean;
+  };
+};
+
+export type RouteLearningStatus = {
+  enabled: boolean;
+  examples: number;
+  auto_examples: number;
+  feedback_examples: number;
+  confirmations: number;
+  last_learned_at?: number | null;
+  routes: Record<string, number>;
+  stores_raw_prompts: boolean;
+  max_examples: number;
 };
 
 async function jsonRequest<T>(
@@ -168,5 +195,37 @@ export function clearMemory(sessionId: string): Promise<{
     body: JSON.stringify({
       session_id: sessionId,
     }),
+  });
+}
+
+export function getRouteLearningStatus(): Promise<RouteLearningStatus> {
+  return jsonRequest<RouteLearningStatus>("/api/router/learning/status", {
+    cache: "no-store",
+  });
+}
+
+export function confirmRouteLearning(
+  message: string,
+  route: string,
+): Promise<{
+  learned: boolean;
+  route: string;
+  status: RouteLearningStatus;
+}> {
+  return jsonRequest("/api/router/learning/feedback", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ message, route }),
+  });
+}
+
+export function clearRouteLearning(): Promise<{
+  cleared: number;
+  status: RouteLearningStatus;
+}> {
+  return jsonRequest("/api/router/learning/clear", {
+    method: "POST",
   });
 }

@@ -12,9 +12,13 @@ import BrainPanel from "./BrainPanel";
 import type { AuthUser } from "@/lib/auth";
 import {
   clearMemory,
+  clearRouteLearning,
+  confirmRouteLearning,
   getHealth,
+  getRouteLearningStatus,
   sendChat,
   type HealthResponse,
+  type RouteLearningStatus,
   type RouterResult,
 } from "@/lib/api";
 import {
@@ -33,6 +37,11 @@ type Message = {
   role: "user" | "assistant";
   content: string;
   meta?: MessageMeta[];
+  learning?: {
+    prompt: string;
+    route: string;
+    confirmed?: boolean;
+  };
 };
 
 type ChatRecord = {
@@ -225,6 +234,7 @@ export default function FlyGPTApp({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [router, setRouter] = useState<RouterResult | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [learningStatus, setLearningStatus] = useState<RouteLearningStatus | null>(null);
   const [healthError, setHealthError] = useState(false);
   const [sessionId, setSessionId] = useState("");
   const [conversationTitle, setConversationTitle] = useState("Untitled flight");
@@ -273,6 +283,10 @@ export default function FlyGPTApp({
         setHealthError(false);
       })
       .catch(() => setHealthError(true));
+
+    getRouteLearningStatus()
+      .then(setLearningStatus)
+      .catch(() => setLearningStatus(null));
   }, [user.id]);
 
   useEffect(() => {
@@ -425,6 +439,18 @@ export default function FlyGPTApp({
         });
       }
 
+      if (response.router?.learning_observed) {
+        meta.push({ text: "LEARNED", tone: "info" });
+      } else if (response.router?.personalization?.applied) {
+        meta.push({
+          text:
+            "PERSONAL " +
+            Math.round((response.router.personalization.blend ?? 0) * 100) +
+            "%",
+          tone: "info",
+        });
+      }
+
       setMessages((current) => [
         ...current,
         {
@@ -432,8 +458,18 @@ export default function FlyGPTApp({
           role: "assistant",
           content: response.answer,
           meta,
+          learning: response.router
+            ? {
+                prompt: text,
+                route: response.router.route,
+              }
+            : undefined,
         },
       ]);
+
+      if (response.router?.learning_observed) {
+        getRouteLearningStatus().then(setLearningStatus).catch(() => undefined);
+      }
     } catch (reason: unknown) {
       const detail = reason instanceof Error ? reason.message : String(reason);
       setMessages((current) => [
@@ -446,6 +482,43 @@ export default function FlyGPTApp({
       ]);
     } finally {
       setSending(false);
+    }
+  }
+
+  async function confirmLearning(messageId: string, learning?: Message["learning"]) {
+    if (!learning || learning.confirmed) return;
+
+    try {
+      const result = await confirmRouteLearning(learning.prompt, learning.route);
+      setLearningStatus(result.status);
+      setMessages((current) =>
+        current.map((message) =>
+          message.id === messageId
+            ? {
+                ...message,
+                learning: message.learning
+                  ? { ...message.learning, confirmed: true }
+                  : message.learning,
+                meta: [
+                  ...(message.meta ?? []),
+                  { text: "CONFIRMED", tone: "good" as const },
+                ],
+              }
+            : message,
+        ),
+      );
+    } catch {
+      // Explicit route feedback is optional; keep chat usable if it fails.
+    }
+  }
+
+  async function resetRouteLearning() {
+    try {
+      const result = await clearRouteLearning();
+      setLearningStatus(result.status);
+      setRouter(null);
+    } catch {
+      // Keep settings usable even if the backend is unavailable.
     }
   }
 
@@ -706,7 +779,12 @@ export default function FlyGPTApp({
                         <button type="button" title="복사" onClick={() => navigator.clipboard?.writeText(message.content)}>
                           <Icon name="copy" size={16} />
                         </button>
-                        <button type="button" title="좋아요">
+                        <button
+                          type="button"
+                          title={message.learning?.confirmed ? "학습 완료" : "이 라우트가 맞았다고 학습시키기"}
+                          onClick={() => void confirmLearning(message.id, message.learning)}
+                          disabled={!message.learning || message.learning.confirmed}
+                        >
                           <Icon name="thumb" size={16} />
                         </button>
                         <button type="button" title="경로 보기" onClick={() => setTelemetryOpen(true)}>
@@ -913,8 +991,21 @@ export default function FlyGPTApp({
               <div><span>Router</span><strong>{modelLabel}</strong></div>
               <div><span>Session</span><strong>{sessionId ? sessionId.slice(0, 12) + "…" : "loading"}</strong></div>
               <div><span>Theme</span><strong>{theme.name}</strong></div>
+              <div>
+                <span>Adaptive learning</span>
+                <strong>
+                  {learningStatus
+                    ? learningStatus.examples + " examples"
+                    : health?.adaptive_learning?.enabled
+                      ? "ready"
+                      : "pending"}
+                </strong>
+              </div>
             </div>
             <button className="settingsDanger" type="button" onClick={resetMemory}>Clear current memory</button>
+            <button className="settingsDanger" type="button" onClick={() => void resetRouteLearning()}>
+              Clear learned routing
+            </button>
           </section>
         </div>
       )}
