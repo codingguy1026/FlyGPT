@@ -22,14 +22,61 @@ class FakeHTTPResponse:
         return self._body
 
 
-def unavailable_error() -> urllib.error.HTTPError:
+def http_error(code: int, url: str = "https://example.invalid") -> urllib.error.HTTPError:
     return urllib.error.HTTPError(
-        url="https://example.invalid/v1/chat/completions",
-        code=503,
-        msg="Service Unavailable",
+        url=url,
+        code=code,
+        msg="error",
         hdrs=None,
-        fp=io.BytesIO(b'{"error":{"message":"temporarily unavailable"}}'),
+        fp=io.BytesIO(b'{"error":{"message":"temporary failure"}}'),
     )
+
+
+def openai_ok(text: str = "openai ok") -> FakeHTTPResponse:
+    return FakeHTTPResponse(
+        {
+            "status": "completed",
+            "output": [
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [
+                        {
+                            "type": "output_text",
+                            "text": text,
+                            "annotations": [],
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+
+def gemini_ok(text: str = "gemini ok") -> FakeHTTPResponse:
+    return FakeHTTPResponse(
+        {
+            "choices": [
+                {
+                    "message": {"content": text},
+                    "finish_reason": "stop",
+                }
+            ]
+        }
+    )
+
+
+MULTI_ENV = {
+    "OPENAI_API_KEY": "openai-secret",
+    "FLYGPT_OPENAI_MODEL": "gpt-6-luna",
+    "FLYGPT_OPENAI_URL": "https://api.openai.test/v1/responses",
+    "FLYGPT_GENERATOR_URL": "https://gemini.test/v1/chat/completions",
+    "FLYGPT_GENERATOR_MODEL": "gemini-3.8-flash",
+    "FLYGPT_GENERATOR_PROVIDER": "gemini",
+    "FLYGPT_GENERATOR_API_KEY": "gemini-secret",
+    "FLYGPT_GENERATOR_FALLBACK_MODEL": "gemini-3.7-flash",
+    "FLYGPT_GENERATOR_REASONING_EFFORT": "low",
+}
 
 
 class GeneratorRuntimeTests(unittest.TestCase):
@@ -46,10 +93,7 @@ class GeneratorRuntimeTests(unittest.TestCase):
     def test_unknown_route_is_never_sent(self):
         with patch.dict(
             os.environ,
-            {
-                "FLYGPT_GENERATOR_URL": "http://127.0.0.1:9/v1/chat/completions",
-                "FLYGPT_GENERATOR_MODEL": "test-model",
-            },
+            {"OPENAI_API_KEY": "secret-value"},
             clear=True,
         ):
             runtime = GeneratorRuntime()
@@ -73,30 +117,24 @@ class GeneratorRuntimeTests(unittest.TestCase):
         self.assertNotIn("Router raw", cleaned)
         self.assertNotIn("Decision:", cleaned)
 
-    def test_status_does_not_expose_api_key(self):
-        with patch.dict(
-            os.environ,
-            {
-                "FLYGPT_GENERATOR_URL": "https://example.invalid/v1/chat/completions",
-                "FLYGPT_GENERATOR_MODEL": "fly-model",
-                "FLYGPT_GENERATOR_API_KEY": "secret-value",
-            },
-            clear=True,
-        ):
+    def test_status_does_not_expose_api_keys(self):
+        with patch.dict(os.environ, MULTI_ENV, clear=True):
             runtime = GeneratorRuntime()
             status = runtime.status()
 
         self.assertTrue(status["configured"])
+        self.assertEqual(status["provider"], "multi")
         self.assertTrue(status["api_key_configured"])
-        self.assertNotIn("secret-value", repr(status))
-
+        self.assertNotIn("openai-secret", repr(status))
+        self.assertNotIn("gemini-secret", repr(status))
+        self.assertEqual(status["openai"]["model"], "gpt-6-luna")
+        self.assertEqual(status["gemini"]["model"], "gemini-3.8-flash")
 
     def test_invalid_numeric_settings_fall_back_safely(self):
         with patch.dict(
             os.environ,
             {
-                "FLYGPT_GENERATOR_URL": "https://example.invalid/v1/chat/completions",
-                "FLYGPT_GENERATOR_MODEL": "fly-model",
+                "OPENAI_API_KEY": "secret",
                 "FLYGPT_GENERATOR_TIMEOUT": "not-a-number",
                 "FLYGPT_GENERATOR_TEMPERATURE": "99",
                 "FLYGPT_GENERATOR_MAX_TOKENS": "1",
@@ -110,15 +148,7 @@ class GeneratorRuntimeTests(unittest.TestCase):
         self.assertEqual(runtime.max_tokens, 32)
 
     def test_reasoning_effort_is_validated_and_reported(self):
-        with patch.dict(
-            os.environ,
-            {
-                "FLYGPT_GENERATOR_URL": "https://example.invalid/v1/chat/completions",
-                "FLYGPT_GENERATOR_MODEL": "gemini-3.8-flash",
-                "FLYGPT_GENERATOR_REASONING_EFFORT": "low",
-            },
-            clear=True,
-        ):
+        with patch.dict(os.environ, MULTI_ENV, clear=True):
             runtime = GeneratorRuntime()
             status = runtime.status()
 
@@ -127,112 +157,124 @@ class GeneratorRuntimeTests(unittest.TestCase):
 
         with patch.dict(
             os.environ,
-            {"FLYGPT_GENERATOR_REASONING_EFFORT": "turbo"},
+            {
+                "OPENAI_API_KEY": "secret",
+                "FLYGPT_GENERATOR_REASONING_EFFORT": "turbo",
+            },
             clear=True,
         ):
             invalid = GeneratorRuntime()
 
         self.assertIsNone(invalid.reasoning_effort)
 
-    def test_transient_503_retries_primary_once(self):
+    def test_general_prefers_openai(self):
         calls: list[str] = []
 
         def fake_urlopen(request, timeout):
+            calls.append(request.full_url)
             payload = json.loads(request.data.decode("utf-8"))
-            calls.append(payload["model"])
-            if len(calls) == 1:
-                raise unavailable_error()
-            return FakeHTTPResponse(
-                {
-                    "choices": [
-                        {
-                            "message": {"content": "안녕!"},
-                            "finish_reason": "stop",
-                        }
-                    ]
-                }
-            )
+            self.assertEqual(payload["model"], "gpt-6-luna")
+            return openai_ok("안녕!")
 
-        with patch.dict(
-            os.environ,
-            {
-                "FLYGPT_GENERATOR_URL": "https://example.invalid/v1/chat/completions",
-                "FLYGPT_GENERATOR_MODEL": "gemini-3.8-flash",
-                "FLYGPT_GENERATOR_RETRY_DELAY": "0",
-            },
-            clear=True,
-        ), patch("generator_runtime.urllib.request.urlopen", side_effect=fake_urlopen):
+        with patch.dict(os.environ, MULTI_ENV, clear=True), patch(
+            "generator_runtime.urllib.request.urlopen",
+            side_effect=fake_urlopen,
+        ):
             runtime = GeneratorRuntime()
             result = runtime.generate("안녕", "general")
 
         self.assertTrue(result.used)
+        self.assertEqual(result.provider, "openai")
+        self.assertEqual(result.model, "gpt-6-luna")
+        self.assertEqual(calls, ["https://api.openai.test/v1/responses"])
+
+    def test_code_prefers_gemini(self):
+        calls: list[str] = []
+
+        def fake_urlopen(request, timeout):
+            calls.append(request.full_url)
+            payload = json.loads(request.data.decode("utf-8"))
+            self.assertEqual(payload["model"], "gemini-3.8-flash")
+            return gemini_ok("코드 답변")
+
+        with patch.dict(os.environ, MULTI_ENV, clear=True), patch(
+            "generator_runtime.urllib.request.urlopen",
+            side_effect=fake_urlopen,
+        ):
+            runtime = GeneratorRuntime()
+            result = runtime.generate("파이썬 코드 짜줘", "code")
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.provider, "gemini")
         self.assertEqual(result.model, "gemini-3.8-flash")
-        self.assertEqual(calls, ["gemini-3.8-flash", "gemini-3.8-flash"])
+        self.assertEqual(calls, ["https://gemini.test/v1/chat/completions"])
 
-    def test_repeated_503_uses_configured_fallback_model(self):
+    def test_gemini_503_immediately_falls_back_to_openai(self):
         calls: list[str] = []
 
         def fake_urlopen(request, timeout):
-            payload = json.loads(request.data.decode("utf-8"))
-            model = payload["model"]
-            calls.append(model)
-            if model == "gemini-3.8-flash":
-                raise unavailable_error()
-            return FakeHTTPResponse(
-                {
-                    "choices": [
-                        {
-                            "message": {"content": "fallback ok"},
-                            "finish_reason": "stop",
-                        }
-                    ]
-                }
-            )
+            calls.append(request.full_url)
+            if "gemini.test" in request.full_url:
+                raise http_error(503, request.full_url)
+            return openai_ok("OpenAI fallback")
 
-        with patch.dict(
-            os.environ,
-            {
-                "FLYGPT_GENERATOR_URL": "https://example.invalid/v1/chat/completions",
-                "FLYGPT_GENERATOR_MODEL": "gemini-3.8-flash",
-                "FLYGPT_GENERATOR_FALLBACK_MODEL": "gemini-3.7-flash",
-                "FLYGPT_GENERATOR_RETRY_DELAY": "0",
-            },
-            clear=True,
-        ), patch("generator_runtime.urllib.request.urlopen", side_effect=fake_urlopen):
+        with patch.dict(os.environ, MULTI_ENV, clear=True), patch(
+            "generator_runtime.urllib.request.urlopen",
+            side_effect=fake_urlopen,
+        ):
             runtime = GeneratorRuntime()
-            result = runtime.generate("안녕", "general")
+            result = runtime.generate("코드 고쳐줘", "code")
 
         self.assertTrue(result.used)
-        self.assertEqual(result.model, "gemini-3.7-flash")
+        self.assertEqual(result.provider, "openai")
+        self.assertEqual(result.model, "gpt-6-luna")
         self.assertEqual(
             calls,
-            ["gemini-3.8-flash", "gemini-3.8-flash", "gemini-3.7-flash"],
+            [
+                "https://gemini.test/v1/chat/completions",
+                "https://api.openai.test/v1/responses",
+            ],
         )
 
-    def test_non_retryable_http_error_is_not_retried(self):
+    def test_openai_503_immediately_falls_back_to_gemini(self):
+        calls: list[str] = []
+
+        def fake_urlopen(request, timeout):
+            calls.append(request.full_url)
+            if "openai.test" in request.full_url:
+                raise http_error(503, request.full_url)
+            return gemini_ok("Gemini fallback")
+
+        with patch.dict(os.environ, MULTI_ENV, clear=True), patch(
+            "generator_runtime.urllib.request.urlopen",
+            side_effect=fake_urlopen,
+        ):
+            runtime = GeneratorRuntime()
+            result = runtime.generate("안녕", "general")
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.provider, "gemini")
+        self.assertEqual(result.model, "gemini-3.8-flash")
+        self.assertEqual(
+            calls,
+            [
+                "https://api.openai.test/v1/responses",
+                "https://gemini.test/v1/chat/completions",
+            ],
+        )
+
+    def test_non_retryable_http_error_is_not_cross_routed(self):
         calls = 0
 
         def fake_urlopen(request, timeout):
             nonlocal calls
             calls += 1
-            raise urllib.error.HTTPError(
-                url="https://example.invalid/v1/chat/completions",
-                code=400,
-                msg="Bad Request",
-                hdrs=None,
-                fp=io.BytesIO(b'{"error":{"message":"bad request"}}'),
-            )
+            raise http_error(400, request.full_url)
 
-        with patch.dict(
-            os.environ,
-            {
-                "FLYGPT_GENERATOR_URL": "https://example.invalid/v1/chat/completions",
-                "FLYGPT_GENERATOR_MODEL": "gemini-3.8-flash",
-                "FLYGPT_GENERATOR_FALLBACK_MODEL": "gemini-3.7-flash",
-                "FLYGPT_GENERATOR_RETRY_DELAY": "0",
-            },
-            clear=True,
-        ), patch("generator_runtime.urllib.request.urlopen", side_effect=fake_urlopen):
+        with patch.dict(os.environ, MULTI_ENV, clear=True), patch(
+            "generator_runtime.urllib.request.urlopen",
+            side_effect=fake_urlopen,
+        ):
             runtime = GeneratorRuntime()
             result = runtime.generate("안녕", "general")
 
@@ -323,6 +365,7 @@ class GeneratorRuntimeTests(unittest.TestCase):
 
         self.assertEqual(messages[-1], {"role": "user", "content": "3x+7=22 풀어줘"})
         self.assertTrue(any("x = 5" in item["content"] for item in messages[:-1]))
+
 
 if __name__ == "__main__":
     unittest.main()
