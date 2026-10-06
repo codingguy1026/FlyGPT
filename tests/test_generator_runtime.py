@@ -324,5 +324,30 @@ class GeneratorRuntimeTests(unittest.TestCase):
         self.assertEqual(messages[-1], {"role": "user", "content": "3x+7=22 풀어줘"})
         self.assertTrue(any("x = 5" in item["content"] for item in messages[:-1]))
 
+    def test_knowledge_context_preserves_provenance_rules(self):
+        with patch.dict(os.environ, {}, clear=True):
+            runtime = GeneratorRuntime()
+            messages = runtime._messages(
+                "내 프로젝트 백엔드 뭐였지?",
+                "memory",
+                [],
+                None,
+                (
+                    "[verified] source=repository ref=app.py: backend is FastAPI\n"
+                    "[user-asserted] source=user_self: project nickname is 파피티"
+                ),
+            )
+
+        self.assertEqual(
+            messages[-1],
+            {"role": "user", "content": "내 프로젝트 백엔드 뭐였지?"},
+        )
+        system_context = "\n".join(
+            item["content"] for item in messages[:-1] if item["role"] == "system"
+        )
+        self.assertIn("[verified]", system_context)
+        self.assertIn("[user-asserted]", system_context)
+        self.assertIn("not independently verified", system_context)
+
 if __name__ == "__main__":
     unittest.main()
