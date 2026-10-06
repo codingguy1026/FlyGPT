@@ -171,3 +171,39 @@ with MaleCNSConnectome() as cns:
 ```bash
 python -m unittest discover -s tests -v
 ```
+
+
+## Account-adaptive routing
+
+FlyGPT v0.9 adds a bounded online personalization layer on top of the frozen
+MaleCNS router checkpoint. The global checkpoint is never rewritten by normal
+chat traffic.
+
+For authenticated users, FlyGPT can:
+
+- learn a high-confidence routing example automatically when the frozen router
+  and personalized route agree with a comfortable confidence/margin
+- give stronger weight to explicit route confirmations from the UI
+- reuse similar phrasing later to gently bias the route distribution
+- keep each account's adaptation completely separate
+- decay old examples over time and cap each account at 240 examples
+- clear the learned routing profile independently from conversation memory
+
+The adaptive-routing database stores a SHA-256 prompt digest plus hashed
+word/character/context features and the route label. It does **not** store the
+raw prompt text in the adaptive-learning database. Conversation memory remains a
+separate feature with its own storage and clear controls.
+
+Optional path override:
+
+```bash
+export FLYGPT_ROUTE_LEARNING_PATH=data/flygpt_route_learning.sqlite3
+```
+
+Useful API endpoints:
+
+```text
+GET  /api/router/learning/status
+POST /api/router/learning/feedback
+POST /api/router/learning/clear
+```
