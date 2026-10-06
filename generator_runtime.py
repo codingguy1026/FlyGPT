@@ -132,29 +132,32 @@ class GenerationResult:
 
 
 class GeneratorRuntime:
-    """Provider-agnostic answer generation layer for FlyGPT v0.7.1.
+    """Route-aware multi-provider answer generation for FlyGPT."""
 
-    FlyGPT remains usable with no generator configured. When
-    FLYGPT_GENERATOR_URL and FLYGPT_GENERATOR_MODEL are set, requests are sent
-    to an OpenAI-compatible chat-completions endpoint. This works with many
-    hosted providers and local servers such as Ollama when they expose the
-    compatible endpoint.
-    """
+    OPENAI_ROUTES = {"general", "memory", "summarize", "math"}
+    GEMINI_ROUTES = {"code", "research"}
 
     def __init__(self) -> None:
+        # Gemini / generic OpenAI-compatible provider
         self.url = os.environ.get("FLYGPT_GENERATOR_URL", "").strip()
         self.model = os.environ.get("FLYGPT_GENERATOR_MODEL", "").strip()
         self.api_key = os.environ.get("FLYGPT_GENERATOR_API_KEY", "").strip()
-        self.fallback_model = os.environ.get(
+        self.gemini_fallback_model = os.environ.get(
             "FLYGPT_GENERATOR_FALLBACK_MODEL",
             "",
         ).strip()
-        self.retry_delay = _env_float(
-            "FLYGPT_GENERATOR_RETRY_DELAY",
-            0.6,
-            minimum=0.0,
-            maximum=5.0,
+
+        # OpenAI Responses API
+        self.openai_api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+        self.openai_model = (
+            os.environ.get("FLYGPT_OPENAI_MODEL", "").strip()
+            or "gpt-6-luna"
         )
+        self.openai_url = (
+            os.environ.get("FLYGPT_OPENAI_URL", "").strip()
+            or "https://api.openai.com/v1/responses"
+        )
+
         self.timeout = _env_float(
             "FLYGPT_GENERATOR_TIMEOUT",
             45.0,
@@ -184,37 +187,62 @@ class GeneratorRuntime:
         )
 
     @property
+    def gemini_configured(self) -> bool:
+        return bool(self.url and self.model and self.api_key)
+
+    @property
+    def openai_configured(self) -> bool:
+        return bool(self.openai_api_key and self.openai_model)
+
+    @property
     def configured(self) -> bool:
-        return bool(self.url and self.model)
+        return self.gemini_configured or self.openai_configured
 
     @property
     def provider_name(self) -> str:
-        if not self.configured:
-            return "fallback"
-        return (
-            os.environ.get("FLYGPT_GENERATOR_PROVIDER", "compatible-http").strip()
-            or "compatible-http"
-        )
+        if self.gemini_configured:
+            return (
+                os.environ.get(
+                    "FLYGPT_GENERATOR_PROVIDER",
+                    "compatible-http",
+                ).strip()
+                or "compatible-http"
+            )
+        if self.openai_configured:
+            return "openai"
+        return "fallback"
 
     def status(self) -> dict[str, Any]:
         return {
             "configured": self.configured,
-            "provider": self.provider_name,
-            "model": self.model or None,
+            "provider": "multi" if self.gemini_configured and self.openai_configured else self.provider_name,
+            "model": self.model or self.openai_model or None,
             "url_configured": bool(self.url),
-            "api_key_configured": bool(self.api_key),
+            "api_key_configured": bool(self.api_key or self.openai_api_key),
             "timeout_seconds": self.timeout,
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
             "reasoning_effort": self.reasoning_effort,
-            "fallback_model": self.fallback_model or None,
-            "retry_delay_seconds": self.retry_delay,
+            "fallback_model": self.gemini_fallback_model or None,
+            "openai": {
+                "configured": self.openai_configured,
+                "model": self.openai_model if self.openai_configured else None,
+            },
+            "gemini": {
+                "configured": self.gemini_configured,
+                "model": self.model if self.gemini_configured else None,
+                "fallback_model": self.gemini_fallback_model or None,
+            },
+            "route_plan": {
+                "openai": sorted(self.OPENAI_ROUTES),
+                "gemini": sorted(self.GEMINI_ROUTES),
+            },
         }
 
     def _system_prompt(self, route: str) -> str:
         common = (
-            "You are FlyGPT v0.7.1, a concise experimental assistant. "
-            "A FlyWire-inspired graph router has already selected the task route. "
+            "You are FlyGPT v0.8, a concise experimental assistant. "
+            "A Drosophila MaleCNS graph router has already selected the task route. "
             "Answer the user's request directly in the user's language. "
             "Do not claim that you searched the web or remembered prior chats unless "
             "that information was explicitly provided in the current request or "
@@ -315,7 +343,27 @@ class GeneratorRuntime:
 
         return messages
 
-    def _generate_once(
+    @staticmethod
+    def _http_error_detail(exc: urllib.error.HTTPError) -> str:
+        detail = f"HTTP {exc.code}"
+        try:
+            payload = json.loads(exc.read().decode("utf-8"))
+            error_obj = payload.get("error")
+            if isinstance(error_obj, dict) and error_obj.get("message"):
+                detail += f": {error_obj['message']}"
+        except Exception:
+            pass
+        return detail
+
+    @staticmethod
+    def _is_transient(result: GenerationResult) -> bool:
+        if result.http_status in {429, 502, 503, 504}:
+            return True
+        if not result.error:
+            return False
+        return result.error.startswith(("URLError:", "TimeoutError:"))
+
+    def _generate_gemini_once(
         self,
         *,
         model: str,
@@ -343,7 +391,6 @@ class GeneratorRuntime:
             headers=headers,
             method="POST",
         )
-
         started = time.perf_counter()
 
         try:
@@ -362,7 +409,7 @@ class GeneratorRuntime:
 
             return GenerationResult(
                 used=True,
-                provider=self.provider_name,
+                provider="gemini",
                 model=model,
                 answer=answer.strip(),
                 finish_reason=choice.get("finish_reason"),
@@ -371,34 +418,148 @@ class GeneratorRuntime:
             )
 
         except urllib.error.HTTPError as exc:
-            detail = f"HTTP {exc.code}"
-            try:
-                payload = json.loads(exc.read().decode("utf-8"))
-                error_obj = payload.get("error")
-                if isinstance(error_obj, dict) and error_obj.get("message"):
-                    detail += f": {error_obj['message']}"
-            except Exception:
-                pass
-
             return GenerationResult(
                 used=False,
-                provider=self.provider_name,
+                provider="gemini",
                 model=model,
                 answer=None,
-                error=detail,
+                error=self._http_error_detail(exc),
                 latency_ms=round((time.perf_counter() - started) * 1000),
                 http_status=exc.code,
             )
-
         except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
             return GenerationResult(
                 used=False,
-                provider=self.provider_name,
+                provider="gemini",
                 model=model,
                 answer=None,
                 error=f"{type(exc).__name__}: {exc}",
                 latency_ms=round((time.perf_counter() - started) * 1000),
             )
+
+    @staticmethod
+    def _openai_answer(payload: dict[str, Any]) -> str:
+        direct = payload.get("output_text")
+        if isinstance(direct, str) and direct.strip():
+            return direct.strip()
+
+        parts: list[str] = []
+        for item in payload.get("output") or []:
+            if not isinstance(item, dict) or item.get("type") != "message":
+                continue
+            for content in item.get("content") or []:
+                if not isinstance(content, dict):
+                    continue
+                if content.get("type") == "output_text":
+                    text = content.get("text")
+                    if isinstance(text, str) and text.strip():
+                        parts.append(text.strip())
+        return "\n".join(parts).strip()
+
+    def _generate_openai_once(
+        self,
+        *,
+        messages: list[dict[str, str]],
+    ) -> GenerationResult:
+        system_parts = [
+            item["content"]
+            for item in messages
+            if item.get("role") == "system" and item.get("content")
+        ]
+        input_items = [
+            {
+                "role": item["role"],
+                "content": item["content"],
+            }
+            for item in messages
+            if item.get("role") in {"user", "assistant"} and item.get("content")
+        ]
+
+        body: dict[str, Any] = {
+            "model": self.openai_model,
+            "input": input_items,
+            "max_output_tokens": self.max_tokens,
+            "store": False,
+        }
+        if system_parts:
+            body["instructions"] = "\n\n".join(system_parts)
+
+        request = urllib.request.Request(
+            self.openai_url,
+            data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "Authorization": f"Bearer {self.openai_api_key}",
+            },
+            method="POST",
+        )
+        started = time.perf_counter()
+
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+
+            answer = self._openai_answer(payload)
+            if not answer:
+                raise ValueError("OpenAI response did not contain output_text")
+
+            return GenerationResult(
+                used=True,
+                provider="openai",
+                model=self.openai_model,
+                answer=answer,
+                finish_reason=str(payload.get("status") or "completed"),
+                latency_ms=round((time.perf_counter() - started) * 1000),
+                http_status=200,
+            )
+
+        except urllib.error.HTTPError as exc:
+            return GenerationResult(
+                used=False,
+                provider="openai",
+                model=self.openai_model,
+                answer=None,
+                error=self._http_error_detail(exc),
+                latency_ms=round((time.perf_counter() - started) * 1000),
+                http_status=exc.code,
+            )
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+            return GenerationResult(
+                used=False,
+                provider="openai",
+                model=self.openai_model,
+                answer=None,
+                error=f"{type(exc).__name__}: {exc}",
+                latency_ms=round((time.perf_counter() - started) * 1000),
+            )
+
+    def _preferred_provider(self, route: str) -> str | None:
+        if route in self.GEMINI_ROUTES and self.gemini_configured:
+            return "gemini"
+        if route in self.OPENAI_ROUTES and self.openai_configured:
+            return "openai"
+        if self.openai_configured:
+            return "openai"
+        if self.gemini_configured:
+            return "gemini"
+        return None
+
+    def _alternate_provider(self, provider: str) -> str | None:
+        if provider == "openai" and self.gemini_configured:
+            return "gemini"
+        if provider == "gemini" and self.openai_configured:
+            return "openai"
+        return None
+
+    def _call_provider(
+        self,
+        provider: str,
+        messages: list[dict[str, str]],
+    ) -> GenerationResult:
+        if provider == "openai":
+            return self._generate_openai_once(messages=messages)
+        return self._generate_gemini_once(model=self.model, messages=messages)
 
     def generate(
         self,
@@ -411,12 +572,13 @@ class GeneratorRuntime:
         if route not in GENERATIVE_ROUTES:
             return GenerationResult(
                 used=False,
-                provider=self.provider_name,
-                model=self.model or None,
+                provider="fallback",
+                model=None,
                 answer=None,
             )
 
-        if not self.configured:
+        primary = self._preferred_provider(route)
+        if primary is None:
             return GenerationResult(
                 used=False,
                 provider="fallback",
@@ -427,42 +589,60 @@ class GeneratorRuntime:
         messages = self._messages(message, route, memory_context, tool_context)
         total_started = time.perf_counter()
 
-        first = self._generate_once(model=self.model, messages=messages)
-        if first.used or first.http_status not in RETRYABLE_HTTP_CODES:
+        first = self._call_provider(primary, messages)
+        if first.used or not self._is_transient(first):
             first.latency_ms = round((time.perf_counter() - total_started) * 1000)
             return first
 
-        print(
-            f"[GEN] {self.model} returned HTTP {first.http_status}; "
-            f"retrying once in {self.retry_delay:.1f}s",
-            flush=True,
-        )
-        if self.retry_delay:
-            time.sleep(self.retry_delay)
-
-        second = self._generate_once(model=self.model, messages=messages)
-        if second.used or second.http_status not in RETRYABLE_HTTP_CODES:
-            second.latency_ms = round((time.perf_counter() - total_started) * 1000)
-            return second
-
-        if self.fallback_model and self.fallback_model != self.model:
+        alternate = self._alternate_provider(primary)
+        if alternate is not None:
             print(
-                f"[GEN] {self.model} still unavailable; "
-                f"trying fallback {self.fallback_model}",
+                f"[GEN] {primary}/{first.model} unavailable ({first.error}); "
+                f"switching to {alternate}",
                 flush=True,
             )
-            fallback = self._generate_once(
-                model=self.fallback_model,
+            second = self._call_provider(alternate, messages)
+            second.latency_ms = round((time.perf_counter() - total_started) * 1000)
+            if second.used or not self._is_transient(second):
+                return second
+
+            # If Gemini was involved and its primary model was unavailable,
+            # keep one last lightweight Gemini fallback before surfacing an error.
+            if (
+                self.gemini_configured
+                and self.gemini_fallback_model
+                and self.gemini_fallback_model != self.model
+            ):
+                print(
+                    f"[GEN] cross-provider fallback also unavailable; "
+                    f"trying Gemini fallback {self.gemini_fallback_model}",
+                    flush=True,
+                )
+                last = self._generate_gemini_once(
+                    model=self.gemini_fallback_model,
+                    messages=messages,
+                )
+                last.latency_ms = round((time.perf_counter() - total_started) * 1000)
+                return last
+            return second
+
+        if (
+            primary == "gemini"
+            and self.gemini_fallback_model
+            and self.gemini_fallback_model != self.model
+        ):
+            print(
+                f"[GEN] {self.model} unavailable; "
+                f"trying Gemini fallback {self.gemini_fallback_model}",
+                flush=True,
+            )
+            fallback = self._generate_gemini_once(
+                model=self.gemini_fallback_model,
                 messages=messages,
             )
             fallback.latency_ms = round((time.perf_counter() - total_started) * 1000)
-            if not fallback.used and fallback.error:
-                fallback.error += (
-                    f" (primary {self.model} also returned "
-                    f"HTTP {second.http_status})"
-                )
             return fallback
 
-        second.latency_ms = round((time.perf_counter() - total_started) * 1000)
-        return second
+        first.latency_ms = round((time.perf_counter() - total_started) * 1000)
+        return first
 
