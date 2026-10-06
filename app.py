@@ -172,13 +172,27 @@ def predict_route(text: str, user_id: str | None = None) -> dict[str, Any] | Non
 
     try:
         result = router.predict(text, top_k=len(router.routes))
-        if user_id:
-            result = _route_learning.personalize(user_id, text, result)
-        return result
     except Exception as exc:
         global _router_error
         _router_error = f"{type(exc).__name__}: {exc}"
         return None
+
+    if user_id:
+        try:
+            result = _route_learning.personalize(user_id, text, result)
+        except Exception:
+            # Personalization is an optional layer. A corrupt/locked learning
+            # database must never take the frozen router or chat endpoint down.
+            result["personalization"] = {
+                "applied": False,
+                "examples_considered": 0,
+                "neighbors_used": 0,
+                "blend": 0.0,
+                "nearest_similarity": 0.0,
+                "error": "unavailable",
+            }
+
+    return result
 
 
 def extract_root_ids(text: str) -> list[int]:
@@ -698,11 +712,14 @@ def chat_endpoint(req: ChatRequest, request: Request):
                     session_id=session_id,
                 )
 
-            learned_from_user = _route_learning.observe_if_confident(
-                user["id"],
-                msg,
-                route,
-            )
+            try:
+                learned_from_user = _route_learning.observe_if_confident(
+                    user["id"],
+                    msg,
+                    route,
+                )
+            except Exception:
+                learned_from_user = False
             route["learning_observed"] = learned_from_user
 
             memory_hits = None
