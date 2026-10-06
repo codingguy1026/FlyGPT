@@ -11,6 +11,7 @@ from typing import Any
 
 
 GENERATIVE_ROUTES = {"general", "code", "summarize", "math", "memory", "research"}
+RETRYABLE_HTTP_CODES = {502, 503, 504}
 
 
 _INTERNAL_META_RE = re.compile(
@@ -124,6 +125,7 @@ class GenerationResult:
     error: str | None = None
     finish_reason: str | None = None
     latency_ms: int | None = None
+    http_status: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -143,6 +145,16 @@ class GeneratorRuntime:
         self.url = os.environ.get("FLYGPT_GENERATOR_URL", "").strip()
         self.model = os.environ.get("FLYGPT_GENERATOR_MODEL", "").strip()
         self.api_key = os.environ.get("FLYGPT_GENERATOR_API_KEY", "").strip()
+        self.fallback_model = os.environ.get(
+            "FLYGPT_GENERATOR_FALLBACK_MODEL",
+            "",
+        ).strip()
+        self.retry_delay = _env_float(
+            "FLYGPT_GENERATOR_RETRY_DELAY",
+            0.6,
+            minimum=0.0,
+            maximum=5.0,
+        )
         self.timeout = _env_float(
             "FLYGPT_GENERATOR_TIMEOUT",
             45.0,
@@ -195,6 +207,8 @@ class GeneratorRuntime:
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
             "reasoning_effort": self.reasoning_effort,
+            "fallback_model": self.fallback_model or None,
+            "retry_delay_seconds": self.retry_delay,
         }
 
     def _system_prompt(self, route: str) -> str:
@@ -301,33 +315,15 @@ class GeneratorRuntime:
 
         return messages
 
-    def generate(
+    def _generate_once(
         self,
-        message: str,
-        route: str,
         *,
-        memory_context: list[dict[str, Any]] | None = None,
-        tool_context: str | None = None,
+        model: str,
+        messages: list[dict[str, str]],
     ) -> GenerationResult:
-        if route not in GENERATIVE_ROUTES:
-            return GenerationResult(
-                used=False,
-                provider=self.provider_name,
-                model=self.model or None,
-                answer=None,
-            )
-
-        if not self.configured:
-            return GenerationResult(
-                used=False,
-                provider="fallback",
-                model=None,
-                answer=None,
-            )
-
         body = {
-            "model": self.model,
-            "messages": self._messages(message, route, memory_context, tool_context),
+            "model": model,
+            "messages": messages,
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
         }
@@ -364,19 +360,17 @@ class GeneratorRuntime:
             if not isinstance(answer, str) or not answer.strip():
                 raise ValueError("generator response did not contain message content")
 
-            latency_ms = round((time.perf_counter() - started) * 1000)
-
             return GenerationResult(
                 used=True,
                 provider=self.provider_name,
-                model=self.model,
+                model=model,
                 answer=answer.strip(),
                 finish_reason=choice.get("finish_reason"),
-                latency_ms=latency_ms,
+                latency_ms=round((time.perf_counter() - started) * 1000),
+                http_status=200,
             )
 
         except urllib.error.HTTPError as exc:
-            latency_ms = round((time.perf_counter() - started) * 1000)
             detail = f"HTTP {exc.code}"
             try:
                 payload = json.loads(exc.read().decode("utf-8"))
@@ -389,19 +383,86 @@ class GeneratorRuntime:
             return GenerationResult(
                 used=False,
                 provider=self.provider_name,
-                model=self.model,
+                model=model,
                 answer=None,
                 error=detail,
-                latency_ms=latency_ms,
+                latency_ms=round((time.perf_counter() - started) * 1000),
+                http_status=exc.code,
             )
 
         except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
-            latency_ms = round((time.perf_counter() - started) * 1000)
             return GenerationResult(
                 used=False,
                 provider=self.provider_name,
-                model=self.model,
+                model=model,
                 answer=None,
                 error=f"{type(exc).__name__}: {exc}",
-                latency_ms=latency_ms,
+                latency_ms=round((time.perf_counter() - started) * 1000),
             )
+
+    def generate(
+        self,
+        message: str,
+        route: str,
+        *,
+        memory_context: list[dict[str, Any]] | None = None,
+        tool_context: str | None = None,
+    ) -> GenerationResult:
+        if route not in GENERATIVE_ROUTES:
+            return GenerationResult(
+                used=False,
+                provider=self.provider_name,
+                model=self.model or None,
+                answer=None,
+            )
+
+        if not self.configured:
+            return GenerationResult(
+                used=False,
+                provider="fallback",
+                model=None,
+                answer=None,
+            )
+
+        messages = self._messages(message, route, memory_context, tool_context)
+        total_started = time.perf_counter()
+
+        first = self._generate_once(model=self.model, messages=messages)
+        if first.used or first.http_status not in RETRYABLE_HTTP_CODES:
+            first.latency_ms = round((time.perf_counter() - total_started) * 1000)
+            return first
+
+        print(
+            f"[GEN] {self.model} returned HTTP {first.http_status}; "
+            f"retrying once in {self.retry_delay:.1f}s",
+            flush=True,
+        )
+        if self.retry_delay:
+            time.sleep(self.retry_delay)
+
+        second = self._generate_once(model=self.model, messages=messages)
+        if second.used or second.http_status not in RETRYABLE_HTTP_CODES:
+            second.latency_ms = round((time.perf_counter() - total_started) * 1000)
+            return second
+
+        if self.fallback_model and self.fallback_model != self.model:
+            print(
+                f"[GEN] {self.model} still unavailable; "
+                f"trying fallback {self.fallback_model}",
+                flush=True,
+            )
+            fallback = self._generate_once(
+                model=self.fallback_model,
+                messages=messages,
+            )
+            fallback.latency_ms = round((time.perf_counter() - total_started) * 1000)
+            if not fallback.used and fallback.error:
+                fallback.error += (
+                    f" (primary {self.model} also returned "
+                    f"HTTP {second.http_status})"
+                )
+            return fallback
+
+        second.latency_ms = round((time.perf_counter() - total_started) * 1000)
+        return second
+
