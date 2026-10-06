@@ -249,9 +249,30 @@ def dispatch(message: str, route_info: dict[str, Any]) -> DispatchResult:
         if len(ranked) > 1
         else 0.0
     )
-    margin = max(0.0, confidence - second_confidence)
+    margin = float(route_info.get("margin", max(0.0, confidence - second_confidence)))
 
-    if confidence < MIN_CONFIDENCE or margin < MIN_MARGIN:
+    # v0.5 checkpoints carry thresholds selected on held-out validation data.
+    # Older checkpoints do not, so the long-standing defaults remain the
+    # compatibility fallback.
+    min_confidence = max(
+        0.0,
+        min(float(route_info.get("min_confidence", MIN_CONFIDENCE)), 1.0),
+    )
+    min_margin = max(
+        0.0,
+        min(float(route_info.get("min_margin", MIN_MARGIN)), 1.0),
+    )
+
+    feature_signal = float(route_info.get("feature_signal", 1.0))
+    accepted = route_info.get("accepted")
+    if accepted is None:
+        accepted = (
+            feature_signal > 1e-8
+            and confidence >= min_confidence
+            and margin >= min_margin
+        )
+
+    if not bool(accepted):
         top = ", ".join(
             f"{item.get('route', '?')} {float(item.get('confidence', 0.0)):.1%}"
             for item in ranked[:3]
@@ -263,7 +284,8 @@ def dispatch(message: str, route_info: dict[str, Any]) -> DispatchResult:
             answer=(
                 "🤔 요청 의도를 충분히 확신하지 못했어요. "
                 "조금 더 구체적으로 말해 주세요.\n\n"
-                f"후보: {top}"
+                f"후보: {top}\n"
+                f"게이트: confidence≥{min_confidence:.0%}, margin≥{min_margin:.0%}"
             ),
             confidence=confidence,
             margin=margin,
