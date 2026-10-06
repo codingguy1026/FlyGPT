@@ -294,7 +294,10 @@ class GeneratorRuntime:
             ),
             "research": (
                 "The router selected RESEARCH. Use only supplied retrieval/tool context "
-                "for current or external facts. If no search backend results are supplied, "
+                "for current or external facts. When live web evidence contains labels such "
+                "as [source 1], cite important factual claims with those exact source labels "
+                "and never invent a source number or URL. If sources disagree, say so rather "
+                "than forcing a false consensus. If no search backend results are supplied, "
                 "state that live lookup is unavailable and do not fabricate fresh facts."
             ),
         }
