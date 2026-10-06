@@ -28,6 +28,8 @@ class HealthEndpointTests(unittest.TestCase):
         self.assertTrue(payload["knowledge"]["enabled"])
         self.assertTrue(payload["knowledge"]["account_scoped"])
         self.assertTrue(payload["knowledge"]["provenance_aware"])
+        self.assertEqual(payload["research"]["provider"], "brave-llm-context")
+        self.assertIn("configured", payload["research"])
 
 
 if __name__ == "__main__":
