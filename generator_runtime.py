@@ -187,8 +187,8 @@ class GeneratorRuntime:
         )
 
     @property
-    def gemini_configured(self) -> bool:
-        return bool(self.url and self.model and self.api_key)
+    def compatible_configured(self) -> bool:
+        return bool(self.url and self.model)
 
     @property
     def openai_configured(self) -> bool:
@@ -196,11 +196,11 @@ class GeneratorRuntime:
 
     @property
     def configured(self) -> bool:
-        return self.gemini_configured or self.openai_configured
+        return self.compatible_configured or self.openai_configured
 
     @property
     def provider_name(self) -> str:
-        if self.gemini_configured:
+        if self.compatible_configured:
             return (
                 os.environ.get(
                     "FLYGPT_GENERATOR_PROVIDER",
@@ -212,10 +212,14 @@ class GeneratorRuntime:
             return "openai"
         return "fallback"
 
+    @property
+    def gemini_configured(self) -> bool:
+        return self.compatible_configured and self.provider_name == "gemini"
+
     def status(self) -> dict[str, Any]:
         return {
             "configured": self.configured,
-            "provider": "multi" if self.gemini_configured and self.openai_configured else self.provider_name,
+            "provider": "multi" if self.compatible_configured and self.openai_configured else self.provider_name,
             "model": self.model or self.openai_model or None,
             "url_configured": bool(self.url),
             "api_key_configured": bool(self.api_key or self.openai_api_key),
@@ -363,7 +367,7 @@ class GeneratorRuntime:
             return False
         return result.error.startswith(("URLError:", "TimeoutError:"))
 
-    def _generate_gemini_once(
+    def _generate_compatible_once(
         self,
         *,
         model: str,
@@ -409,7 +413,7 @@ class GeneratorRuntime:
 
             return GenerationResult(
                 used=True,
-                provider="gemini",
+                provider=self.provider_name,
                 model=model,
                 answer=answer.strip(),
                 finish_reason=choice.get("finish_reason"),
@@ -420,7 +424,7 @@ class GeneratorRuntime:
         except urllib.error.HTTPError as exc:
             return GenerationResult(
                 used=False,
-                provider="gemini",
+                provider=self.provider_name,
                 model=model,
                 answer=None,
                 error=self._http_error_detail(exc),
@@ -430,7 +434,7 @@ class GeneratorRuntime:
         except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
             return GenerationResult(
                 used=False,
-                provider="gemini",
+                provider=self.provider_name,
                 model=model,
                 answer=None,
                 error=f"{type(exc).__name__}: {exc}",
@@ -535,20 +539,20 @@ class GeneratorRuntime:
             )
 
     def _preferred_provider(self, route: str) -> str | None:
-        if route in self.GEMINI_ROUTES and self.gemini_configured:
-            return "gemini"
+        if route in self.GEMINI_ROUTES and self.compatible_configured:
+            return "compatible"
         if route in self.OPENAI_ROUTES and self.openai_configured:
             return "openai"
         if self.openai_configured:
             return "openai"
-        if self.gemini_configured:
-            return "gemini"
+        if self.compatible_configured:
+            return "compatible"
         return None
 
     def _alternate_provider(self, provider: str) -> str | None:
-        if provider == "openai" and self.gemini_configured:
-            return "gemini"
-        if provider == "gemini" and self.openai_configured:
+        if provider == "openai" and self.compatible_configured:
+            return "compatible"
+        if provider == "compatible" and self.openai_configured:
             return "openai"
         return None
 
@@ -559,7 +563,7 @@ class GeneratorRuntime:
     ) -> GenerationResult:
         if provider == "openai":
             return self._generate_openai_once(messages=messages)
-        return self._generate_gemini_once(model=self.model, messages=messages)
+        return self._generate_compatible_once(model=self.model, messages=messages)
 
     def generate(
         self,
@@ -618,7 +622,7 @@ class GeneratorRuntime:
                     f"trying Gemini fallback {self.gemini_fallback_model}",
                     flush=True,
                 )
-                last = self._generate_gemini_once(
+                last = self._generate_compatible_once(
                     model=self.gemini_fallback_model,
                     messages=messages,
                 )
@@ -627,7 +631,8 @@ class GeneratorRuntime:
             return second
 
         if (
-            primary == "gemini"
+            primary == "compatible"
+            and self.gemini_configured
             and self.gemini_fallback_model
             and self.gemini_fallback_model != self.model
         ):
@@ -636,7 +641,7 @@ class GeneratorRuntime:
                 f"trying Gemini fallback {self.gemini_fallback_model}",
                 flush=True,
             )
-            fallback = self._generate_gemini_once(
+            fallback = self._generate_compatible_once(
                 model=self.gemini_fallback_model,
                 messages=messages,
             )
