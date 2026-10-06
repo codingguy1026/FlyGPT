@@ -211,7 +211,7 @@ POST /api/router/learning/clear
 
 ## Provenance-aware long-term knowledge
 
-FlyGPT v0.10 separates conversation memory from durable knowledge. The
+FlyGPT v0.11 separates conversation memory from durable knowledge. The
 `KnowledgeStore` keeps account-scoped items with provenance, confidence,
 verification state, timestamps, optional expiry, and correction history.
 
@@ -261,3 +261,50 @@ POST /api/knowledge/clear
 Objective facts are intentionally **not** exposed to the client as an arbitrary
 "mark verified" action. Verification is reserved for trusted retrieval/source
 code paths so the UI cannot turn an unsupported claim into a fact.
+
+
+## Live web verification and learning
+
+FlyGPT v0.11 can optionally ground `research` routes with Brave Search's
+LLM Context API. The search layer returns extracted source text plus URL/date
+metadata that can be passed directly to the generator.
+
+Configure it server-side:
+
+```bash
+BRAVE_SEARCH_API_KEY=your-key-here
+FLYGPT_SEARCH_LANG=ko
+FLYGPT_SEARCH_SAFESEARCH=strict
+```
+
+The web-learning pipeline is intentionally conservative:
+
+1. retrieve relevant web evidence with strict relevance filtering
+2. answer from that evidence and expose numbered source labels to the generator
+3. ask the generator for atomic fact candidates and exact supporting URLs
+4. reject any URL that was not part of the current retrieval result
+5. require either two independent root domains or one very high-authority
+   primary source
+6. store only facts that pass the deterministic gate as `verified`
+7. assign an expiry window based on volatility:
+   - rapid-changing facts: 2 days
+   - medium-changing facts such as versions/policies/pricing: 30 days
+   - slow-changing facts: 180 days
+8. automatically exclude expired facts from future knowledge retrieval
+
+A language model cannot promote a fact merely by claiming high confidence.
+Its output is only a candidate. Source membership, domain independence, and
+authority checks are enforced in Python before `KnowledgeStore` sees it.
+
+If Brave search is unavailable or unconfigured, research mode fails closed:
+FlyGPT may still answer from non-live context where appropriate, but it is told
+not to fabricate current search results or citations.
+
+The default research endpoint is:
+
+```text
+https://api.search.brave.com/res/v1/llm/context
+```
+
+Research telemetry includes source count, search latency, verification latency,
+and the number of web facts promoted to verified long-term knowledge.
