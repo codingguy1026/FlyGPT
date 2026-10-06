@@ -53,6 +53,8 @@ export type ChatData = {
   timings?: ChatTimings | null;
   dispatch?: unknown;
   memory_hits?: unknown;
+  knowledge_hits?: unknown[];
+  knowledge_learned?: unknown[];
   ui_meta?: {
     mode?: string;
     router_model?: string;
@@ -112,6 +114,21 @@ export type HealthResponse = {
     account_scoped?: boolean;
     stores_raw_prompts?: boolean;
   };
+  knowledge?: {
+    enabled?: boolean;
+    account_scoped?: boolean;
+    provenance_aware?: boolean;
+  };
+};
+
+export type KnowledgeStatus = {
+  enabled: boolean;
+  items: number;
+  verified: number;
+  asserted: number;
+  unverified: number;
+  superseded: number;
+  last_updated_at?: number | null;
 };
 
 export type RouteLearningStatus = {
@@ -226,6 +243,21 @@ export function clearRouteLearning(): Promise<{
   status: RouteLearningStatus;
 }> {
   return jsonRequest("/api/router/learning/clear", {
+    method: "POST",
+  });
+}
+
+export function getKnowledgeStatus(): Promise<KnowledgeStatus> {
+  return jsonRequest<KnowledgeStatus>("/api/knowledge/status", {
+    cache: "no-store",
+  });
+}
+
+export function clearKnowledge(): Promise<{
+  cleared: number;
+  status: KnowledgeStatus;
+}> {
+  return jsonRequest("/api/knowledge/clear", {
     method: "POST",
   });
 }
