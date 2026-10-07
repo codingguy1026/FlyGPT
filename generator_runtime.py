@@ -185,6 +185,12 @@ class GeneratorRuntime:
             minimum=1.0,
             maximum=180.0,
         )
+        self.budget = _env_float(
+            "FLYGPT_GENERATOR_BUDGET",
+            25.0,
+            minimum=1.0,
+            maximum=60.0,
+        )
         self.temperature = _env_float(
             "FLYGPT_GENERATOR_TEMPERATURE",
             0.35,
@@ -228,6 +234,7 @@ class GeneratorRuntime:
             "url_configured": bool(self.url),
             "api_key_configured": bool(self.api_key),
             "timeout_seconds": self.timeout,
+            "budget_seconds": self.budget,
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
             "reasoning_effort": self.reasoning_effort,
@@ -297,6 +304,7 @@ class GeneratorRuntime:
         *,
         model: str,
         messages: list[dict[str, str]],
+        timeout_seconds: float | None = None,
     ) -> GenerationResult:
         body = {
             "model": model,
@@ -324,7 +332,11 @@ class GeneratorRuntime:
         started = time.perf_counter()
 
         try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+            effective_timeout = self.timeout
+            if timeout_seconds is not None:
+                effective_timeout = max(0.1, min(self.timeout, timeout_seconds))
+
+            with urllib.request.urlopen(request, timeout=effective_timeout) as response:
                 payload = json.loads(response.read().decode("utf-8"))
 
             choices = payload.get("choices") or []
@@ -496,11 +508,44 @@ class GeneratorRuntime:
             knowledge_context=knowledge_context,
             brain_state=brain_state,
         )
-        total_started = time.perf_counter()
 
-        first = self._generate_once(model=self.model, messages=messages)
+        total_started = time.perf_counter()
+        deadline = total_started + self.budget
+
+        def remaining_seconds() -> float:
+            return max(0.0, deadline - time.perf_counter())
+
+        def budget_result(model: str) -> GenerationResult:
+            return GenerationResult(
+                used=False,
+                provider=self.provider_name,
+                model=model,
+                answer=None,
+                error=f"generation time budget exceeded ({self.budget:.1f}s)",
+                latency_ms=round((time.perf_counter() - total_started) * 1000),
+            )
+
+        def generate_with_budget(model: str) -> GenerationResult:
+            remaining = remaining_seconds()
+            if remaining <= 0:
+                return budget_result(model)
+
+            result = self._generate_once(
+                model=model,
+                messages=messages,
+                timeout_seconds=min(self.timeout, remaining),
+            )
+            if (
+                not result.used
+                and remaining_seconds() <= 0.05
+                and result.http_status is None
+            ):
+                return budget_result(model)
+            result.latency_ms = round((time.perf_counter() - total_started) * 1000)
+            return result
+
+        first = generate_with_budget(self.model)
         if first.used or first.http_status not in RETRYABLE_HTTP_CODES:
-            first.latency_ms = round((time.perf_counter() - total_started) * 1000)
             return first
 
         print(
@@ -508,25 +553,32 @@ class GeneratorRuntime:
             f"retrying once in {self.retry_delay:.1f}s",
             flush=True,
         )
-        if self.retry_delay:
-            time.sleep(self.retry_delay)
 
-        second = self._generate_once(model=self.model, messages=messages)
+        remaining = remaining_seconds()
+        if remaining <= 0:
+            return budget_result(self.model)
+
+        if self.retry_delay:
+            sleep_for = min(self.retry_delay, remaining)
+            time.sleep(sleep_for)
+
+        if remaining_seconds() <= 0:
+            return budget_result(self.model)
+
+        second = generate_with_budget(self.model)
         if second.used or second.http_status not in RETRYABLE_HTTP_CODES:
-            second.latency_ms = round((time.perf_counter() - total_started) * 1000)
             return second
 
         if self.fallback_model and self.fallback_model != self.model:
+            if remaining_seconds() <= 0:
+                return budget_result(self.fallback_model)
+
             print(
                 f"[GEN] {self.model} still unavailable; "
                 f"trying fallback {self.fallback_model}",
                 flush=True,
             )
-            fallback = self._generate_once(
-                model=self.fallback_model,
-                messages=messages,
-            )
-            fallback.latency_ms = round((time.perf_counter() - total_started) * 1000)
+            fallback = generate_with_budget(self.fallback_model)
             if not fallback.used and fallback.error:
                 fallback.error += (
                     f" (primary {self.model} also returned "
@@ -534,6 +586,4 @@ class GeneratorRuntime:
                 )
             return fallback
 
-        second.latency_ms = round((time.perf_counter() - total_started) * 1000)
         return second
-
