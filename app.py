@@ -932,12 +932,26 @@ def chat_endpoint(req: ChatRequest, request: Request):
                         mode_label = f"{result.route} · web-grounded"
             else:
                 detail = generation.error or "generator is not configured"
-                answer = (
-                    "⚠️ 답변 생성기를 사용할 수 없습니다. "
-                    "라우팅은 완료됐지만 생성 단계에서 중단됐어요. "
-                    f"({detail})"
+                detail_lower = detail.lower()
+                timed_out = (
+                    "time budget exceeded" in detail_lower
+                    or "timed out" in detail_lower
+                    or "timeout" in detail_lower
                 )
-                mode_label = f"{result.route} · generator_unavailable"
+                if timed_out:
+                    answer = (
+                        "⏱️ 답변 생성 시간이 제한을 초과했어요. "
+                        "파피티 뇌의 라우팅은 완료됐지만 LLM 발화 단계가 늦어 "
+                        "연결이 끊기기 전에 중단했습니다. 다시 시도해 주세요."
+                    )
+                    mode_label = f"{result.route} · generator_timeout"
+                else:
+                    answer = (
+                        "⚠️ 답변 생성기를 사용할 수 없습니다. "
+                        "라우팅은 완료됐지만 생성 단계에서 중단됐어요. "
+                        f"({detail})"
+                    )
+                    mode_label = f"{result.route} · generator_unavailable"
 
             total_ms = round((time.perf_counter() - request_started) * 1000)
             generation_ms = generation.latency_ms
