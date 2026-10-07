@@ -167,6 +167,7 @@ class GeneratorRuntimeTests(unittest.TestCase):
                 "FLYGPT_GENERATOR_URL": "https://example.invalid/v1/chat/completions",
                 "FLYGPT_GENERATOR_MODEL": "fly-model",
                 "FLYGPT_GENERATOR_TIMEOUT": "not-a-number",
+                "FLYGPT_GENERATOR_BUDGET": "not-a-number",
                 "FLYGPT_GENERATOR_TEMPERATURE": "99",
                 "FLYGPT_GENERATOR_MAX_TOKENS": "1",
             },
@@ -175,8 +176,48 @@ class GeneratorRuntimeTests(unittest.TestCase):
             runtime = GeneratorRuntime()
 
         self.assertEqual(runtime.timeout, 45.0)
+        self.assertEqual(runtime.budget, 25.0)
         self.assertEqual(runtime.temperature, 2.0)
         self.assertEqual(runtime.max_tokens, 32)
+
+    def test_generation_budget_caps_effective_http_timeout(self):
+        observed_timeouts: list[float] = []
+
+        def fake_urlopen(request, timeout):
+            observed_timeouts.append(float(timeout))
+            return FakeHTTPResponse(
+                {
+                    "choices": [
+                        {
+                            "message": {"content": "안녕!"},
+                            "finish_reason": "stop",
+                        }
+                    ]
+                }
+            )
+
+        with patch.dict(
+            os.environ,
+            {
+                "FLYGPT_GENERATOR_URL": "https://example.invalid/v1/chat/completions",
+                "FLYGPT_GENERATOR_MODEL": "gemini-3.8-flash",
+                "FLYGPT_GENERATOR_TIMEOUT": "60",
+                "FLYGPT_GENERATOR_BUDGET": "25",
+            },
+            clear=True,
+        ), patch("generator_runtime.urllib.request.urlopen", side_effect=fake_urlopen):
+            runtime = GeneratorRuntime()
+            result = runtime.generate(
+                "안녕",
+                "general",
+                brain_state=ready_brain_state(),
+            )
+
+        self.assertTrue(result.used)
+        self.assertEqual(len(observed_timeouts), 1)
+        self.assertLessEqual(observed_timeouts[0], 25.0)
+        self.assertGreater(observed_timeouts[0], 0.0)
+        self.assertEqual(runtime.status()["budget_seconds"], 25.0)
 
     def test_reasoning_effort_is_validated_and_reported(self):
         with patch.dict(
