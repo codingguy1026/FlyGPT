@@ -38,11 +38,44 @@ def unavailable_error() -> urllib.error.HTTPError:
     )
 
 
+def ready_brain_state() -> dict:
+    return {
+        "route": "general",
+        "utterance_plan": {
+            "contract": "mouth_only_v1",
+            "semantic_authority": "fly_brain",
+            "ready": True,
+            "speech_act": "return_greeting",
+            "content_units": [
+                {
+                    "kind": "communicative_act",
+                    "value": "Return the user's greeting briefly and warmly.",
+                }
+            ],
+            "style": {
+                "language": "ko",
+                "length": "short",
+                "tone": "natural",
+            },
+            "permissions": {
+                "infer_new_meaning": False,
+                "add_new_facts": False,
+                "add_new_questions": False,
+                "change_objective": False,
+            },
+        },
+    }
+
+
 class GeneratorRuntimeTests(unittest.TestCase):
     def test_unconfigured_generator_uses_fallback(self):
         with patch.dict(os.environ, {}, clear=True):
             runtime = GeneratorRuntime()
-            result = runtime.generate("왜 하늘은 파래?", "general")
+            result = runtime.generate(
+                "안녕",
+                "general",
+                brain_state=ready_brain_state(),
+            )
 
         self.assertFalse(runtime.configured)
         self.assertFalse(result.used)
@@ -59,11 +92,40 @@ class GeneratorRuntimeTests(unittest.TestCase):
             clear=True,
         ):
             runtime = GeneratorRuntime()
-            result = runtime.generate("알 수 없는 경로", "not-a-route")
+            result = runtime.generate(
+                "알 수 없는 경로",
+                "not-a-route",
+                brain_state=ready_brain_state(),
+            )
 
         self.assertTrue(runtime.configured)
         self.assertFalse(result.used)
         self.assertIsNone(result.error)
+
+    def test_strict_gate_rejects_missing_semantic_plan(self):
+        with patch.dict(
+            os.environ,
+            {
+                "FLYGPT_GENERATOR_URL": "https://example.invalid/v1/chat/completions",
+                "FLYGPT_GENERATOR_MODEL": "fly-model",
+            },
+            clear=True,
+        ), patch("generator_runtime.urllib.request.urlopen") as urlopen:
+            runtime = GeneratorRuntime()
+            result = runtime.generate(
+                "왜 하늘은 파래?",
+                "general",
+                brain_state={
+                    "utterance_plan": {
+                        "contract": "mouth_only_v1",
+                        "ready": False,
+                    }
+                },
+            )
+
+        self.assertFalse(result.used)
+        self.assertEqual(result.error, "mouth-only semantic plan is incomplete")
+        urlopen.assert_not_called()
 
     def test_stale_internal_metadata_is_removed_from_assistant_memory(self):
         content = (
@@ -79,7 +141,7 @@ class GeneratorRuntimeTests(unittest.TestCase):
         self.assertNotIn("Router raw", cleaned)
         self.assertNotIn("Decision:", cleaned)
 
-    def test_status_does_not_expose_api_key(self):
+    def test_status_exposes_mouth_only_role_without_api_key(self):
         with patch.dict(
             os.environ,
             {
@@ -94,8 +156,9 @@ class GeneratorRuntimeTests(unittest.TestCase):
 
         self.assertTrue(status["configured"])
         self.assertTrue(status["api_key_configured"])
+        self.assertEqual(status["role"], "mouth_only_language_realizer")
+        self.assertTrue(status["strict_semantic_gate"])
         self.assertNotIn("secret-value", repr(status))
-
 
     def test_invalid_numeric_settings_fall_back_safely(self):
         with patch.dict(
@@ -169,7 +232,11 @@ class GeneratorRuntimeTests(unittest.TestCase):
             clear=True,
         ), patch("generator_runtime.urllib.request.urlopen", side_effect=fake_urlopen):
             runtime = GeneratorRuntime()
-            result = runtime.generate("안녕", "general")
+            result = runtime.generate(
+                "안녕",
+                "general",
+                brain_state=ready_brain_state(),
+            )
 
         self.assertTrue(result.used)
         self.assertEqual(result.model, "gemini-3.8-flash")
@@ -206,7 +273,11 @@ class GeneratorRuntimeTests(unittest.TestCase):
             clear=True,
         ), patch("generator_runtime.urllib.request.urlopen", side_effect=fake_urlopen):
             runtime = GeneratorRuntime()
-            result = runtime.generate("안녕", "general")
+            result = runtime.generate(
+                "안녕",
+                "general",
+                brain_state=ready_brain_state(),
+            )
 
         self.assertTrue(result.used)
         self.assertEqual(result.model, "gemini-3.7-flash")
@@ -240,55 +311,54 @@ class GeneratorRuntimeTests(unittest.TestCase):
             clear=True,
         ), patch("generator_runtime.urllib.request.urlopen", side_effect=fake_urlopen):
             runtime = GeneratorRuntime()
-            result = runtime.generate("안녕", "general")
+            result = runtime.generate(
+                "안녕",
+                "general",
+                brain_state=ready_brain_state(),
+            )
 
         self.assertFalse(result.used)
         self.assertEqual(result.http_status, 400)
         self.assertEqual(calls, 1)
 
-    def test_memory_context_is_built_without_exposing_extra_messages(self):
+    def test_mouth_only_messages_do_not_expose_raw_user_or_history(self):
         with patch.dict(os.environ, {}, clear=True):
             runtime = GeneratorRuntime()
             messages = runtime._messages(
-                "계속 설명해줘",
+                "왜 하늘은 파래?",
                 "general",
                 [
-                    {"role": "user", "content": "앞에서 파리 뇌 구조를 물어봤어"},
-                    {"role": "assistant", "content": "FlyWire 그래프를 사용한다고 답했어"},
+                    {"role": "user", "content": "비밀 대화"},
+                    {"role": "assistant", "content": "이전 답변"},
                 ],
+                tool_context="tool secret",
+                knowledge_context="knowledge secret",
+                brain_state=ready_brain_state(),
             )
 
-        self.assertEqual(messages[0]["role"], "system")
-        self.assertEqual(messages[-1], {"role": "user", "content": "계속 설명해줘"})
-        self.assertIn("앞에서 파리 뇌 구조", messages[1]["content"])
+        joined = "\n".join(item["content"] for item in messages)
+        self.assertIn("mouth", messages[0]["content"].lower())
+        self.assertIn("return_greeting", joined)
+        self.assertNotIn("왜 하늘은 파래", joined)
+        self.assertNotIn("비밀 대화", joined)
+        self.assertNotIn("tool secret", joined)
+        self.assertNotIn("knowledge secret", joined)
+        self.assertEqual(
+            messages[-1]["content"],
+            "Render the supplied utterance plan as the final reply. Add no semantic content of your own.",
+        )
 
-    def test_memory_and_research_routes_have_specialized_prompts(self):
-        with patch.dict(os.environ, {}, clear=True):
-            runtime = GeneratorRuntime()
-
-        self.assertIn("MEMORY", runtime._system_prompt("memory"))
-        self.assertIn("RESEARCH", runtime._system_prompt("research"))
-
-    def test_general_prompt_discourages_stock_greeting_bot_replies(self):
-        with patch.dict(os.environ, {}, clear=True):
-            runtime = GeneratorRuntime()
-            prompt = runtime._system_prompt("general")
-
-        self.assertIn("not a customer-service greeting bot", prompt)
-        self.assertIn("Do not default to stock phrases", prompt)
-        self.assertIn("emoticon", prompt)
-
-    def test_prompt_enforces_natural_consistent_korean_tone(self):
+    def test_prompt_forbids_reasoning_and_new_questions(self):
         with patch.dict(os.environ, {}, clear=True):
             runtime = GeneratorRuntime()
             prompt = runtime._system_prompt("general")
 
-        self.assertIn("consistent level of formality", prompt)
-        self.assertIn("do not mix casual second-person forms", prompt)
-        self.assertIn("Do not introduce yourself", prompt)
-        self.assertIn("Do not turn a simple greeting into a self-introduction", prompt)
+        self.assertIn("only its mouth", prompt)
+        self.assertIn("Do not solve, infer, retrieve", prompt)
+        self.assertIn("Do not add facts, questions", prompt)
+        self.assertIn("content_units", prompt)
 
-    def test_short_general_turn_drops_assistant_echo_history(self):
+    def test_short_general_turn_drops_assistant_echo_history_helper(self):
         history = _memory_messages(
             "반가워",
             "general",
@@ -303,23 +373,9 @@ class GeneratorRuntimeTests(unittest.TestCase):
         self.assertTrue(any(item["role"] == "user" for item in history))
         self.assertFalse(any(item["role"] == "assistant" for item in history))
 
-    def test_long_general_history_deduplicates_identical_assistant_replies(self):
-        history = _memory_messages(
-            "아까 이야기한 파리 뇌 구조를 계속 설명해줘",
-            "general",
-            [
-                {"role": "assistant", "content": "같은 답변"},
-                {"role": "assistant", "content": "같은 답변"},
-                {"role": "user", "content": "앞에서 파리 뇌를 물어봤어"},
-            ],
-        )
-
-        assistant_items = [item for item in history if item["role"] == "assistant"]
-        self.assertEqual(len(assistant_items), 1)
-
     def test_extract_json_object_accepts_fenced_json(self):
         payload = _extract_json_object(
-            '```json\n{"facts":[{"statement":"supported"}]}\n```'
+            '~~~json\n{"facts":[{"statement":"supported"}]}\n~~~'.replace("~~~", "```")
         )
         self.assertIsNotNone(payload)
         self.assertEqual(payload["facts"][0]["statement"], "supported")
@@ -364,52 +420,6 @@ class GeneratorRuntimeTests(unittest.TestCase):
         self.assertIn("verbatim phrase", joined)
         self.assertIn("Prefer zero facts", joined)
 
-    def test_research_prompt_requires_exact_source_labels(self):
-        with patch.dict(os.environ, {}, clear=True):
-            runtime = GeneratorRuntime()
-            prompt = runtime._system_prompt("research")
-
-        self.assertIn("[source 1]", prompt)
-        self.assertIn("never invent a source number", prompt)
-        self.assertIn("If sources disagree", prompt)
-
-    def test_tool_context_is_injected_before_user_message(self):
-        with patch.dict(os.environ, {}, clear=True):
-            runtime = GeneratorRuntime()
-            messages = runtime._messages(
-                "3x+7=22 풀어줘",
-                "math",
-                [],
-                "Exact math tool result: x = 5",
-            )
-
-        self.assertEqual(messages[-1], {"role": "user", "content": "3x+7=22 풀어줘"})
-        self.assertTrue(any("x = 5" in item["content"] for item in messages[:-1]))
-
-    def test_knowledge_context_preserves_provenance_rules(self):
-        with patch.dict(os.environ, {}, clear=True):
-            runtime = GeneratorRuntime()
-            messages = runtime._messages(
-                "내 프로젝트 백엔드 뭐였지?",
-                "memory",
-                [],
-                None,
-                (
-                    "[verified] source=repository ref=app.py: backend is FastAPI\n"
-                    "[user-asserted] source=user_self: project nickname is 파피티"
-                ),
-            )
-
-        self.assertEqual(
-            messages[-1],
-            {"role": "user", "content": "내 프로젝트 백엔드 뭐였지?"},
-        )
-        system_context = "\n".join(
-            item["content"] for item in messages[:-1] if item["role"] == "system"
-        )
-        self.assertIn("[verified]", system_context)
-        self.assertIn("[user-asserted]", system_context)
-        self.assertIn("not independently verified", system_context)
 
 if __name__ == "__main__":
     unittest.main()
