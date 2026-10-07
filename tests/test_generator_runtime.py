@@ -211,11 +211,12 @@ class GeneratorRuntimeTests(unittest.TestCase):
                 "안녕",
                 "general",
                 brain_state=ready_brain_state(),
+                budget_seconds=7.0,
             )
 
         self.assertTrue(result.used)
         self.assertEqual(len(observed_timeouts), 1)
-        self.assertLessEqual(observed_timeouts[0], 25.0)
+        self.assertLessEqual(observed_timeouts[0], 7.0)
         self.assertGreater(observed_timeouts[0], 0.0)
         self.assertEqual(runtime.status()["budget_seconds"], 25.0)
 
