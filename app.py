@@ -26,6 +26,26 @@ from auth_store import AuthStore, SESSION_TTL_SECONDS
 
 APP_VERSION = "0.12.0"
 
+
+def _env_seconds(name: str, default: float, minimum: float, maximum: float) -> float:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        return default
+    return min(max(value, minimum), maximum)
+
+
+CHAT_REQUEST_BUDGET_SECONDS = _env_seconds(
+    "FLYGPT_CHAT_BUDGET",
+    22.0,
+    5.0,
+    28.0,
+)
+CHAT_RESPONSE_RESERVE_SECONDS = 0.75
+
 _model_override = os.environ.get("FLYGPT_MODEL_PATH")
 if _model_override:
     MODEL_PATH = _model_override
@@ -413,6 +433,7 @@ def health():
         "router_initialized": _router is not None,
         "router_error": _router_error,
         "app_version": APP_VERSION,
+        "chat_request_budget_seconds": CHAT_REQUEST_BUDGET_SECONDS,
         "dispatcher_enabled": True,
         "brain": {
             "enabled": True,
@@ -875,6 +896,14 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 knowledge_hits=knowledge_hits,
             )
 
+            elapsed_before_generation = time.perf_counter() - request_started
+            remaining_generation_budget = max(
+                0.0,
+                CHAT_REQUEST_BUDGET_SECONDS
+                - elapsed_before_generation
+                - CHAT_RESPONSE_RESERVE_SECONDS,
+            )
+
             generation = _generator.generate(
                 msg,
                 result.route,
@@ -882,6 +911,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 tool_context=tool_context,
                 knowledge_context=knowledge_context,
                 brain_state=brain_state,
+                budget_seconds=remaining_generation_budget,
             )
 
             if generation.used and generation.answer:
@@ -979,6 +1009,8 @@ def chat_endpoint(req: ChatRequest, request: Request):
                     "dispatch_ms": dispatch_ms,
                     "search_ms": search_ms,
                     "generation_ms": generation_ms,
+                    "generation_budget_ms": round(remaining_generation_budget * 1000),
+                    "request_budget_ms": round(CHAT_REQUEST_BUDGET_SECONDS * 1000),
                     "verification_ms": verification_ms,
                     "total_ms": total_ms,
                 },
