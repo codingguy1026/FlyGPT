@@ -106,6 +106,34 @@ Behind HTTPS, use `FLYGPT_COOKIE_SECURE=1`.
 
 Chat memory is scoped by authenticated user plus conversation session.
 
+
+## Connectome brain state
+
+FlyGPT v0.12 adds a deterministic decision layer between the MaleCNS router
+and the language model. The goal is to keep task choice and evidence policy
+upstream of prose generation:
+
+```text
+user input
+  -> MaleCNS graph router
+  -> fly brain_state
+  -> memory / research / exact-tool execution
+  -> finalized brain_state
+  -> LLM language realization
+```
+
+The `brain_state` records the selected route, response objective, retrieval
+action, evidence policy, confidence/margin, and a compact signature of the
+strongest activations from the final connectome graph-propagation step. The
+generator is instructed to follow that state rather than silently choosing a
+different route or retrieval policy.
+
+This does not mean a biological fly is composing sentences. The current
+MaleCNS-backed network still learns task-level decisions rather than a full
+semantic answer plan. v0.12 establishes the boundary needed for future
+multi-head training where the connectome model can predict richer answer-plan
+slots and leave the LLM primarily responsible for wording.
+
 ## Answer generation
 
 FlyGPT can forward generative routes to an OpenAI-compatible

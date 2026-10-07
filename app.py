@@ -14,6 +14,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from connectome import MaleCNSConnectome
+from brain_runtime import FlyBrainRuntime
 from dispatcher import dispatch, dispatch_math_fast_path, is_math_fast_path
 from generator_runtime import GENERATIVE_ROUTES, GeneratorRuntime
 from memory_store import MemoryStore, format_recall
@@ -23,7 +24,7 @@ from research_runtime import BraveResearchRuntime, validated_fact_candidates
 from auth_store import AuthStore, SESSION_TTL_SECONDS
 
 
-APP_VERSION = "0.11.0"
+APP_VERSION = "0.12.0"
 
 _model_override = os.environ.get("FLYGPT_MODEL_PATH")
 if _model_override:
@@ -67,6 +68,7 @@ _router_lock = threading.Lock()
 _router_error: str | None = None
 
 _generator = GeneratorRuntime()
+_brain = FlyBrainRuntime()
 _memory = MemoryStore(os.environ.get("FLYGPT_MEMORY_PATH", "data/flygpt_memory.sqlite3"))
 _route_learning = RouteLearningStore(
     os.environ.get("FLYGPT_ROUTE_LEARNING_PATH", "data/flygpt_route_learning.sqlite3")
@@ -412,6 +414,11 @@ def health():
         "router_error": _router_error,
         "app_version": APP_VERSION,
         "dispatcher_enabled": True,
+        "brain": {
+            "enabled": True,
+            "planner": "deterministic-connectome-state",
+            "generator_role": "language-realization",
+        },
         "generator": _generator.status(),
         "memory": {
             "enabled": True,
@@ -770,6 +777,10 @@ def chat_endpoint(req: ChatRequest, request: Request):
             result = dispatch(msg, route)
             dispatch_ms = round((time.perf_counter() - dispatch_started) * 1000)
             model_label = route.get("model", Path(MODEL_PATH).name)
+            brain_state = _brain.plan(
+                route_info=route,
+                dispatch=result.to_dict(),
+            )
 
             if result.status == "uncertain":
                 return response_with_router(
@@ -777,6 +788,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
                     response_type="dispatch",
                     data={
                         "dispatch": result.to_dict(),
+                        "brain_state": brain_state,
                         "generation": None,
                         "memory_hits": None,
                         "knowledge_hits": knowledge_hits,
@@ -815,7 +827,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
             verification_ms = None
             web_verified_facts: list[dict[str, Any]] = []
 
-            if result.route == "memory":
+            if brain_state["retrieval"] == "memory":
                 memory_hits = (
                     _memory.search(
                         session_id,
@@ -836,7 +848,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 else:
                     tool_context = "No relevant prior-session messages were retrieved."
 
-            elif result.route == "research":
+            elif brain_state["retrieval"] == "research":
                 search_started = time.perf_counter()
                 research_result = _research.search(msg)
                 search_ms = round((time.perf_counter() - search_started) * 1000)
@@ -853,12 +865,21 @@ def chat_endpoint(req: ChatRequest, request: Request):
                         "releases, news, or other fresh external facts."
                     )
 
+            brain_state = _brain.finalize(
+                brain_state,
+                memory_hits=memory_hits,
+                research_result=research_data,
+                tool_context=tool_context,
+                knowledge_hits=knowledge_hits,
+            )
+
             generation = _generator.generate(
                 msg,
                 result.route,
                 memory_context=memory_context,
                 tool_context=tool_context,
                 knowledge_context=knowledge_context,
+                brain_state=brain_state,
             )
 
             if generation.used and generation.answer:
@@ -930,6 +951,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
 
             data = {
                 "dispatch": result.to_dict(),
+                "brain_state": brain_state,
                 "generation": generation.to_dict(),
                 "memory_hits": memory_hits,
                 "knowledge_hits": knowledge_hits,

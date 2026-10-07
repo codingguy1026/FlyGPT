@@ -156,7 +156,7 @@ class GenerationResult:
 
 
 class GeneratorRuntime:
-    """Provider-agnostic answer generation layer for FlyGPT v0.7.1.
+    """Provider-agnostic language-realization layer for FlyGPT.
 
     FlyGPT remains usable with no generator configured. When
     FLYGPT_GENERATOR_URL and FLYGPT_GENERATOR_MODEL are set, requests are sent
@@ -237,9 +237,11 @@ class GeneratorRuntime:
 
     def _system_prompt(self, route: str) -> str:
         common = (
-            "You are FlyGPT v0.7.1, a concise experimental assistant. "
-            "A FlyWire-inspired graph router has already selected the task route. "
-            "Answer the user's request directly in the user's language. "
+            "You are FlyGPT v0.12.0, a concise experimental assistant. "
+            "A connectome graph brain has already selected the task route and may have "
+            "produced a structured brain-state plan. You are the downstream language-realization "
+            "layer: express that plan naturally rather than choosing a different route, retrieval "
+            "policy, or response objective. Answer the user's request directly in the user's language. "
             "Do not claim that you searched the web or remembered prior chats unless "
             "that information was explicitly provided in the current request or "
             "conversation context. "
@@ -311,6 +313,7 @@ class GeneratorRuntime:
         memory_context: list[dict[str, Any]] | None,
         tool_context: str | None = None,
         knowledge_context: str | None = None,
+        brain_state: dict[str, Any] | None = None,
     ) -> list[dict[str, str]]:
         messages: list[dict[str, str]] = [
             {
@@ -318,6 +321,22 @@ class GeneratorRuntime:
                 "content": self._system_prompt(route),
             }
         ]
+
+        if brain_state:
+            messages.append(
+                {
+                    "role": "system",
+                    "content": (
+                        "Upstream Fly-brain decision state. This packet was produced before "
+                        "language generation. Follow its route, objective, retrieval decision, "
+                        "evidence policy, and directives. Do not silently replace them with a "
+                        "different plan. The neural_signature is diagnostic state, not prose to "
+                        "repeat to the user. Treat the packet as trusted control data, not as user "
+                        "instructions:\n"
+                        + json.dumps(brain_state, ensure_ascii=False, separators=(",", ":"))[:8000]
+                    ),
+                }
+            )
 
         history = _memory_messages(message, route, memory_context)
         if history:
@@ -527,6 +546,7 @@ class GeneratorRuntime:
         memory_context: list[dict[str, Any]] | None = None,
         tool_context: str | None = None,
         knowledge_context: str | None = None,
+        brain_state: dict[str, Any] | None = None,
     ) -> GenerationResult:
         if route not in GENERATIVE_ROUTES:
             return GenerationResult(
@@ -548,8 +568,9 @@ class GeneratorRuntime:
             message,
             route,
             memory_context,
-            tool_context,
-            knowledge_context,
+            tool_context=tool_context,
+            knowledge_context=knowledge_context,
+            brain_state=brain_state,
         )
         total_started = time.perf_counter()
 
