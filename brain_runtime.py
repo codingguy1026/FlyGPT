@@ -88,7 +88,7 @@ class FlyBrainRuntime:
         r"^(?:잘\s*가|잘자|안녕히\s*(?:가세요|계세요)|바이|bye|goodbye)[!?.~\s]*$",
         re.IGNORECASE,
     )
-    _EMOTICON_RE = re.compile(r"^[\\sㅋㅎㅠㅜㅇㅅ^._;:()<>/=+\\-]{1,24}$")
+    _EMOTICON_RE = re.compile(r"^[\sㅋㅎㅠㅜㅇㅅ^._;:()<>/=+\-]{1,24}$")
 
     def _neural_signature(
         self,
