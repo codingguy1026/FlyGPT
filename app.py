@@ -416,8 +416,9 @@ def health():
         "dispatcher_enabled": True,
         "brain": {
             "enabled": True,
-            "planner": "deterministic-connectome-state",
-            "generator_role": "language-realization",
+            "planner": "deterministic-connectome-semantic-state",
+            "generator_role": "mouth-only-language-realization",
+            "semantic_contract": "mouth_only_v1",
         },
         "generator": _generator.status(),
         "memory": {
@@ -780,6 +781,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
             brain_state = _brain.plan(
                 route_info=route,
                 dispatch=result.to_dict(),
+                message=msg,
             )
 
             if result.status == "uncertain":
