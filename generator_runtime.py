@@ -473,6 +473,7 @@ class GeneratorRuntime:
         tool_context: str | None = None,
         knowledge_context: str | None = None,
         brain_state: dict[str, Any] | None = None,
+        budget_seconds: float | None = None,
     ) -> GenerationResult:
         if route not in GENERATIVE_ROUTES:
             return GenerationResult(
@@ -510,7 +511,10 @@ class GeneratorRuntime:
         )
 
         total_started = time.perf_counter()
-        deadline = total_started + self.budget
+        effective_budget = self.budget
+        if budget_seconds is not None:
+            effective_budget = max(0.0, min(self.budget, float(budget_seconds)))
+        deadline = total_started + effective_budget
 
         def remaining_seconds() -> float:
             return max(0.0, deadline - time.perf_counter())
@@ -521,7 +525,7 @@ class GeneratorRuntime:
                 provider=self.provider_name,
                 model=model,
                 answer=None,
-                error=f"generation time budget exceeded ({self.budget:.1f}s)",
+                error=f"generation time budget exceeded ({effective_budget:.1f}s)",
                 latency_ms=round((time.perf_counter() - total_started) * 1000),
             )
 
