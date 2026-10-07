@@ -26,6 +26,26 @@ from auth_store import AuthStore, SESSION_TTL_SECONDS
 
 APP_VERSION = "0.12.0"
 
+
+def _env_seconds(name: str, default: float, minimum: float, maximum: float) -> float:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        return default
+    return min(max(value, minimum), maximum)
+
+
+CHAT_REQUEST_BUDGET_SECONDS = _env_seconds(
+    "FLYGPT_CHAT_BUDGET",
+    22.0,
+    5.0,
+    28.0,
+)
+CHAT_RESPONSE_RESERVE_SECONDS = 0.75
+
 _model_override = os.environ.get("FLYGPT_MODEL_PATH")
 if _model_override:
     MODEL_PATH = _model_override
@@ -182,18 +202,25 @@ def get_router() -> Any | None:
 
 
 def predict_route(text: str, user_id: str | None = None) -> dict[str, Any] | None:
+    router_was_loaded = _router is not None
+    lookup_started = time.perf_counter()
     router = get_router()
+    router_lookup_ms = round((time.perf_counter() - lookup_started) * 1000)
     if router is None:
         return None
 
+    predict_started = time.perf_counter()
     try:
         result = router.predict(text, top_k=len(router.routes))
     except Exception as exc:
         global _router_error
         _router_error = f"{type(exc).__name__}: {exc}"
         return None
+    predict_ms = round((time.perf_counter() - predict_started) * 1000)
 
+    personalization_ms = 0
     if user_id:
+        personalize_started = time.perf_counter()
         try:
             result = _route_learning.personalize(user_id, text, result)
         except Exception:
@@ -207,6 +234,15 @@ def predict_route(text: str, user_id: str | None = None) -> dict[str, Any] | Non
                 "nearest_similarity": 0.0,
                 "error": "unavailable",
             }
+        personalization_ms = round((time.perf_counter() - personalize_started) * 1000)
+
+    result["runtime_timings"] = {
+        "cold_start": not router_was_loaded,
+        "router_lookup_ms": router_lookup_ms,
+        "model_load_ms": router_lookup_ms if not router_was_loaded else 0,
+        "predict_ms": predict_ms,
+        "personalization_ms": personalization_ms,
+    }
 
     return result
 
@@ -413,6 +449,7 @@ def health():
         "router_initialized": _router is not None,
         "router_error": _router_error,
         "app_version": APP_VERSION,
+        "chat_request_budget_seconds": CHAT_REQUEST_BUDGET_SECONDS,
         "dispatcher_enabled": True,
         "brain": {
             "enabled": True,
@@ -875,6 +912,14 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 knowledge_hits=knowledge_hits,
             )
 
+            elapsed_before_generation = time.perf_counter() - request_started
+            remaining_generation_budget = max(
+                0.0,
+                CHAT_REQUEST_BUDGET_SECONDS
+                - elapsed_before_generation
+                - CHAT_RESPONSE_RESERVE_SECONDS,
+            )
+
             generation = _generator.generate(
                 msg,
                 result.route,
@@ -882,6 +927,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 tool_context=tool_context,
                 knowledge_context=knowledge_context,
                 brain_state=brain_state,
+                budget_seconds=remaining_generation_budget,
             )
 
             if generation.used and generation.answer:
@@ -956,12 +1002,24 @@ def chat_endpoint(req: ChatRequest, request: Request):
             total_ms = round((time.perf_counter() - request_started) * 1000)
             generation_ms = generation.latency_ms
 
+            router_runtime = route.get("runtime_timings") or {}
             print(
                 "[PERF] /api/chat "
                 f"route={result.route} router={router_ms}ms "
+                f"router_load={router_runtime.get('model_load_ms')}ms "
+                f"router_predict={router_runtime.get('predict_ms')}ms "
+                f"personalize={router_runtime.get('personalization_ms')}ms "
+                f"cold_start={router_runtime.get('cold_start')} "
                 f"dispatch={dispatch_ms}ms search={search_ms}ms "
-                f"generation={generation_ms}ms verify={verification_ms}ms "
-                f"total={total_ms}ms",
+                f"generation={generation_ms}ms "
+                f"gen_open_wait={generation.open_wait_ms}ms "
+                f"gen_body_read={generation.body_read_ms}ms "
+                f"gen_json={generation.json_parse_ms}ms "
+                f"req_bytes={generation.request_bytes} "
+                f"resp_bytes={generation.response_bytes} "
+                f"gen_budget={round(remaining_generation_budget * 1000)}ms "
+                f"request_budget={round(CHAT_REQUEST_BUDGET_SECONDS * 1000)}ms "
+                f"verify={verification_ms}ms total={total_ms}ms",
                 flush=True,
             )
 
@@ -979,6 +1037,17 @@ def chat_endpoint(req: ChatRequest, request: Request):
                     "dispatch_ms": dispatch_ms,
                     "search_ms": search_ms,
                     "generation_ms": generation_ms,
+                    "generation_open_wait_ms": generation.open_wait_ms,
+                    "generation_body_read_ms": generation.body_read_ms,
+                    "generation_json_parse_ms": generation.json_parse_ms,
+                    "generation_request_bytes": generation.request_bytes,
+                    "generation_response_bytes": generation.response_bytes,
+                    "generation_budget_ms": round(remaining_generation_budget * 1000),
+                    "request_budget_ms": round(CHAT_REQUEST_BUDGET_SECONDS * 1000),
+                    "router_load_ms": router_runtime.get("model_load_ms"),
+                    "router_predict_ms": router_runtime.get("predict_ms"),
+                    "router_personalization_ms": router_runtime.get("personalization_ms"),
+                    "router_cold_start": router_runtime.get("cold_start"),
                     "verification_ms": verification_ms,
                     "total_ms": total_ms,
                 },

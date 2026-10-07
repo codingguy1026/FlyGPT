@@ -30,6 +30,11 @@ class HealthEndpointTests(unittest.TestCase):
         self.assertTrue(payload["knowledge"]["provenance_aware"])
         self.assertEqual(payload["research"]["provider"], "brave-llm-context")
         self.assertIn("configured", payload["research"])
+        self.assertEqual(
+            payload["chat_request_budget_seconds"],
+            flygpt_app.CHAT_REQUEST_BUDGET_SECONDS,
+        )
+        self.assertLess(payload["chat_request_budget_seconds"], 30.0)
 
 
 if __name__ == "__main__":
