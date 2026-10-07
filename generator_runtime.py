@@ -150,6 +150,11 @@ class GenerationResult:
     finish_reason: str | None = None
     latency_ms: int | None = None
     http_status: int | None = None
+    open_wait_ms: int | None = None
+    body_read_ms: int | None = None
+    json_parse_ms: int | None = None
+    request_bytes: int | None = None
+    response_bytes: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -322,22 +327,36 @@ class GeneratorRuntime:
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
+        request_bytes = json.dumps(body, ensure_ascii=False).encode("utf-8")
         request = urllib.request.Request(
             self.url,
-            data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+            data=request_bytes,
             headers=headers,
             method="POST",
         )
 
         started = time.perf_counter()
+        open_wait_ms: int | None = None
+        body_read_ms: int | None = None
+        json_parse_ms: int | None = None
+        response_bytes: int | None = None
 
         try:
             effective_timeout = self.timeout
             if timeout_seconds is not None:
                 effective_timeout = max(0.1, min(self.timeout, timeout_seconds))
 
+            open_started = time.perf_counter()
             with urllib.request.urlopen(request, timeout=effective_timeout) as response:
-                payload = json.loads(response.read().decode("utf-8"))
+                open_wait_ms = round((time.perf_counter() - open_started) * 1000)
+                read_started = time.perf_counter()
+                raw_body = response.read()
+                body_read_ms = round((time.perf_counter() - read_started) * 1000)
+
+            response_bytes = len(raw_body)
+            parse_started = time.perf_counter()
+            payload = json.loads(raw_body.decode("utf-8"))
+            json_parse_ms = round((time.perf_counter() - parse_started) * 1000)
 
             choices = payload.get("choices") or []
             if not choices:
@@ -357,6 +376,11 @@ class GeneratorRuntime:
                 finish_reason=choice.get("finish_reason"),
                 latency_ms=round((time.perf_counter() - started) * 1000),
                 http_status=200,
+                open_wait_ms=open_wait_ms,
+                body_read_ms=body_read_ms,
+                json_parse_ms=json_parse_ms,
+                request_bytes=len(request_bytes),
+                response_bytes=response_bytes,
             )
 
         except urllib.error.HTTPError as exc:
@@ -377,6 +401,11 @@ class GeneratorRuntime:
                 error=detail,
                 latency_ms=round((time.perf_counter() - started) * 1000),
                 http_status=exc.code,
+                open_wait_ms=open_wait_ms,
+                body_read_ms=body_read_ms,
+                json_parse_ms=json_parse_ms,
+                request_bytes=len(request_bytes),
+                response_bytes=response_bytes,
             )
 
         except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
@@ -387,6 +416,11 @@ class GeneratorRuntime:
                 answer=None,
                 error=f"{type(exc).__name__}: {exc}",
                 latency_ms=round((time.perf_counter() - started) * 1000),
+                open_wait_ms=open_wait_ms,
+                body_read_ms=body_read_ms,
+                json_parse_ms=json_parse_ms,
+                request_bytes=len(request_bytes),
+                response_bytes=response_bytes,
             )
 
     def extract_supported_facts(
