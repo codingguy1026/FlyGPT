@@ -990,8 +990,10 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 "[PERF] /api/chat "
                 f"route={result.route} router={router_ms}ms "
                 f"dispatch={dispatch_ms}ms search={search_ms}ms "
-                f"generation={generation_ms}ms verify={verification_ms}ms "
-                f"total={total_ms}ms",
+                f"generation={generation_ms}ms "
+                f"gen_budget={round(remaining_generation_budget * 1000)}ms "
+                f"request_budget={round(CHAT_REQUEST_BUDGET_SECONDS * 1000)}ms "
+                f"verify={verification_ms}ms total={total_ms}ms",
                 flush=True,
             )
 
