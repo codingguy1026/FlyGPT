@@ -87,6 +87,85 @@ class FlyBrainRuntimeTests(unittest.TestCase):
         self.assertTrue(final["evidence"]["available"])
         self.assertEqual(final["evidence"]["count"], 1)
 
+    def test_simple_greeting_produces_ready_mouth_only_plan(self) -> None:
+        state = self.brain.plan(
+            route_info={
+                "route": "general",
+                "confidence": 0.97,
+                "margin": 0.5,
+                "accepted": True,
+                "trace": [],
+            },
+            dispatch={
+                "route": "general",
+                "status": "ready",
+                "confidence": 0.97,
+                "margin": 0.5,
+                "tool_context": None,
+            },
+            message="안녕",
+        )
+
+        plan = state["utterance_plan"]
+        self.assertEqual(plan["contract"], "mouth_only_v1")
+        self.assertTrue(plan["ready"])
+        self.assertEqual(plan["speech_act"], "return_greeting")
+        self.assertFalse(plan["permissions"]["infer_new_meaning"])
+        self.assertFalse(plan["permissions"]["add_new_questions"])
+
+    def test_unplanned_general_question_stays_closed(self) -> None:
+        state = self.brain.plan(
+            route_info={
+                "route": "general",
+                "confidence": 0.97,
+                "margin": 0.5,
+                "accepted": True,
+                "trace": [],
+            },
+            dispatch={
+                "route": "general",
+                "status": "ready",
+                "confidence": 0.97,
+                "margin": 0.5,
+                "tool_context": None,
+            },
+            message="왜 하늘은 파래?",
+        )
+
+        self.assertFalse(state["utterance_plan"]["ready"])
+        self.assertEqual(state["utterance_plan"]["speech_act"], "unresolved")
+
+    def test_exact_math_result_becomes_explicit_content_unit(self) -> None:
+        state = self.brain.plan(
+            route_info={
+                "route": "math",
+                "confidence": 0.93,
+                "margin": 0.4,
+                "accepted": True,
+                "trace": [],
+            },
+            dispatch={
+                "route": "math",
+                "status": "ready",
+                "confidence": 0.93,
+                "margin": 0.4,
+                "tool_context": "Exact math tool result: x = 5",
+            },
+            message="3x+7=22 풀어줘",
+        )
+        final = self.brain.finalize(
+            state,
+            tool_context="Exact math tool result: x = 5",
+        )
+
+        plan = final["utterance_plan"]
+        self.assertTrue(plan["ready"])
+        self.assertEqual(plan["speech_act"], "state_exact_math_result")
+        self.assertEqual(
+            plan["content_units"][0]["value"],
+            "Exact math tool result: x = 5",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
