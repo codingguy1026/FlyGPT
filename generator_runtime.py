@@ -237,7 +237,7 @@ class GeneratorRuntime:
 
     def _system_prompt(self, route: str) -> str:
         common = (
-            "You are FlyGPT v0.7.1, a concise experimental assistant. "
+            "You are FlyGPT v0.12.0, a concise experimental assistant. "
             "A connectome graph brain has already selected the task route and may have "
             "produced a structured brain-state plan. You are the downstream language-realization "
             "layer: express that plan naturally rather than choosing a different route, retrieval "
