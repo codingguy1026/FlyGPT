@@ -23,7 +23,6 @@ class FakeClient:
                         "total_synapses": 21,
                         "outgoing_synapses": 9,
                         "incoming_synapses": 12,
-                        "partner_count": 3,
                     },
                     {
                         "body_id": 1,
@@ -33,7 +32,6 @@ class FakeClient:
                         "total_synapses": 13,
                         "outgoing_synapses": 8,
                         "incoming_synapses": 5,
-                        "partner_count": 2,
                     },
                 ]
             )
@@ -145,9 +143,9 @@ class MaleCNSConnectomeTest(unittest.TestCase):
         self.assertEqual(rows[0]["total_synapses"], 21)
         self.assertEqual(rows[0]["incoming_synapses"], 12)
         self.assertEqual(rows[0]["outgoing_synapses"], 9)
-        self.assertEqual(rows[0]["partner_count"], 3)
         self.assertEqual(rows[0]["dominant_nt"], "GABA")
         self.assertEqual(rows[0]["type"], "DNp01")
+        self.assertEqual(rows[0]["metric"], "pre_plus_post_synaptic_sites")
 
     def test_scaffold_edges(self) -> None:
         self.assertEqual(
