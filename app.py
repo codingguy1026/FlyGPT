@@ -24,7 +24,7 @@ from research_runtime import BraveResearchRuntime, validated_fact_candidates
 from auth_store import AuthStore, SESSION_TTL_SECONDS
 
 
-APP_VERSION = "0.12.1"
+APP_VERSION = "0.12.2"
 
 
 def _env_seconds(name: str, default: float, minimum: float, maximum: float) -> float:
@@ -662,8 +662,8 @@ def chat_endpoint(req: ChatRequest, request: Request):
             total_ms = round((time.perf_counter() - request_started) * 1000)
 
             sections = [
-                "🧠 MaleCNS 연결 강도 상위 뉴런",
-                "기준: 입력 + 출력 ConnectsTo 시냅스 가중치 합 (weighted degree)",
+                "🧠 MaleCNS 시냅스 수 상위 뉴런",
+                "기준: 뉴런의 presynaptic + postsynaptic site 수 (pre + post)",
             ]
             if not rows:
                 sections.append("조건에 맞는 뉴런을 찾지 못했습니다.")
@@ -672,13 +672,14 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 identity = row.get("type") or row.get("instance") or "untyped"
                 sections.append(
                     f"{index}. Neuron {row['body_id']} · {identity}\n"
-                    f"   총 연결 강도: {row['total_synapses']:,} synapses\n"
-                    f"   입력: {row['incoming_synapses']:,} · 출력: {row['outgoing_synapses']:,}\n"
-                    f"   고유 파트너: {row['partner_count']:,} · Consensus NT: {row['dominant_nt']}"
+                    f"   총 시냅스 사이트: {row['total_synapses']:,}\n"
+                    f"   입력(post): {row['incoming_synapses']:,} · 출력(pre): {row['outgoing_synapses']:,}\n"
+                    f"   Consensus NT: {row['dominant_nt']}"
                 )
 
             sections.append(
-                "※ 여기서 '강함'은 연결 가중치 합 기준이며, 생물학적 중요도나 활성도를 뜻하지 않습니다."
+                "※ 빠른 조회를 위해 MaleCNS Neuron의 pre + post 사이트 수를 사용합니다. "
+                "이는 생물학적 중요도·활성도나 ConnectsTo weighted degree를 뜻하지 않습니다."
             )
 
             print(
