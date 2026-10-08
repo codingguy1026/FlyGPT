@@ -190,6 +190,12 @@ class GeneratorRuntime:
             minimum=1.0,
             maximum=180.0,
         )
+        self.primary_attempt_timeout = _env_float(
+            "FLYGPT_GENERATOR_PRIMARY_TIMEOUT",
+            6.0,
+            minimum=1.0,
+            maximum=30.0,
+        )
         self.budget = _env_float(
             "FLYGPT_GENERATOR_BUDGET",
             25.0,
@@ -239,6 +245,7 @@ class GeneratorRuntime:
             "url_configured": bool(self.url),
             "api_key_configured": bool(self.api_key),
             "timeout_seconds": self.timeout,
+            "primary_attempt_timeout_seconds": self.primary_attempt_timeout,
             "budget_seconds": self.budget,
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
@@ -563,15 +570,23 @@ class GeneratorRuntime:
                 latency_ms=round((time.perf_counter() - total_started) * 1000),
             )
 
-        def generate_with_budget(model: str) -> GenerationResult:
+        def generate_with_budget(
+            model: str,
+            *,
+            attempt_timeout: float | None = None,
+        ) -> GenerationResult:
             remaining = remaining_seconds()
             if remaining <= 0:
                 return budget_result(model)
 
+            timeout_cap = min(self.timeout, remaining)
+            if attempt_timeout is not None:
+                timeout_cap = min(timeout_cap, max(0.1, attempt_timeout))
+
             result = self._generate_once(
                 model=model,
                 messages=messages,
-                timeout_seconds=min(self.timeout, remaining),
+                timeout_seconds=timeout_cap,
             )
             if (
                 not result.used
@@ -582,12 +597,60 @@ class GeneratorRuntime:
             result.latency_ms = round((time.perf_counter() - total_started) * 1000)
             return result
 
-        first = generate_with_budget(self.model)
-        if first.used or first.http_status not in RETRYABLE_HTTP_CODES:
+        def is_transient_failure(result: GenerationResult) -> bool:
+            if result.http_status in RETRYABLE_HTTP_CODES:
+                return True
+            if result.http_status is not None:
+                return False
+
+            detail = (result.error or "").lower()
+            return any(
+                marker in detail
+                for marker in (
+                    "timeout",
+                    "timed out",
+                    "urlerror",
+                    "temporarily unavailable",
+                    "connection reset",
+                    "remote end closed",
+                )
+            )
+
+        fallback_available = bool(
+            self.fallback_model and self.fallback_model != self.model
+        )
+        primary_attempt_timeout = (
+            self.primary_attempt_timeout if fallback_available else None
+        )
+
+        first = generate_with_budget(
+            self.model,
+            attempt_timeout=primary_attempt_timeout,
+        )
+        if first.used or not is_transient_failure(first):
             return first
 
+        if fallback_available:
+            if remaining_seconds() <= 0:
+                return budget_result(self.fallback_model)
+
+            print(
+                f"[GEN] {self.model} was slow or unavailable "
+                f"({first.error or ('HTTP ' + str(first.http_status))}); "
+                f"trying fallback {self.fallback_model}",
+                flush=True,
+            )
+            fallback = generate_with_budget(self.fallback_model)
+            if not fallback.used and fallback.error:
+                fallback.error += (
+                    f" (primary {self.model} failed first: "
+                    f"{first.error or ('HTTP ' + str(first.http_status))})"
+                )
+            return fallback
+
         print(
-            f"[GEN] {self.model} returned HTTP {first.http_status}; "
+            f"[GEN] {self.model} transient failure "
+            f"({first.error or ('HTTP ' + str(first.http_status))}); "
             f"retrying once in {self.retry_delay:.1f}s",
             flush=True,
         )
@@ -603,25 +666,4 @@ class GeneratorRuntime:
         if remaining_seconds() <= 0:
             return budget_result(self.model)
 
-        second = generate_with_budget(self.model)
-        if second.used or second.http_status not in RETRYABLE_HTTP_CODES:
-            return second
-
-        if self.fallback_model and self.fallback_model != self.model:
-            if remaining_seconds() <= 0:
-                return budget_result(self.fallback_model)
-
-            print(
-                f"[GEN] {self.model} still unavailable; "
-                f"trying fallback {self.fallback_model}",
-                flush=True,
-            )
-            fallback = generate_with_budget(self.fallback_model)
-            if not fallback.used and fallback.error:
-                fallback.error += (
-                    f" (primary {self.model} also returned "
-                    f"HTTP {second.http_status})"
-                )
-            return fallback
-
-        return second
+        return generate_with_budget(self.model)
