@@ -293,32 +293,29 @@ class MaleCNSConnectome:
         return rows
 
     def top_neurons(self, *, limit: int = 10) -> list[dict[str, Any]]:
-        """Return neurons with the strongest total weighted connectivity.
+        """Return neurons with the highest total synaptic-site counts.
 
-        Strength is defined as the sum of incoming and outgoing ConnectsTo
-        synapse weights. This is a weighted-degree ranking, not a claim about
-        biological importance or activity.
+        This fast path ranks the Neuron node properties pre and post instead
+        of aggregating every ConnectsTo relationship. pre + post is used as
+        the total synaptic-site count. This is a lightweight structural
+        ranking, not a claim about biological importance, activity, or
+        weighted-degree centrality.
         """
 
         if limit < 1:
             raise ValueError("limit must be at least 1")
 
         query = f"""
-        MATCH (n:Neuron)-[c:ConnectsTo]-(other:Neuron)
-        WHERE n.bodyId <> other.bodyId
+        MATCH (n:Neuron)
         WITH
             n,
-            sum(c.weight) AS total_synapses,
-            count(DISTINCT other.bodyId) AS partner_count
-        ORDER BY total_synapses DESC, n.bodyId
-        LIMIT {int(limit)}
-        OPTIONAL MATCH (n)-[out:ConnectsTo]->()
+            coalesce(n.pre, 0) AS outgoing_synapses,
+            coalesce(n.post, 0) AS incoming_synapses
         WITH
             n,
-            total_synapses,
-            partner_count,
-            coalesce(sum(out.weight), 0) AS outgoing_synapses
-        OPTIONAL MATCH ()-[inc:ConnectsTo]->(n)
+            outgoing_synapses,
+            incoming_synapses,
+            outgoing_synapses + incoming_synapses AS total_synapses
         RETURN
             n.bodyId AS body_id,
             n.type AS type,
@@ -326,9 +323,9 @@ class MaleCNSConnectome:
             n.consensusNt AS consensus_nt,
             total_synapses,
             outgoing_synapses,
-            coalesce(sum(inc.weight), 0) AS incoming_synapses,
-            partner_count
+            incoming_synapses
         ORDER BY total_synapses DESC, body_id
+        LIMIT {int(limit)}
         """
         frame = self.client.fetch_custom(query)
         if frame is None or len(frame) == 0:
@@ -344,8 +341,8 @@ class MaleCNSConnectome:
                     "total_synapses": int(row.get("total_synapses") or 0),
                     "outgoing_synapses": int(row.get("outgoing_synapses") or 0),
                     "incoming_synapses": int(row.get("incoming_synapses") or 0),
-                    "partner_count": int(row.get("partner_count") or 0),
                     "dominant_nt": _nt_label(row.get("consensus_nt")),
+                    "metric": "pre_plus_post_synaptic_sites",
                 }
             )
         return rows
