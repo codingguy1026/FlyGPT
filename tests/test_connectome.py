@@ -9,10 +9,14 @@ from connectome import MaleCNSConnectome
 
 
 class FakeClient:
+    def __init__(self) -> None:
+        self.top_neuron_queries = 0
+
     def fetch_custom(self, query: str):
         if "count(n) AS neurons" in query:
             return pd.DataFrame([{"neurons": 3}])
         if "AS body_id" in query and "total_synapses" in query:
+            self.top_neuron_queries += 1
             return pd.DataFrame(
                 [
                     {
@@ -95,7 +99,8 @@ def sample_adjacencies(*, sources=None, targets=None, **kwargs):
 
 class MaleCNSConnectomeTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.connectome = MaleCNSConnectome(client=FakeClient())
+        self.client = FakeClient()
+        self.connectome = MaleCNSConnectome(client=self.client)
 
     @patch(
         "connectome.fetch_meta",
@@ -137,7 +142,11 @@ class MaleCNSConnectomeTest(unittest.TestCase):
         self.assertEqual(rows[0]["syn_count"], 8)
         self.assertEqual(rows[0]["dominant_nt"], "ACH")
 
-    def test_top_neurons(self) -> None:
+    @patch(
+        "connectome.fetch_meta",
+        return_value={"lastDatabaseEdit": "edit-1"},
+    )
+    def test_top_neurons(self, _mock_meta) -> None:
         rows = self.connectome.top_neurons(limit=2)
         self.assertEqual(rows[0]["body_id"], 2)
         self.assertEqual(rows[0]["total_synapses"], 21)
@@ -146,6 +155,53 @@ class MaleCNSConnectomeTest(unittest.TestCase):
         self.assertEqual(rows[0]["dominant_nt"], "GABA")
         self.assertEqual(rows[0]["type"], "DNp01")
         self.assertEqual(rows[0]["metric"], "pre_plus_post_synaptic_sites")
+        self.assertEqual(self.client.top_neuron_queries, 1)
+
+    @patch(
+        "connectome.fetch_meta",
+        return_value={"lastDatabaseEdit": "edit-1"},
+    )
+    def test_top_neurons_reuses_cache_within_ttl(self, mock_meta) -> None:
+        first = self.connectome.top_neurons(limit=2)
+        second = self.connectome.top_neurons(limit=2)
+
+        self.assertEqual(first, second)
+        self.assertEqual(self.client.top_neuron_queries, 1)
+        self.assertEqual(mock_meta.call_count, 1)
+
+    @patch(
+        "connectome.fetch_meta",
+        return_value={"lastDatabaseEdit": "edit-1"},
+    )
+    def test_top_neurons_keeps_cache_after_ttl_when_database_is_unchanged(
+        self,
+        mock_meta,
+    ) -> None:
+        self.connectome.top_neurons(limit=2)
+        self.connectome._top_neurons_cache_checked_at -= (
+            self.connectome._top_neurons_cache_ttl + 1
+        )
+        self.connectome.top_neurons(limit=2)
+
+        self.assertEqual(self.client.top_neuron_queries, 1)
+        self.assertEqual(mock_meta.call_count, 2)
+
+    @patch(
+        "connectome.fetch_meta",
+        side_effect=[
+            {"lastDatabaseEdit": "edit-1"},
+            {"lastDatabaseEdit": "edit-2"},
+        ],
+    )
+    def test_top_neurons_refreshes_cache_when_database_changes(self, mock_meta) -> None:
+        self.connectome.top_neurons(limit=2)
+        self.connectome._top_neurons_cache_checked_at -= (
+            self.connectome._top_neurons_cache_ttl + 1
+        )
+        self.connectome.top_neurons(limit=2)
+
+        self.assertEqual(self.client.top_neuron_queries, 2)
+        self.assertEqual(mock_meta.call_count, 2)
 
     def test_scaffold_edges(self) -> None:
         self.assertEqual(

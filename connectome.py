@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
+import threading
+import time
 from typing import Any
 
 from neuprint import Client, fetch_adjacencies, fetch_meta
@@ -50,6 +52,12 @@ class MaleCNSConnectome:
     server: str = DEFAULT_NEUPRINT_SERVER
     dataset: str = DEFAULT_NEUPRINT_DATASET
     client: Any | None = None
+    _top_neurons_cache: list[dict[str, Any]] = field(default_factory=list, init=False, repr=False)
+    _top_neurons_cache_limit: int = field(default=0, init=False, repr=False)
+    _top_neurons_cache_checked_at: float = field(default=0.0, init=False, repr=False)
+    _top_neurons_cache_database_edit: str | None = field(default=None, init=False, repr=False)
+    _top_neurons_cache_ttl: float = field(default=60.0, init=False, repr=False)
+    _top_neurons_cache_lock: Any = field(default_factory=threading.Lock, init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.server = os.environ.get("NEUPRINT_SERVER", self.server).strip()
@@ -60,6 +68,13 @@ class MaleCNSConnectome:
             or os.environ.get("NEUPRINT_APPLICATION_CREDENTIALS")
             or ""
         ).strip() or None
+
+        raw_cache_ttl = os.environ.get("FLYGPT_TOP_NEURONS_CACHE_TTL", "60").strip()
+        try:
+            cache_ttl = float(raw_cache_ttl)
+        except ValueError:
+            cache_ttl = 60.0
+        self._top_neurons_cache_ttl = min(max(cache_ttl, 0.0), 3600.0)
 
         if self.client is None:
             if not self.token:
@@ -292,19 +307,17 @@ class MaleCNSConnectome:
             )
         return rows
 
-    def top_neurons(self, *, limit: int = 10) -> list[dict[str, Any]]:
-        """Return neurons with the highest total synaptic-site counts.
+    def _top_neurons_database_edit(self) -> str | None:
+        """Return the current neuPrint database edit marker when available."""
+        try:
+            meta = fetch_meta(client=self.client)
+        except Exception:
+            return None
 
-        This fast path ranks the Neuron node properties pre and post instead
-        of aggregating every ConnectsTo relationship. pre + post is used as
-        the total synaptic-site count. This is a lightweight structural
-        ranking, not a claim about biological importance, activity, or
-        weighted-degree centrality.
-        """
+        marker = meta.get("lastDatabaseEdit")
+        return str(marker) if marker is not None else None
 
-        if limit < 1:
-            raise ValueError("limit must be at least 1")
-
+    def _query_top_neurons(self, limit: int) -> list[dict[str, Any]]:
         query = f"""
         MATCH (n:Neuron)
         WITH
@@ -346,6 +359,61 @@ class MaleCNSConnectome:
                 }
             )
         return rows
+
+    def top_neurons(self, *, limit: int = 10) -> list[dict[str, Any]]:
+        """Return neurons with the highest total synaptic-site counts.
+
+        Results are cached briefly because the ranking is expensive relative
+        to serving a repeated chat request. After the TTL expires, FlyGPT
+        checks neuPrint lastDatabaseEdit. If the dataset changed, the cached
+        ranking is discarded and queried again. Thus cached results are stale
+        for at most FLYGPT_TOP_NEURONS_CACHE_TTL seconds under normal
+        operation.
+        """
+
+        if limit < 1:
+            raise ValueError("limit must be at least 1")
+
+        if self._top_neurons_cache_ttl <= 0:
+            return self._query_top_neurons(limit)
+
+        now = time.monotonic()
+        cache_is_fresh = (
+            bool(self._top_neurons_cache)
+            and self._top_neurons_cache_limit >= limit
+            and now - self._top_neurons_cache_checked_at < self._top_neurons_cache_ttl
+        )
+        if cache_is_fresh:
+            return [dict(row) for row in self._top_neurons_cache[:limit]]
+
+        with self._top_neurons_cache_lock:
+            now = time.monotonic()
+            cache_is_fresh = (
+                bool(self._top_neurons_cache)
+                and self._top_neurons_cache_limit >= limit
+                and now - self._top_neurons_cache_checked_at < self._top_neurons_cache_ttl
+            )
+            if cache_is_fresh:
+                return [dict(row) for row in self._top_neurons_cache[:limit]]
+
+            database_edit = self._top_neurons_database_edit()
+            cache_matches_database = (
+                bool(self._top_neurons_cache)
+                and self._top_neurons_cache_limit >= limit
+                and database_edit is not None
+                and database_edit == self._top_neurons_cache_database_edit
+            )
+            if cache_matches_database:
+                self._top_neurons_cache_checked_at = now
+                return [dict(row) for row in self._top_neurons_cache[:limit]]
+
+            fetch_limit = max(limit, 25)
+            rows = self._query_top_neurons(fetch_limit)
+            self._top_neurons_cache = [dict(row) for row in rows]
+            self._top_neurons_cache_limit = fetch_limit
+            self._top_neurons_cache_checked_at = time.monotonic()
+            self._top_neurons_cache_database_edit = database_edit
+            return [dict(row) for row in rows[:limit]]
 
     def scaffold_edges(self, *, candidate_edges: int = 32768) -> list[tuple[int, int, int]]:
         """Fetch a bounded set of strongest real MaleCNS edges for router scaffolds."""
