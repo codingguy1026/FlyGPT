@@ -167,6 +167,7 @@ class GeneratorRuntimeTests(unittest.TestCase):
                 "FLYGPT_GENERATOR_URL": "https://example.invalid/v1/chat/completions",
                 "FLYGPT_GENERATOR_MODEL": "fly-model",
                 "FLYGPT_GENERATOR_TIMEOUT": "not-a-number",
+                "FLYGPT_GENERATOR_PRIMARY_TIMEOUT": "not-a-number",
                 "FLYGPT_GENERATOR_BUDGET": "not-a-number",
                 "FLYGPT_GENERATOR_TEMPERATURE": "99",
                 "FLYGPT_GENERATOR_MAX_TOKENS": "1",
@@ -176,6 +177,7 @@ class GeneratorRuntimeTests(unittest.TestCase):
             runtime = GeneratorRuntime()
 
         self.assertEqual(runtime.timeout, 45.0)
+        self.assertEqual(runtime.primary_attempt_timeout, 6.0)
         self.assertEqual(runtime.budget, 25.0)
         self.assertEqual(runtime.temperature, 2.0)
         self.assertEqual(runtime.max_tokens, 32)
@@ -330,8 +332,57 @@ class GeneratorRuntimeTests(unittest.TestCase):
         self.assertEqual(result.model, "gemini-3.7-flash")
         self.assertEqual(
             calls,
-            ["gemini-3.8-flash", "gemini-3.8-flash", "gemini-3.7-flash"],
+            ["gemini-3.8-flash", "gemini-3.7-flash"],
         )
+
+    def test_primary_timeout_immediately_uses_fallback_model(self):
+        calls: list[tuple[str, float]] = []
+
+        def fake_urlopen(request, timeout):
+            payload = json.loads(request.data.decode("utf-8"))
+            model = payload["model"]
+            calls.append((model, float(timeout)))
+            if model == "gemini-3.8-flash":
+                raise TimeoutError("timed out")
+            return FakeHTTPResponse(
+                {
+                    "choices": [
+                        {
+                            "message": {"content": "빠른 fallback"},
+                            "finish_reason": "stop",
+                        }
+                    ]
+                }
+            )
+
+        with patch.dict(
+            os.environ,
+            {
+                "FLYGPT_GENERATOR_URL": "https://example.invalid/v1/chat/completions",
+                "FLYGPT_GENERATOR_MODEL": "gemini-3.8-flash",
+                "FLYGPT_GENERATOR_FALLBACK_MODEL": "gemini-3.7-flash",
+                "FLYGPT_GENERATOR_PRIMARY_TIMEOUT": "2.5",
+                "FLYGPT_GENERATOR_TIMEOUT": "30",
+                "FLYGPT_GENERATOR_BUDGET": "20",
+            },
+            clear=True,
+        ), patch("generator_runtime.urllib.request.urlopen", side_effect=fake_urlopen):
+            runtime = GeneratorRuntime()
+            result = runtime.generate(
+                "안녕",
+                "general",
+                brain_state=ready_brain_state(),
+                budget_seconds=12.0,
+            )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.model, "gemini-3.7-flash")
+        self.assertEqual([model for model, _ in calls], [
+            "gemini-3.8-flash",
+            "gemini-3.7-flash",
+        ])
+        self.assertLessEqual(calls[0][1], 2.5)
+        self.assertGreater(calls[1][1], calls[0][1])
 
     def test_non_retryable_http_error_is_not_retried(self):
         calls = 0
