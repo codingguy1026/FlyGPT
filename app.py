@@ -24,7 +24,7 @@ from research_runtime import BraveResearchRuntime, validated_fact_candidates
 from auth_store import AuthStore, SESSION_TTL_SECONDS
 
 
-APP_VERSION = "0.12.2"
+APP_VERSION = "0.12.3"
 
 
 def _env_seconds(name: str, default: float, minimum: float, maximum: float) -> float:
