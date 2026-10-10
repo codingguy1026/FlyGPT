@@ -4,6 +4,8 @@ from copy import deepcopy
 import re
 from typing import Any
 
+from semantic_planner import compose_fact_plan
+
 
 class FlyBrainRuntime:
     """Turn connectome-router activity into an upstream semantic decision state.
@@ -95,7 +97,13 @@ class FlyBrainRuntime:
     _IDENTITY_RE = re.compile(
         r"^(?:(?:파피티(?:야)?)[,\s]*|(?:너|넌|너는|당신은)\s*)"
         r"(?:누구(?:야|니|세요|인가요|입니까)?|뭐(?:야|니|예요|에요)?)"
-        r"[?!。\.\s]*$|^(?:who are you|what are you)[?!\.\s]*$",
+        r"[?!。\.\s]*$|^(?:who are you|what are you)[?!\.\s]*$"
+        r"|^(?:(?:파피티야?\s*)?(?:너(?:는)?\s*)?)?이름(?:이|은)?\s*"
+        r"(?:뭐야|뭐니|뭐예요|뭐에요)[?!\.\s]*$"
+        r"|^(?:(?:파피티야\s*)?(?:너의|네|니)\s*)"
+        r"뇌(?:는|가)?\s*(?:뭐야|뭐니|뭐예요)[?!\.\s]*$"
+        r"|^what is your name[?!\.\s]*$"
+        r"|^what is your brain[?!\.\s]*$",
         re.IGNORECASE,
     )
     _CAPABILITIES_RE = re.compile(
@@ -262,85 +270,24 @@ class FlyBrainRuntime:
                 }
             )
 
-        if self._IDENTITY_RE.fullmatch(text):
-            plan.update({
-                "ready": True,
-                "speech_act": "introduce_flygpt",
-                "content_units": [
-                    {
-                        "kind": "verified_fact",
-                        "value": (
-                            "FlyGPT, also called Papiti, is an experimental AI "
-                            "assistant built around a MaleCNS-backed task router."
-                        ),
-                    },
-                    {
-                        "kind": "limitation",
-                        "value": (
-                            "The fly connectome does not itself write sentences "
-                            "or imply a conscious biological fly."
-                        ),
-                    },
-                ],
-            })
-            return plan
-
-        if self._CAPABILITIES_RE.fullmatch(text):
-            plan.update({
-                "ready": True,
-                "speech_act": "describe_supported_features",
-                "content_units": [
-                    {
-                        "kind": "verified_fact",
-                        "value": (
-                            "FlyGPT supports MaleCNS neuron and connection lookups, "
-                            "task routing, exact math tools, and account-scoped "
-                            "conversation memory."
-                        ),
-                    },
-                    {
-                        "kind": "limitation",
-                        "value": (
-                            "Open-ended reasoning is still experimental and "
-                            "fresh web results require separately configured search."
-                        ),
-                    },
-                ],
-                "style": {
-                    "language": self._language_hint(text),
-                    "length": "medium",
-                    "tone": "natural",
-                },
-            })
-            return plan
-
-        if self._MALECNS_RE.fullmatch(text):
-            plan.update({
-                "ready": True,
-                "speech_act": "explain_malecns",
-                "content_units": [
-                    {
-                        "kind": "verified_fact",
-                        "value": (
-                            "MaleCNS v1.0 is a connectome dataset describing neurons "
-                            "and their connections in the male fruit fly brain "
-                            "and ventral nerve cord."
-                        ),
-                    },
-                    {
-                        "kind": "verified_fact",
-                        "value": (
-                            "FlyGPT reads targeted MaleCNS data using neuPrint."
-                        ),
-                    },
-                ],
-                "style": {
-                    "language": self._language_hint(text),
-                    "length": "medium",
-                    "tone": "natural",
-                },
-            })
-            return plan
+        # Select facts and their order upstream; do not store an English
+        # paragraph to be quoted by the downstream local language model.
+        for pattern, speech_act in (
+            (self._IDENTITY_RE, "introduce_flygpt"),
+            (self._CAPABILITIES_RE, "describe_supported_features"),
+            (self._MALECNS_RE, "explain_malecns"),
+        ):
+            if pattern.fullmatch(text):
+                composed = compose_fact_plan(
+                    text, speech_act, self._language_hint(text)
+                )
+                if composed is not None:
+                    plan.update({
+                        "ready": True,
+                        "speech_act": speech_act,
+                        **composed,
+                    })
+                return plan
 
         if self._HOW_ARE_YOU_RE.fullmatch(text):
             plan.update({
