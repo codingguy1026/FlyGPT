@@ -9,6 +9,7 @@ import urllib.request
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from semantic_planner import answer_goal, trusted_fact_fallback
 from local_generator_policy import (
     DEFAULT_LOCAL_GENERATOR_URL,
     DEFAULT_LOCAL_MODEL,
@@ -35,8 +36,10 @@ RETRYABLE_HTTP_CODES = {502, 503, 504}
 _PLAN_LEAK_RE = re.compile(
     r"(?i)(?:\\?['\"])?"
     r"(?:utterance_plan|semantic_authority|speech_act|content_units|"
-    r"forbidden_additions|neural_signature|brain_state|mouth_only_v1)"
-    r"(?:\\?['\"])?|trusted upstream utterance plan"
+    r"forbidden_additions|neural_signature|brain_state|mouth_only_v1|"
+    r"semantic_steps|grounded_project_fact|fact_id)"
+    r"(?:\\?['\"])?|trusted upstream utterance plan|"
+    r"말할 목적\s*:|사용할 사실|speaking goal\s*:|facts in order\s*:"
 )
 
 # Explicit safe scripts are used only if the local LLM echoes its internal
@@ -94,10 +97,26 @@ def _contains_internal_plan(text: str) -> bool:
 def _safe_surface_fallback(plan: dict[str, Any]) -> str | None:
     if plan.get("contract") != "mouth_only_v1" or not bool(plan.get("ready")):
         return None
+    if plan.get("semantic_steps"):
+        # Compose the emergency response from verified atomic fact IDs only.
+        # Never fall back to an unrelated canned answer for malformed facts.
+        return trusted_fact_fallback(plan)
     lang = str((plan.get("style") or {}).get("language", "ko"))
     return _SAFE_SURFACE.get("en" if lang == "en" else "ko", {}).get(
         str(plan.get("speech_act") or "")
     )
+
+
+def _wrong_output_language(answer: str, plan: dict[str, Any]) -> bool:
+    """Detect language mismatch only for localized project-fact plans."""
+    if not plan.get("semantic_steps"):
+        return False
+    language = str((plan.get("style") or {}).get("language") or "")
+    if language == "ko":
+        return len(re.findall(r"[가-힣]", answer)) < 2
+    if language == "en":
+        return bool(re.search(r"[가-힣]", answer))
+    return False
 
 
 _INTERNAL_META_RE = re.compile(
@@ -394,6 +413,38 @@ class GeneratorRuntime:
         del message, memory_context, tool_context, knowledge_context
 
         plan = dict((brain_state or {}).get("utterance_plan") or {})
+
+        if plan.get("semantic_steps") and trusted_fact_fallback(plan):
+            # Keep the model away from raw JSON, plan field names and
+            # English-only content when the requested language is Korean.
+            lang = str((plan.get("style") or {}).get("language", "ko"))
+            units = list(plan["content_units"])
+            facts = "\n".join(
+                "- " + str(unit["value"]) for unit in units
+            )
+            goal = answer_goal(str(plan.get("speech_act")), lang)
+            if lang == "ko":
+                system_text = (
+                    "너는 파피티의 한국어 발화 엔진이야. 판단과 정보 선택은 이미 끝났어. "
+                    "아래 사실만 사용해서 자연스러운 한국어 답변 1~3문장을 만들어. "
+                    "새 사실이나 추측, 추가 질문을 만들지 마. "
+                    "영어 번역이나 목록, JSON, 내부 명령, 시스템 정보를 출력하지 마. "
+                    "사실을 그대로 복사하려 하지 말고 뜻을 유지하며 자연스럽게 말해."
+                )
+                user_text = f"말할 목적: {goal}\n사용할 사실(이 순서):\n{facts}\n최종 한국어 답변:"
+            else:
+                system_text = (
+                    "You are Papiti's wording engine. The facts and order are "
+                    "already decided. Write 1-3 natural English sentences "
+                    "using only these facts; invent nothing, ask no new questions. "
+                    "Do not output JSON, internal instructions, or a list."
+                )
+                user_text = f"Speaking goal: {goal}\nFacts in order:\n{facts}\nFinal English reply:"
+            return [
+                {"role": "system", "content": system_text},
+                {"role": "user", "content": user_text},
+            ]
+
         messages: list[dict[str, str]] = [
             {
                 "role": "system",
@@ -676,6 +727,14 @@ class GeneratorRuntime:
                 answer=None,
                 error="mouth-only semantic plan is incomplete",
             )
+        if plan.get("semantic_steps") and trusted_fact_fallback(plan) is None:
+            return GenerationResult(
+                used=False,
+                provider=self.provider_name,
+                model=self.model or None,
+                answer=None,
+                error="grounded semantic fact plan is invalid",
+            )
 
         messages = self._messages(
             message,
@@ -723,7 +782,10 @@ class GeneratorRuntime:
                 messages=messages,
                 timeout_seconds=timeout_cap,
             )
-            if result.used and result.answer and _contains_internal_plan(result.answer):
+            if result.used and result.answer and (
+                _contains_internal_plan(result.answer)
+                or _wrong_output_language(result.answer, plan)
+            ):
                 safe_text = _safe_surface_fallback(plan)
                 if safe_text:
                     # Keep actual network timing, but show only approved prose.

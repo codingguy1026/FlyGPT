@@ -134,6 +134,39 @@ semantic answer plan. v0.12 establishes the boundary needed for future
 multi-head training where the connectome model can predict richer answer-plan
 slots and leave the LLM primarily responsible for wording.
 
+## Compositional Fly Brain response planning
+
+The first bounded fact planner lives in `semantic_planner.py` and is called by
+`brain_runtime.py` **after MaleCNS route selection**. For a small set of
+recognized project-specific questions (identity, capabilities, and MaleCNS),
+the planner selects **individual, bilingual repository-grounded facts**, their
+order, and a language/length objective. It does **not** store a complete
+self-introduction to repeat for every question.
+
+For example, `너 누구야?`, `너 이름이 뭐야?`, and `네 뇌가 뭐야?`
+select different combinations of identity, architecture, and limitation facts.
+In normal operation, `generator_runtime.py` sends a compact Korean/English
+fact brief to the configured language model, without showing it raw plan JSON.
+The LLM may change wording and grammar but may not invent new facts.
+
+A language mismatch or leaked prompt structure triggers a last-resort,
+deterministic response assembled from the **validated fact atoms**. Tampered
+facts or forged ordering fail closed. This fallback is a safety net, not the
+normal conversation path. A small local model can still be awkward, repetitive,
+or inaccurate; run manual conversations to assess quality.
+
+**Limits:** This is a deterministic Python fact-selection layer, **not new
+training of the MaleCNS connectome**. The connectome still classifies tasks;
+semantic composition is rule-based and restricted to known project facts.
+Unknown open-ended questions remain gated instead of being answered with
+fabricated information. neuPrint and router checkpoints remain unchanged.
+
+Run focused tests without model downloads or neuPrint access:
+
+```bash
+python -m unittest tests.test_semantic_composition -v
+```
+
 ## Answer generation
 
 ### Strictly local LLM generation (first independence milestone)
