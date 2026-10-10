@@ -38,7 +38,8 @@ _PLAN_LEAK_RE = re.compile(
     r"(?:utterance_plan|semantic_authority|speech_act|content_units|"
     r"forbidden_additions|neural_signature|brain_state|mouth_only_v1|"
     r"semantic_steps|grounded_project_fact|fact_id)"
-    r"(?:\\?['\"])?|trusted upstream utterance plan"
+    r"(?:\\?['\"])?|trusted upstream utterance plan|"
+    r"말할 목적\s*:|사용할 사실|speaking goal\s*:|facts in order\s*:"
 )
 
 # Explicit safe scripts are used only if the local LLM echoes its internal
@@ -725,6 +726,14 @@ class GeneratorRuntime:
                 model=self.model or None,
                 answer=None,
                 error="mouth-only semantic plan is incomplete",
+            )
+        if plan.get("semantic_steps") and trusted_fact_fallback(plan) is None:
+            return GenerationResult(
+                used=False,
+                provider=self.provider_name,
+                model=self.model or None,
+                answer=None,
+                error="grounded semantic fact plan is invalid",
             )
 
         messages = self._messages(
