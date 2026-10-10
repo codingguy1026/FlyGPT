@@ -169,17 +169,26 @@ def trusted_fact_fallback(plan: dict[str, Any]) -> str | None:
     if lang not in {"ko", "en"}:
         return None
     verified: list[str] = []
+    verified_ids: list[str] = []
     for unit in units:
         if not isinstance(unit, dict):
             return None
         key = unit.get("fact_id")
         if (
             key not in allowed
-            or key in [u.get("fact_id") for u in units[:len(verified)]]
+            or key in verified_ids
             or unit.get("kind") != "grounded_project_fact"
             or unit.get("provenance") != "repository_project_description"
             or unit.get("value") != PROJECT_FACTS[key][lang]
         ):
             return None
+        verified_ids.append(key)
         verified.append(PROJECT_FACTS[key][lang])
+
+    expected_steps = [
+        {"order": index, "fact_id": fact_id}
+        for index, fact_id in enumerate(verified_ids, start=1)
+    ]
+    if plan.get("semantic_steps") != expected_steps:
+        return None
     return " ".join(verified)
