@@ -90,6 +90,41 @@ class FlyBrainRuntime:
     )
     _EMOTICON_RE = re.compile(r"^[\sㅋㅎㅠㅜㅇㅅ^._;:()<>/=+\-]{1,24}$")
 
+    # Conservative, anchored phrases: do not guess the meaning of arbitrary
+    # general questions or let the downstream LLM invent an answer plan.
+    _IDENTITY_RE = re.compile(
+        r"^(?:(?:파피티(?:야)?)[,\s]*|(?:너|넌|너는|당신은)\s*)"
+        r"(?:누구(?:야|니|세요|인가요|입니까)?|뭐(?:야|니|예요|에요)?)"
+        r"[?!。\.\s]*$|^(?:who are you|what are you)[?!\.\s]*$",
+        re.IGNORECASE,
+    )
+    _CAPABILITIES_RE = re.compile(
+        r"^(?:(?:너|넌|너는|파피티(?:야)?)\s*)?"
+        r"(?:뭘|무엇을|뭐)\s*할\s*수\s*있(?:어|니|나요|어요)"
+        r"[?!\.\s]*$|^(?:what can you do|how can you help)[?!\.\s]*$",
+        re.IGNORECASE,
+    )
+    _MALECNS_RE = re.compile(
+        r"^malecns(?:가|는|란|이란)?\s*(?:뭐야|뭔데|뭐예요|무엇인가요|가\s*뭐야)?"
+        r"[?!\.\s]*$|^what is malecns[?!\.\s]*$",
+        re.IGNORECASE,
+    )
+    _HOW_ARE_YOU_RE = re.compile(
+        r"^(?:잘\s*지내|(?:오늘\s*)?기분\s*어때|how are you)"
+        r"[?!\.\s]*$",
+        re.IGNORECASE,
+    )
+    _HELP_RE = re.compile(
+        r"^(?:도와줘|도와주세요|도움이\s*필요해|help me|i need help)"
+        r"[?!\.\s]*$",
+        re.IGNORECASE,
+    )
+    _MEET_RE = re.compile(
+        r"^(?:반가워(?:요)?|만나서\s*반가워(?:요)?|nice to meet you)"
+        r"[!\.\s]*$",
+        re.IGNORECASE,
+    )
+
     def _neural_signature(
         self,
         route_info: dict[str, Any],
@@ -226,6 +261,131 @@ class FlyBrainRuntime:
                     },
                 }
             )
+
+        if self._IDENTITY_RE.fullmatch(text):
+            plan.update({
+                "ready": True,
+                "speech_act": "introduce_flygpt",
+                "content_units": [
+                    {
+                        "kind": "verified_fact",
+                        "value": (
+                            "FlyGPT, also called Papiti, is an experimental AI "
+                            "assistant built around a MaleCNS-backed task router."
+                        ),
+                    },
+                    {
+                        "kind": "limitation",
+                        "value": (
+                            "The fly connectome does not itself write sentences "
+                            "or imply a conscious biological fly."
+                        ),
+                    },
+                ],
+            })
+            return plan
+
+        if self._CAPABILITIES_RE.fullmatch(text):
+            plan.update({
+                "ready": True,
+                "speech_act": "describe_supported_features",
+                "content_units": [
+                    {
+                        "kind": "verified_fact",
+                        "value": (
+                            "FlyGPT supports MaleCNS neuron and connection lookups, "
+                            "task routing, exact math tools, and account-scoped "
+                            "conversation memory."
+                        ),
+                    },
+                    {
+                        "kind": "limitation",
+                        "value": (
+                            "Open-ended reasoning is still experimental and "
+                            "fresh web results require separately configured search."
+                        ),
+                    },
+                ],
+                "style": {
+                    "language": self._language_hint(text),
+                    "length": "medium",
+                    "tone": "natural",
+                },
+            })
+            return plan
+
+        if self._MALECNS_RE.fullmatch(text):
+            plan.update({
+                "ready": True,
+                "speech_act": "explain_malecns",
+                "content_units": [
+                    {
+                        "kind": "verified_fact",
+                        "value": (
+                            "MaleCNS v1.0 is a connectome dataset describing neurons "
+                            "and their connections in the male fruit fly brain "
+                            "and ventral nerve cord."
+                        ),
+                    },
+                    {
+                        "kind": "verified_fact",
+                        "value": (
+                            "FlyGPT reads targeted MaleCNS data using neuPrint."
+                        ),
+                    },
+                ],
+                "style": {
+                    "language": self._language_hint(text),
+                    "length": "medium",
+                    "tone": "natural",
+                },
+            })
+            return plan
+
+        if self._HOW_ARE_YOU_RE.fullmatch(text):
+            plan.update({
+                "ready": True,
+                "speech_act": "acknowledge_presence",
+                "content_units": [
+                    {
+                        "kind": "communicative_act",
+                        "value": (
+                            "Reply briefly that the assistant is ready to chat. "
+                            "Do not assert human emotions or subjective experience."
+                        ),
+                    }
+                ],
+            })
+            return plan
+
+        if self._HELP_RE.fullmatch(text):
+            plan.update({
+                "ready": True,
+                "speech_act": "request_specific_task",
+                "content_units": [
+                    {
+                        "kind": "communicative_act",
+                        "value": (
+                            "Ask the user what specific task they need help with. "
+                            "This clarification question is explicitly planned."
+                        ),
+                    }
+                ],
+            })
+            return plan
+
+        if self._MEET_RE.fullmatch(text):
+            plan.update({
+                "ready": True,
+                "speech_act": "return_welcome",
+                "content_units": [
+                    {
+                        "kind": "communicative_act",
+                        "value": "Warmly acknowledge the user's pleasure in meeting.",
+                    }
+                ],
+            })
+            return plan
 
         return plan
 
@@ -393,6 +553,42 @@ class FlyBrainRuntime:
                 (tool_context or "").strip() or knowledge_hits
             )
             evidence["count"] = 1 if (tool_context or "").strip() else 0
+
+            # General questions may report relevant account-scoped evidence.
+            # An asserted user preference is not an independently verified fact.
+            # Never promote unverified general claims to an answer.
+            plan = dict(final.get("utterance_plan") or {})
+            if final.get("route") == "general" and not plan.get("ready"):
+                units: list[dict[str, Any]] = []
+                for item in (knowledge_hits or [])[:3]:
+                    status = str(item.get("status", ""))
+                    kind = str(item.get("kind", ""))
+                    statement = str(item.get("statement") or "").strip()
+                    if not statement:
+                        continue
+                    if status == "verified":
+                        unit_kind = "verified_knowledge"
+                    elif status == "asserted" and kind in {"personal", "project"}:
+                        unit_kind = "user_asserted_context"
+                    else:
+                        continue
+                    units.append({
+                        "kind": unit_kind,
+                        "value": statement[:700],
+                        "provenance": (
+                            "verified" if unit_kind == "verified_knowledge"
+                            else "user-asserted"
+                        ),
+                    })
+                if units:
+                    self._set_evidence_plan(
+                        final,
+                        speech_act="report_relevant_stored_knowledge",
+                        content_units=units,
+                        length="medium",
+                    )
+                    evidence["available"] = True
+                    evidence["count"] = len(units)
 
         final["evidence"] = evidence
         return final

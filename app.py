@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 from connectome import MaleCNSConnectome
 from brain_runtime import FlyBrainRuntime
+from semantic_route_guard import apply_semantic_route_override
 from dispatcher import dispatch, dispatch_math_fast_path, is_math_fast_path
 from generator_runtime import GENERATIVE_ROUTES, GeneratorRuntime
 from memory_store import MemoryStore, format_recall
@@ -244,7 +245,10 @@ def predict_route(text: str, user_id: str | None = None) -> dict[str, Any] | Non
         "personalization_ms": personalization_ms,
     }
 
-    return result
+    # The unchanged MaleCNS inference still runs first. Recognized, exact
+    # conversational intents can safely override a mistaken route while
+    # preserving the model prediction and propagation trace in telemetry.
+    return apply_semantic_route_override(text, result)
 
 
 def extract_root_ids(text: str) -> list[int]:
@@ -849,14 +853,19 @@ def chat_endpoint(req: ChatRequest, request: Request):
                     session_id=session_id,
                 )
 
-            try:
-                learned_from_user = _route_learning.observe_if_confident(
-                    user["id"],
-                    msg,
-                    route,
-                )
-            except Exception:
+            # A deterministic semantic correction must not be treated as a
+            # high-confidence prediction from the learned MaleCNS router.
+            if route.get("semantic_override"):
                 learned_from_user = False
+            else:
+                try:
+                    learned_from_user = _route_learning.observe_if_confident(
+                        user["id"],
+                        msg,
+                        route,
+                    )
+                except Exception:
+                    learned_from_user = False
             route["learning_observed"] = learned_from_user
 
             memory_hits = None
