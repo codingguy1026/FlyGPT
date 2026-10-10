@@ -1,7 +1,10 @@
-.PHONY: run reclaim disk train-setup train-v0.4 train-v0.5 help stop
+.PHONY: run local reclaim disk train-setup train-v0.4 train-v0.5 help stop
 
 run:
 	@bash scripts/run_all.sh
+
+local:
+	@bash scripts/run_all.sh --local-only
 
 train-setup:
 	@bash scripts/setup_train_env.sh
@@ -30,7 +33,8 @@ disk:
 
 help:
 	@echo "FlyGPT development commands"
-	@echo "  make run         Start Ollama, backend, and frontend"
+	@echo "  make run         Start configured generator, backend, and frontend"
+	@echo "  make local       Strictly local LLM via Ollama (ignore hosted API keys)"
 	@echo "  make train-setup Create isolated CPU PyTorch training environment"
 	@echo "  make train-v0.4  Build MaleCNS scaffold and train/evaluate router v0.4"
 	@echo "  make train-v0.5  Train calibrated v0.5 router on the frozen MaleCNS scaffold"

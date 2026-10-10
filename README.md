@@ -136,6 +136,33 @@ slots and leave the LLM primarily responsible for wording.
 
 ## Answer generation
 
+### Strictly local LLM generation (first independence milestone)
+
+FlyGPT can run its language realization layer **without a hosted LLM API**.
+Install Ollama and its small starter model once (initial downloads need network):
+
+```bash
+bash scripts/setup_ollama_generator.sh
+make local
+```
+
+Or set `FLYGPT_LOCAL_ONLY=1` in `.env`, then run `make run`.
+The mode defaults to `http://127.0.0.1:11434/v1/chat/completions`
+and model `qwen2.5:0.5b-instruct` (override with `FLYGPT_LOCAL_MODEL`
+or `FLYGPT_GENERATOR_MODEL`). The generator refuses non-loopback URLs,
+ignores hosted API keys, disables HTTP proxies and redirects, and never
+falls back to a hosted language model. A broken local model returns an error
+rather than using a cloud service. Check `/api/generator/status` for
+`local_only` and `local_endpoint_allowed`.
+
+**Scope:** Only LLM generation is local. MaleCNS data queries can still use
+neuPrint, and optional Brave Search still uses its online API. This is **not**
+a fully offline app. The current fly-brain `mouth_only_v1` semantic gate also
+rejects open-ended conversations it cannot plan; installing a local LLM does
+not, by itself, make the fly router ChatGPT-equivalent. The default 0.5B
+model is an inexpensive starting point, not a ChatGPT-quality model. Memory,
+planning, and local-model quality need separate evaluation.
+
 FlyGPT can forward generative routes to an OpenAI-compatible
 chat-completions endpoint.
 

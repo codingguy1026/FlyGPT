@@ -9,6 +9,21 @@ import urllib.request
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from local_generator_policy import (
+    DEFAULT_LOCAL_GENERATOR_URL,
+    DEFAULT_LOCAL_MODEL,
+    enabled,
+    is_local_generator_url,
+)
+
+
+class _NoGeneratorRedirects(urllib.request.HTTPRedirectHandler):
+    """Never follow a redirect outside the trusted local generation endpoint."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 
 GENERATIVE_ROUTES = {"general", "code", "summarize", "math", "memory", "research"}
 RETRYABLE_HTTP_CODES = {502, 503, 504}
@@ -171,13 +186,26 @@ class GeneratorRuntime:
     """
 
     def __init__(self) -> None:
+        self.local_only = enabled(os.environ.get("FLYGPT_LOCAL_ONLY"))
         self.url = os.environ.get("FLYGPT_GENERATOR_URL", "").strip()
         self.model = os.environ.get("FLYGPT_GENERATOR_MODEL", "").strip()
-        self.api_key = os.environ.get("FLYGPT_GENERATOR_API_KEY", "").strip()
-        self.fallback_model = os.environ.get(
-            "FLYGPT_GENERATOR_FALLBACK_MODEL",
-            "",
-        ).strip()
+        if self.local_only:
+            # A stale Gemini key must never turn on hosted generation.
+            self.url = self.url or DEFAULT_LOCAL_GENERATOR_URL
+            self.model = self.model or (
+                os.environ.get("FLYGPT_LOCAL_MODEL", "").strip() or DEFAULT_LOCAL_MODEL
+            )
+        self.local_endpoint_allowed = (
+            not self.local_only or is_local_generator_url(self.url)
+        )
+        self.api_key = (
+            "" if self.local_only
+            else os.environ.get("FLYGPT_GENERATOR_API_KEY", "").strip()
+        )
+        self.fallback_model = (
+            "" if self.local_only
+            else os.environ.get("FLYGPT_GENERATOR_FALLBACK_MODEL", "").strip()
+        )
         self.retry_delay = _env_float(
             "FLYGPT_GENERATOR_RETRY_DELAY",
             0.6,
@@ -220,16 +248,18 @@ class GeneratorRuntime:
         ).strip().lower()
         self.reasoning_effort = (
             reasoning_effort
-            if reasoning_effort in {"low", "medium", "high"}
+            if not self.local_only and reasoning_effort in {"low", "medium", "high"}
             else None
         )
 
     @property
     def configured(self) -> bool:
-        return bool(self.url and self.model)
+        return bool(self.url and self.model and self.local_endpoint_allowed)
 
     @property
     def provider_name(self) -> str:
+        if self.local_only:
+            return "ollama-local"
         if not self.configured:
             return "fallback"
         return (
@@ -240,6 +270,8 @@ class GeneratorRuntime:
     def status(self) -> dict[str, Any]:
         return {
             "configured": self.configured,
+            "local_only": self.local_only,
+            "local_endpoint_allowed": self.local_endpoint_allowed,
             "provider": self.provider_name,
             "model": self.model or None,
             "url_configured": bool(self.url),
@@ -318,6 +350,14 @@ class GeneratorRuntime:
         messages: list[dict[str, str]],
         timeout_seconds: float | None = None,
     ) -> GenerationResult:
+        if self.local_only and not is_local_generator_url(self.url):
+            return GenerationResult(
+                used=False,
+                provider=self.provider_name,
+                model=model,
+                answer=None,
+                error="local-only mode blocked a non-loopback generator endpoint",
+            )
         body = {
             "model": model,
             "messages": messages,
@@ -354,7 +394,19 @@ class GeneratorRuntime:
                 effective_timeout = max(0.1, min(self.timeout, timeout_seconds))
 
             open_started = time.perf_counter()
-            with urllib.request.urlopen(request, timeout=effective_timeout) as response:
+            if self.local_only:
+                # Never leak loopback requests through HTTP_PROXY or follow an
+                # unexpected HTTP redirect to a hosted generator.
+                opener = urllib.request.build_opener(
+                    urllib.request.ProxyHandler({}),
+                    _NoGeneratorRedirects(),
+                )
+                response_context = opener.open(request, timeout=effective_timeout)
+            else:
+                response_context = urllib.request.urlopen(
+                    request, timeout=effective_timeout
+                )
+            with response_context as response:
                 open_wait_ms = round((time.perf_counter() - open_started) * 1000)
                 read_started = time.perf_counter()
                 raw_body = response.read()
@@ -522,6 +574,15 @@ class GeneratorRuntime:
                 provider=self.provider_name,
                 model=self.model or None,
                 answer=None,
+            )
+
+        if self.local_only and not self.local_endpoint_allowed:
+            return GenerationResult(
+                used=False,
+                provider=self.provider_name,
+                model=self.model or None,
+                answer=None,
+                error="local-only mode blocked a non-loopback generator endpoint",
             )
 
         if not self.configured:

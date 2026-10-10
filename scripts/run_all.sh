@@ -11,6 +11,30 @@ if [[ -f ".env" ]]; then
   set +a
 fi
 
+if [[ "${1:-}" == "--local-only" ]]; then
+  export FLYGPT_LOCAL_ONLY=1
+elif [[ -n "${1:-}" ]]; then
+  echo "Usage: bash scripts/run_all.sh [--local-only]" >&2
+  exit 2
+fi
+
+# Explicit local-only mode never invokes a hosted language model. It also
+# rejects stale hosted URLs rather than silently routing to them.
+case "${FLYGPT_LOCAL_ONLY:-0}" in
+  1|true|TRUE|yes|YES|on|ON)
+    export FLYGPT_LOCAL_ONLY=1
+    export FLYGPT_GENERATOR_URL="${FLYGPT_GENERATOR_URL:-http://127.0.0.1:11434/v1/chat/completions}"
+    export FLYGPT_GENERATOR_MODEL="${FLYGPT_GENERATOR_MODEL:-${FLYGPT_LOCAL_MODEL:-qwen2.5:0.5b-instruct}}"
+    export FLYGPT_GENERATOR_PROVIDER=ollama-local
+    if ! python3 -c 'import sys; from local_generator_policy import is_local_generator_url; sys.exit(0 if is_local_generator_url(sys.argv[1]) else 1)' "$FLYGPT_GENERATOR_URL"; then
+      echo "❌ FLYGPT_LOCAL_ONLY forbids hosted generator URLs: $FLYGPT_GENERATOR_URL" >&2
+      exit 1
+    fi
+    unset GEMINI_API_KEY FLYGPT_GENERATOR_API_KEY FLYGPT_GENERATOR_FALLBACK_MODEL FLYGPT_GENERATOR_REASONING_EFFORT
+    echo "🔒 LOCAL ONLY: hosted LLM generation disabled"
+    ;;
+esac
+
 # If a Gemini API key is present and no explicit generator endpoint was chosen,
 # use Gemini 3.8 Flash through Google's OpenAI-compatible chat endpoint.
 if [[ -n "${GEMINI_API_KEY:-}" && -z "${FLYGPT_GENERATOR_URL:-}" ]]; then
@@ -23,7 +47,7 @@ if [[ -n "${GEMINI_API_KEY:-}" && -z "${FLYGPT_GENERATOR_URL:-}" ]]; then
   export FLYGPT_GENERATOR_RETRY_DELAY="${FLYGPT_GENERATOR_RETRY_DELAY:-0.6}"
 fi
 
-MODEL="${FLYGPT_LOCAL_MODEL:-qwen2.5:0.5b-instruct}"
+MODEL="${FLYGPT_GENERATOR_MODEL:-${FLYGPT_LOCAL_MODEL:-qwen2.5:0.5b-instruct}}"
 export OLLAMA_KEEP_ALIVE="${OLLAMA_KEEP_ALIVE:-30m}"
 
 if [[ -z "${NEUPRINT_TOKEN:-}" && -z "${NEUPRINT_APPLICATION_CREDENTIALS:-}" ]]; then
