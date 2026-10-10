@@ -95,7 +95,7 @@ class FlyBrainRuntime:
     # Conservative, anchored phrases: do not guess the meaning of arbitrary
     # general questions or let the downstream LLM invent an answer plan.
     _IDENTITY_RE = re.compile(
-        r"^(?:(?:파피티(?:야)?)[,\s]*|(?:너|넌|너는|당신은)\s*)"
+        r"^(?:(?:파피티(?:야)?)[,\s]*(?:(?:너|넌|너는|당신은)\s*)?|(?:너|넌|너는|당신은)\s*)"
         r"(?:누구(?:야|니|세요|인가요|입니까)?|뭐(?:야|니|예요|에요)?)"
         r"[?!。\.\s]*$|^(?:who are you|what are you)[?!\.\s]*$"
         r"|^(?:(?:파피티야?\s*)?(?:너(?:는)?\s*)?)?이름(?:이|은)?\s*"
