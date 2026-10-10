@@ -21,6 +21,14 @@ export type RouterResult = {
   margin?: number;
   accepted?: boolean;
   learning_observed?: boolean;
+  semantic_override?: {
+    source: string;
+    speech_act: string;
+    model_route: string;
+    model_confidence: number;
+    model_margin: number;
+    model_accepted: boolean;
+  };
   personalization?: {
     applied?: boolean;
     examples_considered?: number;
