@@ -1,10 +1,13 @@
-.PHONY: run local reclaim disk train-setup train-v0.4 train-v0.5 help stop
+.PHONY: run local doctor reclaim disk train-setup train-v0.4 train-v0.5 help stop
 
 run:
 	@bash scripts/run_all.sh
 
 local:
 	@bash scripts/run_all.sh --local-only
+
+doctor:
+	@python3 scripts/diagnose_codespaces.py
 
 train-setup:
 	@bash scripts/setup_train_env.sh
@@ -35,6 +38,7 @@ help:
 	@echo "FlyGPT development commands"
 	@echo "  make run         Start configured generator, backend, and frontend"
 	@echo "  make local       Strictly local LLM via Ollama (ignore hosted API keys)"
+	@echo "  make doctor      Diagnose frontend, backend, proxy and Codespaces URL"
 	@echo "  make train-setup Create isolated CPU PyTorch training environment"
 	@echo "  make train-v0.4  Build MaleCNS scaffold and train/evaluate router v0.4"
 	@echo "  make train-v0.5  Train calibrated v0.5 router on the frozen MaleCNS scaffold"
