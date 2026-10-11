@@ -11,7 +11,7 @@ import sys
 import time
 from collections.abc import Callable
 
-from diagnose_codespaces import Probe, is_backend_ok, probe
+from scripts.diagnose_codespaces import Probe, is_backend_ok, probe
 
 FRONTEND_URL = "http://127.0.0.1:3000/"
 BACKEND_URL = "http://127.0.0.1:8000/api/health"
