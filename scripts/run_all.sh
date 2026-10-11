@@ -163,14 +163,17 @@ if [[ ! -d "frontend/node_modules" ]]; then
   (cd frontend && npm install)
 fi
 
-# Next.js otherwise silently tries port 3001 if port 3000 is occupied.
-# That gives a misleading success message and a stale Codespaces -3000 URL.
-if python3 -c 'import socket,sys; s=socket.socket(); s.settimeout(0.5); busy=(s.connect_ex(("127.0.0.1",3000))==0); s.close(); sys.exit(0 if busy else 1)'; then
-  echo "❌ Port 3000 is already in use. Stop the previous frontend/make run before starting another copy."
-  echo "   Inspect: ss -ltnp | grep :3000"
-  echo "   Tip: run 'make doctor' to check the existing frontend and Codespaces forwarding."
-  exit 1
-fi
+# Existing servers may serve stale code even when their ports return 200.
+# Next.js also falls back to 3001 when port 3000 is occupied, which makes a
+# previously opened Codespaces -3000 URL appear outdated.
+for port in 3000 8000; do
+  if python3 -c 'import socket,sys; s=socket.socket(); s.settimeout(0.5); busy=(s.connect_ex(("127.0.0.1",int(sys.argv[1])))==0); s.close(); sys.exit(0 if busy else 1)' "$port"; then
+    echo "❌ Port $port is already in use. Stop the previous make run/server first."
+    echo "   Inspect: ss -ltnp | grep :$port"
+    echo "   Tip: make doctor checks the existing servers without stopping them."
+    exit 1
+  fi
+done
 
 echo
 echo "🚀 Starting backend  : http://127.0.0.1:8000"
