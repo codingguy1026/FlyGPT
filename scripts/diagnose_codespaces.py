@@ -12,6 +12,7 @@ import json
 import os
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 
@@ -91,7 +92,7 @@ def diagnose(*, external: bool = True) -> bool:
         print(" ℹ️ Codespace address unavailable; open port 3000 from VS Code PORTS.")
     else:
         print(f" 🔗 Expected Codespaces frontend: {url}")
-        host = urllib.request.urlsplit(url).hostname
+        host = urllib.parse.urlsplit(url).hostname
         host_probe = probe("http://127.0.0.1:3000/", host=host)
         host_ok = host_probe.status == 200
         print(
