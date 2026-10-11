@@ -229,10 +229,12 @@ echo "✅ Backend ready"
 echo "🎨 Starting frontend : http://127.0.0.1:3000"
 (
   cd frontend
+  # Run Next.js as the tracked process, not as a child of npm, so cleanup
+  # can stop the server itself rather than leaving a stale port listener.
   if [[ "$STABLE_MODE" -eq 1 ]]; then
-    npm run start -- --hostname 0.0.0.0 --port 3000
+    exec ./node_modules/.bin/next start --hostname 0.0.0.0 --port 3000
   else
-    npm run dev -- --hostname 0.0.0.0 --port 3000
+    exec ./node_modules/.bin/next dev --hostname 0.0.0.0 --port 3000
   fi
 ) &
 FRONTEND_PID=$!
