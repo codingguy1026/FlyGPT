@@ -15,7 +15,7 @@ export default function RoutePanel({ router }: Props) {
           </div>
         </div>
         <div className="routeConfidence">
-          {router ? `${(router.confidence * 100).toFixed(1)}%` : "—"}
+          {router?.semantic_override ? "semantic rule" : router ? `${(router.confidence * 100).toFixed(1)}%` : "—"}
         </div>
       </div>
 

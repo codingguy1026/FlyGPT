@@ -387,14 +387,30 @@ export default function FlyGPTApp({
 
       const meta: MessageMeta[] = [];
       if (response.router) {
-        meta.push({
-          text:
-            response.router.route +
-            " · " +
-            (response.router.confidence * 100).toFixed(1) +
-            "%",
-          tone: response.router.confidence >= 0.55 ? "good" : "warn",
-        });
+        if (response.router.semantic_override) {
+          meta.push({
+            text: response.router.route + " · semantic rule",
+            tone: "good",
+          });
+          meta.push({
+            text:
+              "MODEL " +
+              response.router.semantic_override.model_route +
+              " " +
+              (response.router.semantic_override.model_confidence * 100).toFixed(1) +
+              "%",
+            tone: "muted",
+          });
+        } else {
+          meta.push({
+            text:
+              response.router.route +
+              " · " +
+              (response.router.confidence * 100).toFixed(1) +
+              "%",
+            tone: response.router.confidence >= 0.55 ? "good" : "warn",
+          });
+        }
 
         if (response.router.model) {
           meta.push({
@@ -758,7 +774,7 @@ export default function FlyGPTApp({
             {router && (
               <button className="routeChip" type="button" onClick={() => setTelemetryOpen(true)}>
                 <span>{router.route}</span>
-                <strong>{(router.confidence * 100).toFixed(0)}%</strong>
+                <strong>{router.semantic_override ? "rule" : (router.confidence * 100).toFixed(0) + "%"}</strong>
               </button>
             )}
             <button className="telemetryToggle" type="button" onClick={() => setTelemetryOpen((value) => !value)}>
@@ -945,7 +961,7 @@ export default function FlyGPTApp({
           <div className="pulseLabel">
             <span>CURRENT ROUTE</span>
             <strong>{router?.route ?? "awaiting signal"}</strong>
-            <b>{router ? (router.confidence * 100).toFixed(1) + "%" : "—"}</b>
+            <b>{router ? (router.semantic_override ? "semantic rule" : (router.confidence * 100).toFixed(1) + "%") : "—"}</b>
           </div>
         </div>
 

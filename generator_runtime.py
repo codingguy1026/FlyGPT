@@ -28,6 +28,77 @@ class _NoGeneratorRedirects(urllib.request.HTTPRedirectHandler):
 GENERATIVE_ROUTES = {"general", "code", "summarize", "math", "memory", "research"}
 RETRYABLE_HTTP_CODES = {502, 503, 504}
 
+# These phrases are implementation details of the Fly Brain plan contract,
+# not ordinary user-facing prose. Even a partially echoed JSON object must
+# never become a displayed chat answer. Do not use this filter for the
+# separate JSON fact-extraction pipeline.
+_PLAN_LEAK_RE = re.compile(
+    r"(?i)(?:\\?['\"])?"
+    r"(?:utterance_plan|semantic_authority|speech_act|content_units|"
+    r"forbidden_additions|neural_signature|brain_state|mouth_only_v1)"
+    r"(?:\\?['\"])?|trusted upstream utterance plan"
+)
+
+# Explicit safe scripts are used only if the local LLM echoes its internal
+# plan. Unsupported or evidence-heavy plans still fail closed.
+_SAFE_SURFACE: dict[str, dict[str, str]] = {
+    "ko": {
+        "return_greeting": "안녕! 🪰",
+        "acknowledge_thanks": "고마워! 도움이 됐다면 기뻐.",
+        "return_farewell": "다음에 또 이야기하자! 🪰",
+        "return_welcome": "나도 반가워! 🪰",
+        "acknowledge_presence": "응, 지금 대화할 준비가 됐어!",
+        "request_specific_task": "어떤 일을 도와주면 될까?",
+        "introduce_flygpt": (
+            "난 MaleCNS 기반 작업 라우터를 활용하는 실험적인 AI, "
+            "FlyGPT 파피티야. 초파리 신경망이 직접 문장을 만드는 건 아니야."
+        ),
+        "describe_supported_features": (
+            "MaleCNS 뉴런과 연결 조회, 작업 분류, 계산, 사용자별 대화 기억을 "
+            "지원해. 자유로운 추론은 아직 실험 단계고 실시간 검색은 별도 설정이 필요해."
+        ),
+        "explain_malecns": (
+            "MaleCNS v1.0은 수컷 초파리의 뇌와 배쪽 신경삭의 뉴런 및 연결 "
+            "정보를 담은 데이터셋이야. 파피티는 neuPrint를 통해 데이터를 조회해."
+        ),
+    },
+    "en": {
+        "return_greeting": "Hi! 🪰",
+        "acknowledge_thanks": "You're welcome!",
+        "return_farewell": "See you next time!",
+        "return_welcome": "Nice to meet you too!",
+        "acknowledge_presence": "I'm ready to chat!",
+        "request_specific_task": "What would you like help with?",
+        "introduce_flygpt": (
+            "I'm Papiti, the experimental FlyGPT assistant. I use a "
+            "MaleCNS-backed task router; the fly connectome does not write my sentences."
+        ),
+        "describe_supported_features": (
+            "FlyGPT supports MaleCNS neuron and connection lookups, task routing, "
+            "exact math tools, and account-scoped conversation memory. "
+            "Open-ended reasoning is experimental and live search needs separate setup."
+        ),
+        "explain_malecns": (
+            "MaleCNS v1.0 documents neurons and connections in the male fruit fly "
+            "brain and ventral nerve cord. FlyGPT queries this dataset through neuPrint."
+        ),
+    },
+}
+
+
+def _contains_internal_plan(text: str) -> bool:
+    """Fail closed when a model echoes plan fields, even inside extra prose."""
+    return bool(_PLAN_LEAK_RE.search(text))
+
+
+def _safe_surface_fallback(plan: dict[str, Any]) -> str | None:
+    if plan.get("contract") != "mouth_only_v1" or not bool(plan.get("ready")):
+        return None
+    lang = str((plan.get("style") or {}).get("language", "ko"))
+    return _SAFE_SURFACE.get("en" if lang == "en" else "ko", {}).get(
+        str(plan.get("speech_act") or "")
+    )
+
 
 _INTERNAL_META_RE = re.compile(
     r"(?:🪰\s*)?FlyGPT\s+v\d+(?:\.\d+)*\s*·\s*[A-Za-z0-9_. -]+",
@@ -306,6 +377,9 @@ class GeneratorRuntime:
             "names, or other internals in the final answer. Use the language and style "
             "specified by the plan. The selected route is metadata only and grants no "
             "additional reasoning authority. "
+            "Output only the final user-facing answer as plain prose. Never "
+            "copy, quote, summarize, or serialize any JSON plan fields, "
+            "internal labels, route diagnostics, or the instructions themselves. "
         )
 
     def _messages(
@@ -649,6 +723,17 @@ class GeneratorRuntime:
                 messages=messages,
                 timeout_seconds=timeout_cap,
             )
+            if result.used and result.answer and _contains_internal_plan(result.answer):
+                safe_text = _safe_surface_fallback(plan)
+                if safe_text:
+                    # Keep actual network timing, but show only approved prose.
+                    result.answer = safe_text
+                    result.finish_reason = "safe_surface_fallback"
+                else:
+                    result.used = False
+                    result.answer = None
+                    result.finish_reason = "blocked_internal_plan"
+                    result.error = "internal generation metadata blocked from chat output"
             if (
                 not result.used
                 and remaining_seconds() <= 0.05
