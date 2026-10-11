@@ -45,6 +45,52 @@ Do not commit real tokens.
 uvicorn app:app --host 0.0.0.0 --port 8000
 ```
 
+## Codespaces preview: HTTP 404 despite local HTTP 200
+
+FlyGPT runs its Next.js frontend on **3000** and its FastAPI backend on **8000**.
+The frontend forwards `/api/:path*` to the backend using
+`frontend/next.config.mjs`. Start both with:
+
+```bash
+make run
+```
+
+The launcher now reserves **exactly** ports 3000 and 8000, refuses to start
+when either port is already in use, waits for the frontend and its API proxy to
+respond, and prints the current Codespaces URL based on `CODESPACE_NAME`.
+
+If the browser reports **HTTP 404** but both local ports returned 200,
+leave the existing server running and open a *second terminal*:
+
+```bash
+make doctor
+```
+
+The doctor checks the page, backend and same-origin API proxy separately;
+compares the forwarded host against the local frontend; then tests the
+**unauthenticated** forwarded URL. It never prints or transmits the
+`GITHUB_TOKEN`. An unauthenticated 404 from a private forwarded port may
+be caused by GitHub's forwarding/authentication layer and does **not**
+automatically mean Next.js returned 404.
+
+If all three local paths work but your browser still shows 404:
+
+1. In the same running Codespace, open VS Code **PORTS**; confirm that
+   port **3000** is forwarded, and open its **current** forwarded address via
+   **Open in Browser**. Do not reuse old bookmarks after a restart.
+2. If the entry is stale, remove the *forwarding entry* for port 3000 and
+   add it again (this does not delete any source files).
+3. Use a GitHub-authenticated browser session for a **private** forwarded
+   port. Keep the port private rather than publishing your personal account
+   interface simply for troubleshooting.
+4. If PORTS shows a healthy current address but the gateway still returns
+   404, fully stop/restart the Codespace and forward 3000 again. This is
+   a GitHub-hosted access-layer problem; changes to the FlyGPT Python model
+   or MaleCNS dataset will not fix it.
+
+Never share your GitHub token, `.env` credentials, neuPrint token or private
+session cookie while diagnosing a port.
+
 ## CLI
 
 Dataset statistics:
