@@ -163,6 +163,15 @@ if [[ ! -d "frontend/node_modules" ]]; then
   (cd frontend && npm install)
 fi
 
+# Next.js otherwise silently tries port 3001 if port 3000 is occupied.
+# That gives a misleading success message and a stale Codespaces -3000 URL.
+if python3 -c 'import socket,sys; s=socket.socket(); s.settimeout(0.5); busy=(s.connect_ex(("127.0.0.1",3000))==0); s.close(); sys.exit(0 if busy else 1)'; then
+  echo "❌ Port 3000 is already in use. Stop the previous frontend/make run before starting another copy."
+  echo "   Inspect: ss -ltnp | grep :3000"
+  echo "   Tip: run 'make doctor' to check the existing frontend and Codespaces forwarding."
+  exit 1
+fi
+
 echo
 echo "🚀 Starting backend  : http://127.0.0.1:8000"
 bash scripts/run_backend_v0_7_local.sh &
@@ -194,12 +203,33 @@ echo "✅ Backend ready"
 echo "🎨 Starting frontend : http://127.0.0.1:3000"
 (
   cd frontend
-  npm run dev
+  npm run dev -- --hostname 0.0.0.0 --port 3000
 ) &
 FRONTEND_PID=$!
 
+echo "⏳ Waiting for frontend and same-origin API rewrite..."
+FRONTEND_READY=0
+for _ in $(seq 1 90); do
+  if curl -fsS --max-time 2 http://127.0.0.1:3000/ >/dev/null 2>&1 && \
+     curl -fsS --max-time 2 http://127.0.0.1:3000/api/health >/dev/null 2>&1; then
+    FRONTEND_READY=1
+    break
+  fi
+  if ! kill -0 "$FRONTEND_PID" 2>/dev/null; then
+    echo "❌ Next.js frontend exited before port 3000 became ready."
+    echo "   Inspect the npm/Next.js error printed above. Run 'make doctor'."
+    exit 1
+  fi
+  sleep 1
+done
+if [[ "$FRONTEND_READY" -ne 1 ]]; then
+  echo "❌ Frontend or frontend API proxy did not respond on port 3000 after 90 seconds."
+  echo "   Run: make doctor"
+  exit 1
+fi
+
 echo
-echo "✅ FlyGPT is launching"
+echo "✅ FlyGPT frontend and API proxy ready on port 3000"
 if [[ "$USE_OLLAMA" -eq 1 ]]; then
   echo "   Generator: Ollama :11434 / $MODEL"
 else
@@ -207,6 +237,11 @@ else
 fi
 echo "   Backend  :8000"
 echo "   Frontend :3000"
+if [[ -n "${CODESPACE_NAME:-}" ]]; then
+  echo "   Codespaces preview: https://${CODESPACE_NAME}-3000.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-app.github.dev}/"
+  echo "   If this external link shows 404 while localhost returns 200, run 'make doctor'"
+  echo "   and open the CURRENT 3000 forwarded URL from the VS Code PORTS tab."
+fi
 echo
 echo "Press Ctrl+C once to stop the stack."
 echo
