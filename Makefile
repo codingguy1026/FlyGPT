@@ -1,4 +1,4 @@
-.PHONY: run local stable doctor reclaim disk train-setup train-v0.4 train-v0.5 help stop
+.PHONY: run local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 help stop
 
 run:
 	@bash scripts/run_all.sh
@@ -11,6 +11,9 @@ stable:
 
 doctor:
 	@python3 scripts/diagnose_codespaces.py
+
+stability:
+	@python3 -m scripts.check_stability
 
 train-setup:
 	@bash scripts/setup_train_env.sh
@@ -43,6 +46,7 @@ help:
 	@echo "  make local       Strictly local LLM via Ollama (ignore hosted API keys)"
 	@echo "  make stable      Build + serve production frontend without backend hot reload"
 	@echo "  make doctor      Diagnose frontend, backend, proxy and Codespaces URL"
+	@echo "  make stability   Sample frontend/backend/proxy six times for intermittent failures"
 	@echo "  make train-setup Create isolated CPU PyTorch training environment"
 	@echo "  make train-v0.4  Build MaleCNS scaffold and train/evaluate router v0.4"
 	@echo "  make train-v0.5  Train calibrated v0.5 router on the frozen MaleCNS scaffold"
