@@ -78,6 +78,27 @@ unauthenticated client or that a language-model provider is available.
 suspends/stops it. For a public, always-on release, deploy to a hosting service
 rather than relying on a Codespaces preview.
 
+## Open-ended task generation and semantic gating
+
+FlyGPT uses a MaleCNS-derived router to **classify** user requests. The
+connectome does not solve natural-language puzzles itself. For a familiar,
+preplanned response (such as the project introduction), the original
+`mouth_only_v1` fact-only gate remains in place.
+
+For **accepted requests with no preplanned answer**, a separate
+`bounded_task_v1` execution plan now sends general reasoning, code,
+summarization and non-tool-solvable math requests to the configured language
+model, rather than returning `mouth-only semantic plan is incomplete` before
+calling that model. Research requests are delegated only when the web search
+actually returned source evidence. Unavailable web results still cannot
+authorize invented current events or citations, and all existing grounding
+checks for atomic project facts remain active.
+
+This removes a structural refusal, **not** the limits of the underlying model.
+The bundled 0.5B local Qwen model can still make incorrect deductions in
+multi-constraint logic puzzles. Use a more capable configured generator for
+reliable complex reasoning, and independently check important results.
+
 ## Codespaces preview: HTTP 404 despite local HTTP 200
 
 FlyGPT runs its Next.js frontend on **3000** and its FastAPI backend on **8000**.

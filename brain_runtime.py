@@ -538,4 +538,31 @@ class FlyBrainRuntime:
                     evidence["count"] = len(units)
 
         final["evidence"] = evidence
+
+        # The deterministic fly router chooses a task route; it does not
+        # solve arbitrary natural-language problems. Previously, unrecognized
+        # user requests had no semantic packet and were rejected before the
+        # configured language model could even attempt them. Delegate these
+        # explicitly to a *separate* grounded task-execution mode.
+        #
+        # Preserve the strict mouth-only contract for preplanned answers and
+        # evidence-bound memory. A failed/unavailable web search must never
+        # be silently promoted into a request for unsupported current facts.
+        utterance = final.get("utterance_plan") or {}
+        route = str(final.get("route") or "")
+        can_delegate = route in {"general", "code", "summarize", "math"}
+        can_research = route == "research" and evidence.get("available") is True
+        if (
+            final.get("accepted")
+            and not utterance.get("ready")
+            and (can_delegate or can_research)
+        ):
+            final["task_plan"] = {
+                "contract": "bounded_task_v1",
+                "ready": True,
+                "route": route,
+                "language": str((utterance.get("style") or {}).get("language", "match_user")),
+                "grounding": "retrieved_sources" if can_research else "user_request",
+            }
+
         return final

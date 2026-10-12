@@ -139,7 +139,7 @@ class LocalGenerationPolicyTests(unittest.TestCase):
                 "utterance_plan": {"contract": "mouth_only_v1", "ready": False}
             })
         self.assertFalse(result.used)
-        self.assertEqual(result.error, "mouth-only semantic plan is incomplete")
+        self.assertEqual(result.error, "no authorized semantic or grounded task plan")
         build_opener.assert_not_called()
 
 
