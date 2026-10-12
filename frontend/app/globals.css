@@ -2057,6 +2057,13 @@ textarea:focus-visible {
   opacity: .65;
 }
 
+.authRetryButton {
+  display: block;
+  width: 100%;
+  margin-top: 18px;
+}
+
+
 .authError {
   padding: 10px 12px;
   border: 1px solid rgba(214, 90, 112, .15);

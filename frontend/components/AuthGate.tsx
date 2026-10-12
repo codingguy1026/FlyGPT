@@ -13,6 +13,8 @@ import {
 export default function AuthGate() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [connectionError, setConnectionError] = useState(false);
+  const [authCheckVersion, setAuthCheckVersion] = useState(0);
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
@@ -21,11 +23,26 @@ export default function AuthGate() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setConnectionError(false);
+
     getCurrentUser()
-      .then(setUser)
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false));
-  }, []);
+      .then((nextUser) => {
+        if (active) setUser(nextUser);
+      })
+      .catch(() => {
+        // A network/server failure is not the same as an unauthenticated 401.
+        if (active) setConnectionError(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [authCheckVersion]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -64,6 +81,38 @@ export default function AuthGate() {
           <img src="/flygpt-logo.webp" alt="" />
           <span>MaleCNS console credential 확인 중...</span>
         </div>
+      </main>
+    );
+  }
+
+  if (connectionError) {
+    return (
+      <main className="authShell">
+        <section className="authCard">
+          <div className="authBrand">
+            <img src="/flygpt-logo.webp" alt="FlyGPT logo" />
+            <div>
+              <span>CONNECTION CHECK</span>
+              <h1>FlyGPT</h1>
+            </div>
+          </div>
+          <div className="authIntro">
+            <span>CONNECTION UNAVAILABLE</span>
+            <h2>서버 상태를 확인하지 못했어요.</h2>
+            <p>로그아웃된 것은 아닐 수 있어요. 연결을 확인한 뒤 다시 시도해 주세요.</p>
+          </div>
+          <div className="authError" role="alert">
+            인증 서버에 연결하지 못했습니다. 개발 환경이라면 터미널에서 make doctor로
+            프론트엔드와 백엔드 상태를 확인할 수 있어요.
+          </div>
+          <button
+            className="authSubmit authRetryButton"
+            type="button"
+            onClick={() => setAuthCheckVersion((current) => current + 1)}
+          >
+            다시 연결
+          </button>
+        </section>
       </main>
     );
   }
