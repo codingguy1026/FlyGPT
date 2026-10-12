@@ -987,25 +987,50 @@ def chat_endpoint(req: ChatRequest, request: Request):
                     else:
                         mode_label = f"{result.route} · web-grounded"
             else:
-                detail = generation.error or "generator is not configured"
-                detail_lower = detail.lower()
-                timed_out = (
-                    "time budget exceeded" in detail_lower
-                    or "timed out" in detail_lower
-                    or "timeout" in detail_lower
-                )
-                if timed_out:
+                # Report actionable failures without exposing raw provider error
+                # bodies, credentials, or private request details in chat prose.
+                failure = generation.error_code or ""
+                if failure == "timeout" or (
+                    not failure and "timeout" in (generation.error or "").lower()
+                ):
                     answer = (
-                        "⏱️ 답변 생성 시간이 제한을 초과했어요. "
-                        "파피티 뇌의 라우팅은 완료됐지만 LLM 발화 단계가 늦어 "
-                        "연결이 끊기기 전에 중단했습니다. 다시 시도해 주세요."
+                        "⏱️ 생성 시간이 제한을 초과했어. "
+                        "질문을 조금 나누거나 응답 시간 설정을 확인해 줘."
                     )
                     mode_label = f"{result.route} · generator_timeout"
+                elif failure == "truncated":
+                    answer = (
+                        "📏 답변이 길이 제한에 걸려 끝까지 생성되지 않았어. "
+                        "짧게 답하도록 요청하거나 출력 토큰 제한을 조정해 줘."
+                    )
+                    mode_label = f"{result.route} · generator_truncated"
+                elif failure == "http_429":
+                    answer = (
+                        "⏳ 생성 모델의 요청 제한에 걸렸어. "
+                        "잠시 후 다시 시도해 줘."
+                    )
+                    mode_label = f"{result.route} · generator_rate_limited"
+                elif failure in {"connection_lost", "invalid_response", "http_500",
+                                 "http_502", "http_503", "http_504"}:
+                    answer = (
+                        "🔌 생성 모델과 통신하다가 일시적인 오류가 발생했어. "
+                        "자동 복구를 시도했지만 성공하지 못했어. "
+                        "모델 서버 상태를 확인하거나 잠시 후 다시 요청해 줘."
+                    )
+                    mode_label = f"{result.route} · generator_connection_error"
+                elif failure in {"http_401", "http_403"}:
+                    answer = (
+                        "🔐 생성 모델 인증 또는 권한 설정을 확인해야 해. "
+                        "서버 관리자의 API 설정이 필요해."
+                    )
+                    mode_label = f"{result.route} · generator_auth_error"
+                elif not _generator.configured:
+                    answer = "⚠️ 답변 생성 모델이 설정되지 않았어. 관리자 설정이 필요해."
+                    mode_label = f"{result.route} · generator_unconfigured"
                 else:
                     answer = (
-                        "⚠️ 답변 생성기를 사용할 수 없습니다. "
-                        "라우팅은 완료됐지만 생성 단계에서 중단됐어요. "
-                        f"({detail})"
+                        "⚠️ 답변 생성 단계가 완료되지 않았어. "
+                        "라우팅 결과는 있으나 답변은 생성되지 않았어."
                     )
                     mode_label = f"{result.route} · generator_unavailable"
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import re
@@ -27,7 +28,7 @@ class _NoGeneratorRedirects(urllib.request.HTTPRedirectHandler):
 
 
 GENERATIVE_ROUTES = {"general", "code", "summarize", "math", "memory", "research"}
-RETRYABLE_HTTP_CODES = {502, 503, 504}
+RETRYABLE_HTTP_CODES = {429, 500, 502, 503, 504}
 
 # These phrases are implementation details of the Fly Brain plan contract,
 # not ordinary user-facing prose. Even a partially echoed JSON object must
@@ -260,6 +261,8 @@ class GenerationResult:
     json_parse_ms: int | None = None
     request_bytes: int | None = None
     response_bytes: int | None = None
+    error_code: str | None = None
+    attempts: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -543,6 +546,7 @@ class GeneratorRuntime:
         model: str,
         messages: list[dict[str, str]],
         timeout_seconds: float | None = None,
+        max_tokens_override: int | None = None,
     ) -> GenerationResult:
         if self.local_only and not is_local_generator_url(self.url):
             return GenerationResult(
@@ -556,7 +560,7 @@ class GeneratorRuntime:
             "model": model,
             "messages": messages,
             "temperature": self.temperature,
-            "max_tokens": self.max_tokens,
+            "max_tokens": max_tokens_override or self.max_tokens,
         }
         if self.reasoning_effort is not None:
             body["reasoning_effort"] = self.reasoning_effort
@@ -618,6 +622,27 @@ class GeneratorRuntime:
             choice = choices[0]
             message_obj = choice.get("message") or {}
             answer = message_obj.get("content")
+            finish_reason = choice.get("finish_reason")
+            if isinstance(finish_reason, str) and finish_reason.lower() in {
+                "length", "max_tokens", "max_output_tokens",
+            }:
+                # Never present a partially generated answer as a complete one.
+                return GenerationResult(
+                    used=False,
+                    provider=self.provider_name,
+                    model=model,
+                    answer=None,
+                    error="generation output exceeded token limit",
+                    error_code="truncated",
+                    finish_reason=finish_reason,
+                    latency_ms=round((time.perf_counter() - started) * 1000),
+                    http_status=200,
+                    open_wait_ms=open_wait_ms,
+                    body_read_ms=body_read_ms,
+                    json_parse_ms=json_parse_ms,
+                    request_bytes=len(request_bytes),
+                    response_bytes=response_bytes,
+                )
             if not isinstance(answer, str) or not answer.strip():
                 raise ValueError("generator response did not contain message content")
 
@@ -626,7 +651,7 @@ class GeneratorRuntime:
                 provider=self.provider_name,
                 model=model,
                 answer=answer.strip(),
-                finish_reason=choice.get("finish_reason"),
+                finish_reason=finish_reason,
                 latency_ms=round((time.perf_counter() - started) * 1000),
                 http_status=200,
                 open_wait_ms=open_wait_ms,
@@ -652,6 +677,7 @@ class GeneratorRuntime:
                 model=model,
                 answer=None,
                 error=detail,
+                error_code=f"http_{exc.code}",
                 latency_ms=round((time.perf_counter() - started) * 1000),
                 http_status=exc.code,
                 open_wait_ms=open_wait_ms,
@@ -661,13 +687,30 @@ class GeneratorRuntime:
                 response_bytes=response_bytes,
             )
 
-        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+        except (urllib.error.URLError, OSError, ValueError, http.client.HTTPException) as exc:
+            # urllib can fail *after* the response headers are received.
+            # Socket resets, incomplete reads and malformed responses must
+            # remain recoverable result objects rather than unhandled API 500s.
+            detail = str(exc).lower()
+            if isinstance(exc, TimeoutError) or "timed out" in detail:
+                code = "timeout"
+            elif isinstance(exc, (ConnectionError, http.client.IncompleteRead,
+                                  http.client.RemoteDisconnected)) or any(
+                token in detail for token in ("connection reset", "remote end closed")
+            ):
+                code = "connection_lost"
+            elif isinstance(exc, (ValueError, http.client.HTTPException)):
+                code = "invalid_response"
+            else:
+                code = "connection_lost"
+
             return GenerationResult(
                 used=False,
                 provider=self.provider_name,
                 model=model,
                 answer=None,
                 error=f"{type(exc).__name__}: {exc}",
+                error_code=code,
                 latency_ms=round((time.perf_counter() - started) * 1000),
                 open_wait_ms=open_wait_ms,
                 body_read_ms=body_read_ms,
@@ -838,6 +881,7 @@ class GeneratorRuntime:
         if budget_seconds is not None:
             effective_budget = max(0.0, min(self.budget, float(budget_seconds)))
         deadline = total_started + effective_budget
+        attempts = 0
 
         def remaining_seconds() -> float:
             return max(0.0, deadline - time.perf_counter())
@@ -849,6 +893,8 @@ class GeneratorRuntime:
                 model=model,
                 answer=None,
                 error=f"generation time budget exceeded ({effective_budget:.1f}s)",
+                error_code="timeout",
+                attempts=attempts,
                 latency_ms=round((time.perf_counter() - total_started) * 1000),
             )
 
@@ -856,7 +902,9 @@ class GeneratorRuntime:
             model: str,
             *,
             attempt_timeout: float | None = None,
+            max_tokens_override: int | None = None,
         ) -> GenerationResult:
+            nonlocal attempts
             remaining = remaining_seconds()
             if remaining <= 0:
                 return budget_result(model)
@@ -865,11 +913,15 @@ class GeneratorRuntime:
             if attempt_timeout is not None:
                 timeout_cap = min(timeout_cap, max(0.1, attempt_timeout))
 
+            attempts += 1
             result = self._generate_once(
                 model=model,
                 messages=messages,
                 timeout_seconds=timeout_cap,
+                **({"max_tokens_override": max_tokens_override}
+                   if max_tokens_override is not None else {}),
             )
+            result.attempts = attempts
             if result.used and result.answer and (
                 _contains_internal_plan(result.answer)
                 or _wrong_output_language(result.answer, plan)
@@ -899,6 +951,8 @@ class GeneratorRuntime:
             if result.http_status is not None:
                 return False
 
+            if result.error_code in {"timeout", "connection_lost", "invalid_response"}:
+                return True
             detail = (result.error or "").lower()
             return any(
                 marker in detail
@@ -923,7 +977,18 @@ class GeneratorRuntime:
             self.model,
             attempt_timeout=primary_attempt_timeout,
         )
-        if first.used or not is_transient_failure(first):
+        if first.used:
+            return first
+
+        if first.error_code == "truncated":
+            # Retry once with more output tokens if the request budget allows.
+            # An unfinished paragraph must not be returned as a final answer.
+            if remaining_seconds() < 1.0:
+                return first
+            larger_limit = min(8192, max(self.max_tokens + 128, self.max_tokens * 2))
+            return generate_with_budget(self.model, max_tokens_override=larger_limit)
+
+        if not is_transient_failure(first):
             return first
 
         if fallback_available:
@@ -932,21 +997,16 @@ class GeneratorRuntime:
 
             print(
                 f"[GEN] {self.model} was slow or unavailable "
-                f"({first.error or ('HTTP ' + str(first.http_status))}); "
+                f"(reason={first.error_code or first.http_status or 'unknown'}); "
                 f"trying fallback {self.fallback_model}",
                 flush=True,
             )
             fallback = generate_with_budget(self.fallback_model)
-            if not fallback.used and fallback.error:
-                fallback.error += (
-                    f" (primary {self.model} failed first: "
-                    f"{first.error or ('HTTP ' + str(first.http_status))})"
-                )
             return fallback
 
         print(
             f"[GEN] {self.model} transient failure "
-            f"({first.error or ('HTTP ' + str(first.http_status))}); "
+            f"(reason={first.error_code or first.http_status or 'unknown'}); "
             f"retrying once in {self.retry_delay:.1f}s",
             flush=True,
         )

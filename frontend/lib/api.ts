@@ -44,6 +44,8 @@ export type GenerationResult = {
   model?: string | null;
   answer?: string | null;
   error?: string | null;
+  error_code?: string | null;
+  attempts?: number;
   finish_reason?: string | null;
   latency_ms?: number | null;
 };

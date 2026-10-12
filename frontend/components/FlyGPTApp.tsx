@@ -426,6 +426,12 @@ export default function FlyGPTApp({
           text: "GEN · " + (generation.model ?? generation.provider ?? "ready"),
           tone: "info",
         });
+        if ((generation.attempts ?? 0) > 1) {
+          meta.push({
+            text: "RECOVERED · " + generation.attempts + " attempts",
+            tone: "good",
+          });
+        }
 
         if (generation.latency_ms != null) {
           meta.push({
@@ -434,7 +440,10 @@ export default function FlyGPTApp({
           });
         }
       } else if (generation && !generation.used) {
-        meta.push({ text: "fallback", tone: "warn" });
+        meta.push({
+          text: "GEN · " + (generation.error_code ?? "unavailable"),
+          tone: "warn",
+        });
       }
 
       const timings = response.timings ?? response.data?.timings;

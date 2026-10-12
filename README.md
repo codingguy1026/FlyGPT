@@ -78,6 +78,25 @@ unauthenticated client or that a language-model provider is available.
 suspends/stops it. For a public, always-on release, deploy to a hosting service
 rather than relying on a Codespaces preview.
 
+## Bounded generator recovery
+
+FlyGPT now distinguishes the generation stage from the fly-connectome
+router. Transient HTTP errors (429/500/502/503/504), transport disconnects,
+body-read interruptions and invalid JSON responses are retried **at most
+once** when time remains. If a fallback model is configured, retryable
+failures use that model instead of repeatedly calling the same one.
+
+A response marked with `finish_reason=length` is incomplete, not a valid
+answer. When budget remains, FlyGPT retries once with a larger output-token
+limit. It never shows the truncated fragment as if it were complete.
+
+Generation metadata includes `error_code` and `attempts`, and the interface
+can show a recovered request or a failure category without exposing raw
+provider error details in the chat text. These retries cannot rescue an
+unavailable Ollama process, an exhausted request budget, invalid credentials,
+or resource exhaustion on Codespaces. Running a bigger model may also require
+more memory and a longer budget.
+
 ## Open-ended task generation and semantic gating
 
 FlyGPT uses a MaleCNS-derived router to **classify** user requests. The
