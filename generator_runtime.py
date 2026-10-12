@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import re
@@ -27,7 +28,7 @@ class _NoGeneratorRedirects(urllib.request.HTTPRedirectHandler):
 
 
 GENERATIVE_ROUTES = {"general", "code", "summarize", "math", "memory", "research"}
-RETRYABLE_HTTP_CODES = {502, 503, 504}
+RETRYABLE_HTTP_CODES = {429, 500, 502, 503, 504}
 
 # These phrases are implementation details of the Fly Brain plan contract,
 # not ordinary user-facing prose. Even a partially echoed JSON object must
@@ -260,6 +261,8 @@ class GenerationResult:
     json_parse_ms: int | None = None
     request_bytes: int | None = None
     response_bytes: int | None = None
+    error_code: str | None = None
+    attempts: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -543,6 +546,7 @@ class GeneratorRuntime:
         model: str,
         messages: list[dict[str, str]],
         timeout_seconds: float | None = None,
+        max_tokens_override: int | None = None,
     ) -> GenerationResult:
         if self.local_only and not is_local_generator_url(self.url):
             return GenerationResult(
@@ -556,7 +560,7 @@ class GeneratorRuntime:
             "model": model,
             "messages": messages,
             "temperature": self.temperature,
-            "max_tokens": self.max_tokens,
+            "max_tokens": max_tokens_override or self.max_tokens,
         }
         if self.reasoning_effort is not None:
             body["reasoning_effort"] = self.reasoning_effort
@@ -618,6 +622,27 @@ class GeneratorRuntime:
             choice = choices[0]
             message_obj = choice.get("message") or {}
             answer = message_obj.get("content")
+            finish_reason = choice.get("finish_reason")
+            if isinstance(finish_reason, str) and finish_reason.lower() in {
+                "length", "max_tokens", "max_output_tokens",
+            }:
+                # Never present a partially generated answer as a complete one.
+                return GenerationResult(
+                    used=False,
+                    provider=self.provider_name,
+                    model=model,
+                    answer=None,
+                    error="generation output exceeded token limit",
+                    error_code="truncated",
+                    finish_reason=finish_reason,
+                    latency_ms=round((time.perf_counter() - started) * 1000),
+                    http_status=200,
+                    open_wait_ms=open_wait_ms,
+                    body_read_ms=body_read_ms,
+                    json_parse_ms=json_parse_ms,
+                    request_bytes=len(request_bytes),
+                    response_bytes=response_bytes,
+                )
             if not isinstance(answer, str) or not answer.strip():
                 raise ValueError("generator response did not contain message content")
 
@@ -626,7 +651,7 @@ class GeneratorRuntime:
                 provider=self.provider_name,
                 model=model,
                 answer=answer.strip(),
-                finish_reason=choice.get("finish_reason"),
+                finish_reason=finish_reason,
                 latency_ms=round((time.perf_counter() - started) * 1000),
                 http_status=200,
                 open_wait_ms=open_wait_ms,
@@ -652,6 +677,7 @@ class GeneratorRuntime:
                 model=model,
                 answer=None,
                 error=detail,
+                error_code=f"http_{exc.code}",
                 latency_ms=round((time.perf_counter() - started) * 1000),
                 http_status=exc.code,
                 open_wait_ms=open_wait_ms,
@@ -661,13 +687,30 @@ class GeneratorRuntime:
                 response_bytes=response_bytes,
             )
 
-        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+        except (urllib.error.URLError, OSError, ValueError, http.client.HTTPException) as exc:
+            # urllib can fail *after* the response headers are received.
+            # Socket resets, incomplete reads and malformed responses must
+            # remain recoverable result objects rather than unhandled API 500s.
+            detail = str(exc).lower()
+            if isinstance(exc, TimeoutError) or "timed out" in detail:
+                code = "timeout"
+            elif isinstance(exc, (ConnectionError, http.client.IncompleteRead,
+                                  http.client.RemoteDisconnected)) or any(
+                token in detail for token in ("connection reset", "remote end closed")
+            ):
+                code = "connection_lost"
+            elif isinstance(exc, (ValueError, http.client.HTTPException)):
+                code = "invalid_response"
+            else:
+                code = "connection_lost"
+
             return GenerationResult(
                 used=False,
                 provider=self.provider_name,
                 model=model,
                 answer=None,
                 error=f"{type(exc).__name__}: {exc}",
+                error_code=code,
                 latency_ms=round((time.perf_counter() - started) * 1000),
                 open_wait_ms=open_wait_ms,
                 body_read_ms=body_read_ms,
