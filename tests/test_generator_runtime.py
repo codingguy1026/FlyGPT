@@ -124,7 +124,7 @@ class GeneratorRuntimeTests(unittest.TestCase):
             )
 
         self.assertFalse(result.used)
-        self.assertEqual(result.error, "mouth-only semantic plan is incomplete")
+        self.assertEqual(result.error, "no authorized semantic or grounded task plan")
         urlopen.assert_not_called()
 
     def test_stale_internal_metadata_is_removed_from_assistant_memory(self):
@@ -156,7 +156,7 @@ class GeneratorRuntimeTests(unittest.TestCase):
 
         self.assertTrue(status["configured"])
         self.assertTrue(status["api_key_configured"])
-        self.assertEqual(status["role"], "mouth_only_language_realizer")
+        self.assertEqual(status["role"], "grounded_task_reasoner_and_mouth_only_language_realizer")
         self.assertTrue(status["strict_semantic_gate"])
         self.assertNotIn("secret-value", repr(status))
 
