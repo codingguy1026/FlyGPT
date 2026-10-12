@@ -881,6 +881,7 @@ class GeneratorRuntime:
         if budget_seconds is not None:
             effective_budget = max(0.0, min(self.budget, float(budget_seconds)))
         deadline = total_started + effective_budget
+        attempts = 0
 
         def remaining_seconds() -> float:
             return max(0.0, deadline - time.perf_counter())
@@ -892,6 +893,8 @@ class GeneratorRuntime:
                 model=model,
                 answer=None,
                 error=f"generation time budget exceeded ({effective_budget:.1f}s)",
+                error_code="timeout",
+                attempts=attempts,
                 latency_ms=round((time.perf_counter() - total_started) * 1000),
             )
 
@@ -899,7 +902,9 @@ class GeneratorRuntime:
             model: str,
             *,
             attempt_timeout: float | None = None,
+            max_tokens_override: int | None = None,
         ) -> GenerationResult:
+            nonlocal attempts
             remaining = remaining_seconds()
             if remaining <= 0:
                 return budget_result(model)
@@ -908,11 +913,15 @@ class GeneratorRuntime:
             if attempt_timeout is not None:
                 timeout_cap = min(timeout_cap, max(0.1, attempt_timeout))
 
+            attempts += 1
             result = self._generate_once(
                 model=model,
                 messages=messages,
                 timeout_seconds=timeout_cap,
+                **({"max_tokens_override": max_tokens_override}
+                   if max_tokens_override is not None else {}),
             )
+            result.attempts = attempts
             if result.used and result.answer and (
                 _contains_internal_plan(result.answer)
                 or _wrong_output_language(result.answer, plan)
@@ -942,6 +951,8 @@ class GeneratorRuntime:
             if result.http_status is not None:
                 return False
 
+            if result.error_code in {"timeout", "connection_lost", "invalid_response"}:
+                return True
             detail = (result.error or "").lower()
             return any(
                 marker in detail
@@ -966,7 +977,18 @@ class GeneratorRuntime:
             self.model,
             attempt_timeout=primary_attempt_timeout,
         )
-        if first.used or not is_transient_failure(first):
+        if first.used:
+            return first
+
+        if first.error_code == "truncated":
+            # Retry once with more output tokens if the request budget allows.
+            # An unfinished paragraph must not be returned as a final answer.
+            if remaining_seconds() < 1.0:
+                return first
+            larger_limit = min(8192, max(self.max_tokens + 128, self.max_tokens * 2))
+            return generate_with_budget(self.model, max_tokens_override=larger_limit)
+
+        if not is_transient_failure(first):
             return first
 
         if fallback_available:
@@ -975,21 +997,16 @@ class GeneratorRuntime:
 
             print(
                 f"[GEN] {self.model} was slow or unavailable "
-                f"({first.error or ('HTTP ' + str(first.http_status))}); "
+                f"(reason={first.error_code or first.http_status or 'unknown'}); "
                 f"trying fallback {self.fallback_model}",
                 flush=True,
             )
             fallback = generate_with_budget(self.fallback_model)
-            if not fallback.used and fallback.error:
-                fallback.error += (
-                    f" (primary {self.model} failed first: "
-                    f"{first.error or ('HTTP ' + str(first.http_status))})"
-                )
             return fallback
 
         print(
             f"[GEN] {self.model} transient failure "
-            f"({first.error or ('HTTP ' + str(first.http_status))}); "
+            f"(reason={first.error_code or first.http_status or 'unknown'}); "
             f"retrying once in {self.retry_delay:.1f}s",
             flush=True,
         )
