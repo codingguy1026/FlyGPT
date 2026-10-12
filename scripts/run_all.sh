@@ -11,12 +11,25 @@ if [[ -f ".env" ]]; then
   set +a
 fi
 
-if [[ "${1:-}" == "--local-only" ]]; then
-  export FLYGPT_LOCAL_ONLY=1
-elif [[ -n "${1:-}" ]]; then
-  echo "Usage: bash scripts/run_all.sh [--local-only]" >&2
-  exit 2
-fi
+STABLE_MODE=0
+for argument in "$@"; do
+  case "$argument" in
+    --local-only)
+      export FLYGPT_LOCAL_ONLY=1
+      ;;
+    --stable)
+      STABLE_MODE=1
+      ;;
+    *)
+      echo "Usage: bash scripts/run_all.sh [--local-only] [--stable]" >&2
+      exit 2
+      ;;
+  esac
+done
+
+# In stable mode, disable the backend file watcher and serve a built Next.js
+# frontend rather than running two development/watch processes.
+export FLYGPT_STABLE_MODE="$STABLE_MODE"
 
 # Explicit local-only mode never invokes a hosted language model. It also
 # rejects stale hosted URLs rather than silently routing to them.
@@ -82,7 +95,12 @@ cleanup() {
 
 trap cleanup INT TERM EXIT
 
-echo "🪰 FlyGPT v0.8.0 full stack"
+echo "🪰 FlyGPT full stack"
+if [[ "$STABLE_MODE" -eq 1 ]]; then
+  echo "🛡️ Stable mode: production frontend, backend without auto-reload"
+else
+  echo "🛠️ Development mode: hot reload enabled"
+fi
 echo
 
 USE_OLLAMA=1
@@ -175,6 +193,11 @@ for port in 3000 8000; do
   fi
 done
 
+if [[ "$STABLE_MODE" -eq 1 ]]; then
+  echo "🏗️ Building the frontend before starting the backend to avoid build-time memory contention..."
+  (cd frontend && NEXT_TELEMETRY_DISABLED=1 npm run build)
+fi
+
 echo
 echo "🚀 Starting backend  : http://127.0.0.1:8000"
 bash scripts/run_backend_v0_7_local.sh &
@@ -206,7 +229,13 @@ echo "✅ Backend ready"
 echo "🎨 Starting frontend : http://127.0.0.1:3000"
 (
   cd frontend
-  npm run dev -- --hostname 0.0.0.0 --port 3000
+  # Run Next.js as the tracked process, not as a child of npm, so cleanup
+  # can stop the server itself rather than leaving a stale port listener.
+  if [[ "$STABLE_MODE" -eq 1 ]]; then
+    exec ./node_modules/.bin/next start --hostname 0.0.0.0 --port 3000
+  else
+    exec ./node_modules/.bin/next dev --hostname 0.0.0.0 --port 3000
+  fi
 ) &
 FRONTEND_PID=$!
 

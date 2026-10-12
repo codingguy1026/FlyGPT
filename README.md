@@ -45,6 +45,39 @@ Do not commit real tokens.
 uvicorn app:app --host 0.0.0.0 --port 8000
 ```
 
+## More stable Codespaces sessions
+
+Codespaces is a development environment, not an always-on hosting service.
+For a longer demo or to investigate crashes caused by development watchers,
+use:
+
+```bash
+make stable
+```
+
+This first builds the Next.js frontend **before** starting the backend, then
+runs the built frontend with `next start` and Uvicorn **without `--reload`**.
+Your usual `make run` keeps hot reload for editing. `make stable` supports
+the same `.env` config; for local-only generation use
+`bash scripts/run_all.sh --stable --local-only`.
+
+In a **second terminal** while the stack is running, sample all three local
+endpoints to detect intermittent failures:
+
+```bash
+make stability
+```
+
+This checks frontend `:3000`, backend `:8000/api/health`, and frontend
+API proxy `:3000/api/health` six times. It reports failures by component.
+Use `make doctor` to diagnose the current Codespaces forwarding URL separately.
+The checks do not prove that a private forwarded port is reachable from an
+unauthenticated client or that a language-model provider is available.
+
+**Important:** Stable mode does not keep a Codespace running after GitHub
+suspends/stops it. For a public, always-on release, deploy to a hosting service
+rather than relying on a Codespaces preview.
+
 ## Codespaces preview: HTTP 404 despite local HTTP 200
 
 FlyGPT runs its Next.js frontend on **3000** and its FastAPI backend on **8000**.

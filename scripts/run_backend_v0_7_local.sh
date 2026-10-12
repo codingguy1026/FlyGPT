@@ -45,4 +45,9 @@ if ! "$PYTHON" -c "import torch" >/dev/null 2>&1; then
 fi
 
 echo "Python: $PYTHON"
-exec "$PYTHON" -m uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+if [[ "${FLYGPT_STABLE_MODE:-0}" == "1" ]]; then
+  # Keep model and SQLite state in one server process with no hot reload.
+  exec "$PYTHON" -m uvicorn app:app --host 0.0.0.0 --port 8000
+else
+  exec "$PYTHON" -m uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+fi
