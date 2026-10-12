@@ -211,6 +211,7 @@ class ResearchResult:
             "provider": self.provider,
             "sources": [source.to_dict() for source in self.sources],
             "retrieved_at": self.retrieved_at,
+            "used": self.used,
             "error": self.error,
             "http_status": self.http_status,
         }
