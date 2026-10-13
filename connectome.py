@@ -306,7 +306,9 @@ class MaleCNSConnectome:
                 if isinstance(roi_info, dict):
                     roi_count = sum(
                         1 for value in roi_info.values()
-                        if isinstance(value, dict) and value.get("post", 0) > 0
+                        if isinstance(value, dict)
+                        and isinstance(value.get("post"), (int, float))
+                        and value["post"] > 0
                     )
 
                 ranked.append(
