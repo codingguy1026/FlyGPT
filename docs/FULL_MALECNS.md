@@ -85,7 +85,7 @@ For a custom fixture/file, place `--file FILE` **before** the subcommand.
 ## Tests
 
 ```bash
-python -m unittest tests.test_full_connectome -v
+python -m unittest discover -s tests -p 'test_full_connectome.py' -v
 ```
 
 Tests use a tiny synthetic Feather with multiple batches and do not access the
