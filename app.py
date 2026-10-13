@@ -254,8 +254,13 @@ def predict_route(text: str, user_id: str | None = None) -> dict[str, Any] | Non
 
 def extract_root_ids(text: str) -> list[int]:
     # MaleCNS body IDs are not fixed-width FlyWire root IDs; valid examples
-    # include short values such as 12781.
-    return [int(value) for value in re.findall(r"\b\d{4,16}\b", text)]
+    # include short values such as 12781. Python's Unicode \\b does not
+    # split a digit from the Korean suffix "번" (both count as word chars),
+    # so also permit ID + "번" without interpreting unrelated years as IDs.
+    return [
+        int(value)
+        for value in re.findall(r"(?<!\w)(\d{4,16})(?=\b|번)", text)
+    ]
 
 
 def extract_limit(text: str, default: int = 10) -> int:
