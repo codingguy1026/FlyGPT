@@ -98,12 +98,16 @@ causing a requested specific-neuron ranking to return global TOP 10.
 
 ### Fast named-neuron ranking (v0.12.6)
 
-The specialized strongest-partner chat fast path now queries directed
-`ConnectsTo` edges using **neuPrint Cypher** with server-side
-`ORDER BY edge.weight DESC` and `LIMIT N`. It requests at most N incoming
-and N outgoing candidates, then merges them into the actual top N across
-both directions. It no longer downloads and locally groups every neighbor's
-full ROI breakdown just to display a leaderboard.
+The specialized strongest-partner chat fast path now queries
+`ConnectsTo` edges using **neuPrint Cypher** with server-side ranking
+and `LIMIT N`. For a mixed input/output TOP N request, FlyGPT makes
+**one** neuPrint request with an undirected edge match anchored to the
+selected neuron. The query retains the real presynaptic endpoint using
+`startNode(edge)`, labels each returned connection as an input or
+output, and selects the actual top N across both directions on the server.
+For input-only or output-only rankings it still uses the narrower directed
+match. This avoids the previous **two sequential remote requests** for
+mixed-direction rankings, without fetching a full ROI breakdown.
 
 The response still reports directed IDs, synapse weights, presynaptic NT,
 and optionally the number of **ROI entries** reported on each returned
@@ -121,7 +125,11 @@ timings remain useful for comparing a cold lookup against a repeated query.
 **Important:** Runtime improvements are expected but not guaranteed. Real
 neuPrint latency and performance must be measured from your Codespace;
 unit tests mock neuPrint and only verify logic/query shape, not actual
-server response times.
+server response times. To assess **cold** performance, query a neuron ID
+not recently used, note `QUERY` and `TOTAL`, then repeat the exact
+question within the 120-second TTL for a **warm** cache measurement.
+A backend restart clears the in-process cache. The aspiration is a
+roughly 1-second cold query, not a promised latency guarantee.
 
 ## Verified positional logic (experimental)
 
