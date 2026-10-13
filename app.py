@@ -259,7 +259,10 @@ def extract_root_ids(text: str) -> list[int]:
     # so also permit ID + "번" without interpreting unrelated years as IDs.
     return [
         int(value)
-        for value in re.findall(r"(?<!\w)(\d{4,16})(?=\b|번)", text)
+        for value in re.findall(
+            r"(?<!\w)(\d{4,16})(?=\b|번|에서|에게|으로|에|와|과|의|는|은|이|가|을|를|로)",
+            text,
+        )
     ]
 
 
