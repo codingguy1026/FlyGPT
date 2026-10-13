@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import json
 import os
 import threading
 import time
@@ -58,6 +59,9 @@ class MaleCNSConnectome:
     _top_neurons_cache_database_edit: str | None = field(default=None, init=False, repr=False)
     _top_neurons_cache_ttl: float = field(default=60.0, init=False, repr=False)
     _top_neurons_cache_lock: Any = field(default_factory=threading.Lock, init=False, repr=False)
+    _ranked_partners_cache: dict[tuple[int, str, int, int], tuple[float, list[dict[str, Any]]]] = field(default_factory=dict, init=False, repr=False)
+    _ranked_partners_lock: Any = field(default_factory=threading.Lock, init=False, repr=False)
+    _ranked_partners_ttl: float = field(default=120.0, init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.server = os.environ.get("NEUPRINT_SERVER", self.server).strip()
@@ -75,6 +79,13 @@ class MaleCNSConnectome:
         except ValueError:
             cache_ttl = 60.0
         self._top_neurons_cache_ttl = min(max(cache_ttl, 0.0), 3600.0)
+
+        raw_partner_ttl = os.environ.get("FLYGPT_PARTNER_CACHE_TTL", "120").strip()
+        try:
+            partner_ttl = float(raw_partner_ttl)
+        except ValueError:
+            partner_ttl = 120.0
+        self._ranked_partners_ttl = min(max(partner_ttl, 0.0), 3600.0)
 
         if self.client is None:
             if not self.token:
@@ -216,6 +227,122 @@ class MaleCNSConnectome:
 
         rows.sort(key=lambda row: (-int(row["syn_count"]), int(row["partner_root_id"])))
         return rows[:limit]
+
+    def ranked_partners(
+        self,
+        root_id: int,
+        *,
+        direction: str = "both",
+        min_synapses: int = 1,
+        limit: int = 10,
+    ) -> list[dict[str, Any]]:
+        """Rank a single neuron's directed partners by edge weight.
+
+        Unlike neuron(), which can return an ROI breakdown for all partners,
+        this narrow fast path asks neuPrint to ORDER BY and LIMIT each
+        direction before returning any rows. With both directions requested,
+        the top N from each side suffice for the exact global top N merge.
+        """
+        if direction not in {"inputs", "outputs", "both"}:
+            raise ValueError("direction must be 'inputs', 'outputs', or 'both'")
+        if min_synapses < 1 or limit < 1:
+            raise ValueError("min_synapses and limit must be positive")
+
+        neuron_id = int(root_id)
+        key = (neuron_id, direction, int(min_synapses), int(limit))
+        if self._ranked_partners_ttl > 0:
+            with self._ranked_partners_lock:
+                cached = self._ranked_partners_cache.get(key)
+                if cached and time.monotonic() - cached[0] < self._ranked_partners_ttl:
+                    return [dict(row) for row in cached[1]]
+
+        directions = (
+            ("inputs", "outputs") if direction == "both" else (direction,)
+        )
+        ranked: list[dict[str, Any]] = []
+        for side in directions:
+            # A directed match anchored on the selected neuron avoids a
+            # full-dataset scan. The server performs ordering and limiting,
+            # instead of fetch_adjacencies downloading every ROI breakdown.
+            if side == "inputs":
+                pattern = (
+                    f"MATCH (selected:Neuron {{bodyId: {neuron_id}}})"
+                    "<-[edge:ConnectsTo]-(partner:Neuron)"
+                )
+                presynaptic = "partner"
+            else:
+                pattern = (
+                    f"MATCH (selected:Neuron {{bodyId: {neuron_id}}})"
+                    "-[edge:ConnectsTo]->(partner:Neuron)"
+                )
+                presynaptic = "selected"
+
+            query = f"""
+            {pattern}
+            WHERE edge.weight >= {int(min_synapses)}
+            RETURN
+                partner.bodyId AS partner_root_id,
+                edge.weight AS syn_count,
+                {presynaptic}.consensusNt AS consensus_nt,
+                edge.roiInfo AS roi_info
+            ORDER BY syn_count DESC, partner_root_id ASC
+            LIMIT {int(limit)}
+            """
+            frame = self.client.fetch_custom(query)
+            if frame is None or len(frame) == 0:
+                continue
+
+            for item in frame.to_dict("records"):
+                # roiInfo is an optional JSON object per ConnectsTo edge.
+                # Its keys are ROI entries, *not* necessarily primary
+                # neuropils; do not mislabel them or infer extra weights.
+                roi_info = item.get("roi_info")
+                roi_count: int | None = None
+                if isinstance(roi_info, str):
+                    try:
+                        roi_info = json.loads(roi_info)
+                    except ValueError:
+                        roi_info = None
+                if isinstance(roi_info, dict):
+                    roi_count = sum(
+                        1 for value in roi_info.values()
+                        if isinstance(value, dict) and value.get("post", 0) > 0
+                    )
+
+                ranked.append(
+                    {
+                        "partner_root_id": int(item["partner_root_id"]),
+                        "syn_count": int(item["syn_count"]),
+                        "direction": side,
+                        "roi_count": roi_count,
+                        "dominant_nt": _nt_label(item.get("consensus_nt")),
+                    }
+                )
+
+        ranked.sort(
+            key=lambda row: (
+                -row["syn_count"],
+                row["partner_root_id"],
+                row["direction"],
+            )
+        )
+        ranked = ranked[:limit]
+
+        if self._ranked_partners_ttl > 0:
+            with self._ranked_partners_lock:
+                # The live dataset can change, so don't cache indefinitely
+                # or allow an unbounded number of different neuron IDs.
+                self._ranked_partners_cache[key] = (
+                    time.monotonic(),
+                    [dict(row) for row in ranked],
+                )
+                if len(self._ranked_partners_cache) > 64:
+                    oldest = min(
+                        self._ranked_partners_cache,
+                        key=lambda candidate: self._ranked_partners_cache[candidate][0],
+                    )
+                    del self._ranked_partners_cache[oldest]
+        return [dict(row) for row in ranked]
 
     def pair(self, pre_root_id: int, post_root_id: int) -> dict[str, Any]:
         """Inspect one directed MaleCNS neuron-to-neuron connection."""
