@@ -3,6 +3,7 @@ __pycache__/
 .venv/
 .venv-train/
 .env
+data/malecns_full/
 data/flygpt_memory.sqlite3
 data/flygpt_memory.sqlite3-shm
 data/flygpt_memory.sqlite3-wal
