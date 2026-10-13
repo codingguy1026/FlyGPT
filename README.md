@@ -78,6 +78,24 @@ unauthenticated client or that a language-model provider is available.
 suspends/stops it. For a public, always-on release, deploy to a hosting service
 rather than relying on a Codespaces preview.
 
+## Named-neuron connection partner ranking
+
+Questions such as **"MaleCNS에서 뉴런 10009와 가장 강하게 연결된 뉴런
+10개"** are resolved via `MaleCNSConnectome.neuron(body_id)`, not the
+global neuron site-count leaderboard.
+
+Input connections are `partner → selected neuron`, and output connections
+are `selected neuron → partner`. When the user requests both directions,
+FlyGPT fetches the strongest candidates from each direction, merges them
+by **directed synapse weight**, and returns the requested overall top N.
+The reported weights are neuron-pair connections, **not** the
+`pre + post` site totals used for global neuron rankings. Data is
+retrieved from neuPrint; query and total timings are shown separately.
+
+This distinction fixes the prior parser issue where generic words
+`뉴런 + 연결 + 가장 강` took priority over a selected body ID,
+causing a requested specific-neuron ranking to return global TOP 10.
+
 ## Verified positional logic (experimental)
 
 For explicitly formatted Korean line-up puzzles (3 to 7 named participants),

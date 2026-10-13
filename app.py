@@ -26,7 +26,7 @@ from research_runtime import BraveResearchRuntime, validated_fact_candidates
 from auth_store import AuthStore, SESSION_TTL_SECONDS
 
 
-APP_VERSION = "0.12.4"
+APP_VERSION = "0.12.5"
 
 
 def _env_seconds(name: str, default: float, minimum: float, maximum: float) -> float:
@@ -254,8 +254,16 @@ def predict_route(text: str, user_id: str | None = None) -> dict[str, Any] | Non
 
 def extract_root_ids(text: str) -> list[int]:
     # MaleCNS body IDs are not fixed-width FlyWire root IDs; valid examples
-    # include short values such as 12781.
-    return [int(value) for value in re.findall(r"\b\d{4,16}\b", text)]
+    # include short values such as 12781. Python's Unicode \\b does not
+    # split a digit from the Korean suffix "번" (both count as word chars),
+    # so also permit ID + "번" without interpreting unrelated years as IDs.
+    return [
+        int(value)
+        for value in re.findall(
+            r"(?<!\w)(\d{4,16})(?=\b|번|에서|에게|으로|에|와|과|의|는|은|이|가|을|를|로)",
+            text,
+        )
+    ]
 
 
 def extract_limit(text: str, default: int = 10) -> int:
@@ -273,8 +281,41 @@ def extract_limit(text: str, default: int = 10) -> int:
     return default
 
 
+def is_neuron_partner_ranking_query(text: str) -> bool:
+    """Rank strongest *partners of a specified neuron*, never global neurons.
+
+    Check this before generic phrases such as "가장 강한 연결 뉴런".
+    Queries without exactly one selected body ID keep their original route.
+    """
+    root_ids = set(extract_root_ids(text))
+    if len(root_ids) != 1:
+        return False
+
+    lower = " ".join(text.lower().split())
+    asks_for_partners = any(
+        token in lower
+        for token in ("뉴런", "신경세포", "파트너", "neuron", "partner")
+    )
+    mentions_connections = any(
+        token in lower
+        for token in ("연결", "시냅스", "connection", "synapse", "partner")
+    )
+    asks_for_ranking = any(
+        token in lower
+        for token in (
+            "가장 강", "제일 강", "강하게 연결", "강한 연결",
+            "많이 연결", "상위", "순위", "top", "strongest",
+            "most connected", "top-connected",
+        )
+    )
+    return asks_for_partners and mentions_connections and asks_for_ranking
+
+
 def is_strongest_neuron_query(text: str) -> bool:
-    """Detect natural-language requests for the most strongly connected neuron."""
+    """Detect global pre+post-site leaderboards, not named-neuron partners."""
+
+    if is_neuron_partner_ranking_query(text):
+        return False
 
     lower = " ".join(text.lower().split())
 
@@ -305,9 +346,9 @@ def is_strongest_neuron_query(text: str) -> bool:
 
 
 def is_top_connection_query(text: str) -> bool:
-    """Detect pair-level strongest-connection requests without hijacking generic TOP prompts."""
+    """Detect *global* strongest pairs, never a specified neuron's partners."""
 
-    if is_strongest_neuron_query(text):
+    if is_neuron_partner_ranking_query(text) or is_strongest_neuron_query(text):
         return False
 
     lower = " ".join(text.lower().split())
@@ -683,6 +724,95 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 data=stats,
                 route=None,
                 session_id=session_id,
+            )
+
+        # A specified neuron's strongest neighbors are not the global
+        # pre+post leaderboard. Query actual directed ConnectsTo weights
+        # before the generic global leaderboard fast paths.
+        if is_neuron_partner_ranking_query(msg):
+            neuron_id = next(iter(set(root_ids)))
+            limit = extract_limit(msg, 10)
+            wants_inputs = "입력" in msg or "input" in lower
+            wants_outputs = "출력" in msg or "output" in lower
+            if wants_inputs and not wants_outputs:
+                direction = "inputs"
+            elif wants_outputs and not wants_inputs:
+                direction = "outputs"
+            else:
+                direction = "both"
+
+            query_started = time.perf_counter()
+            partner_groups = get_connectome().neuron(
+                neuron_id, direction=direction, limit=limit,
+            )
+            query_ms = round((time.perf_counter() - query_started) * 1000)
+
+            ranked: list[dict[str, Any]] = []
+            for group, direction_label in (
+                ("inputs", "입력"),
+                ("outputs", "출력"),
+            ):
+                for partner in partner_groups.get(group, []):
+                    ranked.append({
+                        "partner_root_id": int(partner["partner_root_id"]),
+                        "syn_count": int(partner["syn_count"]),
+                        "direction": direction_label,
+                        "neuropil_count": int(partner.get("neuropil_count") or 0),
+                        "dominant_nt": dominant_nt(partner),
+                    })
+            ranked.sort(
+                key=lambda item: (
+                    -item["syn_count"],
+                    item["partner_root_id"],
+                    item["direction"],
+                )
+            )
+            ranked = ranked[:limit]
+            total_ms = round((time.perf_counter() - request_started) * 1000)
+
+            sections = [
+                f"🔗 Neuron {neuron_id} 연결 상대 TOP {len(ranked)}",
+                "기준: 실제 뉴런 간 연결 가중치 (시냅스 수)",
+            ]
+            if not ranked:
+                sections.append("해당 방향에서 확인된 연결 상대가 없습니다.")
+
+            for index, partner in enumerate(ranked, 1):
+                arrow = (
+                    f"{partner['partner_root_id']} → {neuron_id}"
+                    if partner["direction"] == "입력"
+                    else f"{neuron_id} → {partner['partner_root_id']}"
+                )
+                sections.append(
+                    f"{index}. {arrow} · {partner['direction']}\n"
+                    f"   연결 시냅스 수: {partner['syn_count']:,}\n"
+                    f"   Neuropils: {partner['neuropil_count']}\n"
+                    f"   Consensus NT (presynaptic): {partner['dominant_nt']}"
+                )
+
+            sections.append(
+                "※ 이 순위는 지정한 뉴런의 입력·출력 연결을 통합하여 "
+                "시냅스 가중치 기준으로 정렬한 결과입니다. "
+                "전체 뉴런의 pre + post 사이트 합계 순위와 다릅니다."
+            )
+
+            print(
+                "[PERF] /api/chat fastpath=neuron_partner_ranking "
+                f"neuron={neuron_id} query={query_ms}ms total={total_ms}ms",
+                flush=True,
+            )
+            return response_with_router(
+                answer="\n\n".join(sections),
+                response_type="neuron_partner_ranking",
+                data={
+                    "neuron_id": neuron_id,
+                    "metric": "directed_connects_to_synapse_weight",
+                    "direction": direction,
+                    "partners": ranked,
+                },
+                route=None,
+                session_id=session_id,
+                timings={"query_ms": query_ms, "total_ms": total_ms},
             )
 
         if is_strongest_neuron_query(msg):
