@@ -96,6 +96,33 @@ This distinction fixes the prior parser issue where generic words
 `뉴런 + 연결 + 가장 강` took priority over a selected body ID,
 causing a requested specific-neuron ranking to return global TOP 10.
 
+### Fast named-neuron ranking (v0.12.6)
+
+The specialized strongest-partner chat fast path now queries directed
+`ConnectsTo` edges using **neuPrint Cypher** with server-side
+`ORDER BY edge.weight DESC` and `LIMIT N`. It requests at most N incoming
+and N outgoing candidates, then merges them into the actual top N across
+both directions. It no longer downloads and locally groups every neighbor's
+full ROI breakdown just to display a leaderboard.
+
+The response still reports directed IDs, synapse weights, presynaptic NT,
+and optionally the number of **ROI entries** reported on each returned
+edge (which must not be mistaken for a count of primary neuropils).
+The regular `neuron()` detail path and ROI-filtered calls continue using
+`fetch_adjacencies()` when a full per-ROI breakdown is needed.
+
+Identical ranked-neuron requests are cached in each running backend process
+for **120 seconds** by default (at most 64 entries). Set
+`FLYGPT_PARTNER_CACHE_TTL=0` to disable caching or a value in seconds
+up to 3600 to tune it. The cached answer can be up to the TTL old, and the
+cache is cleared by a process restart. The existing `QUERY` and `TOTAL`
+timings remain useful for comparing a cold lookup against a repeated query.
+
+**Important:** Runtime improvements are expected but not guaranteed. Real
+neuPrint latency and performance must be measured from your Codespace;
+unit tests mock neuPrint and only verify logic/query shape, not actual
+server response times.
+
 ## Verified positional logic (experimental)
 
 For explicitly formatted Korean line-up puzzles (3 to 7 named participants),

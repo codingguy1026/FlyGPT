@@ -49,36 +49,16 @@ class NeuronPartnerRankingTests(unittest.TestCase):
 
     def test_partner_ranking_calls_real_neuron_query_instead_of_global_top(self):
         conn = MagicMock()
-        conn.neuron.return_value = {
-            "inputs": [
-                {
-                    "partner_root_id": 22333,
-                    "syn_count": 120,
-                    "neuropil_count": 2,
-                    "dominant_nt": "ACH",
-                },
-                {
-                    "partner_root_id": 33444,
-                    "syn_count": 10,
-                    "neuropil_count": 1,
-                    "dominant_nt": "GABA",
-                },
-            ],
-            "outputs": [
-                {
-                    "partner_root_id": 44555,
-                    "syn_count": 90,
-                    "neuropil_count": 3,
-                    "dominant_nt": "GABA",
-                },
-                {
-                    "partner_root_id": 55666,
-                    "syn_count": 45,
-                    "neuropil_count": 1,
-                    "dominant_nt": "GABA",
-                },
-            ],
-        }
+        conn.ranked_partners.return_value = [
+            {"partner_root_id": 22333, "syn_count": 120,
+             "roi_count": 2, "dominant_nt": "ACH", "direction": "inputs"},
+            {"partner_root_id": 44555, "syn_count": 90,
+             "roi_count": 3, "dominant_nt": "GABA", "direction": "outputs"},
+            {"partner_root_id": 55666, "syn_count": 45,
+             "roi_count": 1, "dominant_nt": "GABA", "direction": "outputs"},
+            {"partner_root_id": 33444, "syn_count": 10,
+             "roi_count": 1, "dominant_nt": "GABA", "direction": "inputs"},
+        ]
         with (
             patch.object(flygpt_app, "_require_user", return_value={"id": "test-user"}),
             patch.object(flygpt_app._knowledge, "context_for_query", return_value=(None, [])),
@@ -99,16 +79,17 @@ class NeuronPartnerRankingTests(unittest.TestCase):
             [(entry["partner_root_id"], entry["direction"], entry["syn_count"])
              for entry in payload["data"]["partners"]],
             [
-                (22333, "입력", 120),
-                (44555, "출력", 90),
-                (55666, "출력", 45),
-                (33444, "입력", 10),
+                (22333, "inputs", 120),
+                (44555, "outputs", 90),
+                (55666, "outputs", 45),
+                (33444, "inputs", 10),
             ],
         )
         self.assertIn("22333 → 10009", payload["answer"])
         self.assertIn("10009 → 44555", payload["answer"])
         self.assertNotIn("시냅스 수 상위 뉴런", payload["answer"])
-        conn.neuron.assert_called_once_with(10009, direction="both", limit=10)
+        conn.ranked_partners.assert_called_once_with(10009, direction="both", limit=10)
+        conn.neuron.assert_not_called()
         conn.top_neurons.assert_not_called()
         conn.top_connections.assert_not_called()
         router.assert_not_called()
@@ -118,12 +99,10 @@ class NeuronPartnerRankingTests(unittest.TestCase):
 
     def test_only_requested_input_direction_is_queried(self):
         conn = MagicMock()
-        conn.neuron.return_value = {
-            "inputs": [{
-                "partner_root_id": 22333, "syn_count": 12,
-                "neuropil_count": 1, "dominant_nt": "GABA",
-            }],
-        }
+        conn.ranked_partners.return_value = [
+            {"partner_root_id": 22333, "syn_count": 12,
+             "roi_count": 1, "dominant_nt": "GABA", "direction": "inputs"},
+        ]
         question = "10009번 뉴런과 가장 강하게 연결된 입력 뉴런 상위 5개"
         with (
             patch.object(flygpt_app, "_require_user", return_value={"id": "test-user"}),
@@ -138,7 +117,10 @@ class NeuronPartnerRankingTests(unittest.TestCase):
 
         self.assertEqual(payload["type"], "neuron_partner_ranking")
         self.assertEqual(payload["data"]["direction"], "inputs")
-        conn.neuron.assert_called_once_with(10009, direction="inputs", limit=5)
+        conn.ranked_partners.assert_called_once_with(
+            10009, direction="inputs", limit=5
+        )
+        conn.neuron.assert_not_called()
 
 
 if __name__ == "__main__":
