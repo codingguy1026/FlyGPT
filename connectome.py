@@ -239,9 +239,10 @@ class MaleCNSConnectome:
         """Rank a single neuron's directed partners by edge weight.
 
         Unlike neuron(), which can return an ROI breakdown for all partners,
-        this narrow fast path asks neuPrint to ORDER BY and LIMIT each
-        direction before returning any rows. With both directions requested,
-        the top N from each side suffice for the exact global top N merge.
+        this narrow fast path asks neuPrint to ORDER BY and LIMIT the
+        selected neuron's connections before returning any rows. With both
+        directions requested, one undirected relationship match retains
+        actual edge orientation using startNode(edge).
         """
         if direction not in {"inputs", "outputs", "both"}:
             raise ValueError("direction must be 'inputs', 'outputs', or 'both'")
@@ -256,15 +257,28 @@ class MaleCNSConnectome:
                 if cached and time.monotonic() - cached[0] < self._ranked_partners_ttl:
                     return [dict(row) for row in cached[1]]
 
-        directions = (
-            ("inputs", "outputs") if direction == "both" else (direction,)
-        )
-        ranked: list[dict[str, Any]] = []
-        for side in directions:
-            # A directed match anchored on the selected neuron avoids a
-            # full-dataset scan. The server performs ordering and limiting,
-            # instead of fetch_adjacencies downloading every ROI breakdown.
-            if side == "inputs":
+        # Fetch a combined incoming/outgoing ranking with ONE Cypher
+        # request. In the previous implementation, "both" used two
+        # sequential remote round trips, adding avoidable cold latency.
+        if direction == "both":
+            query = f"""
+            MATCH (selected:Neuron {{bodyId: {neuron_id}}})-[edge:ConnectsTo]-(partner:Neuron)
+            WHERE edge.weight >= {int(min_synapses)}
+            WITH selected, partner, edge, startNode(edge) AS presynaptic
+            RETURN
+                partner.bodyId AS partner_root_id,
+                edge.weight AS syn_count,
+                presynaptic.consensusNt AS consensus_nt,
+                edge.roiInfo AS roi_info,
+                CASE WHEN presynaptic = selected THEN 'outputs'
+                     ELSE 'inputs' END AS direction
+            ORDER BY syn_count DESC, partner_root_id ASC, direction ASC
+            LIMIT {int(limit)}
+            """
+        else:
+            # Input-only and output-only searches retain a directed
+            # match to avoid any extra filtering or wider graph traversal.
+            if direction == "inputs":
                 pattern = (
                     f"MATCH (selected:Neuron {{bodyId: {neuron_id}}})"
                     "<-[edge:ConnectsTo]-(partner:Neuron)"
@@ -288,10 +302,10 @@ class MaleCNSConnectome:
             ORDER BY syn_count DESC, partner_root_id ASC
             LIMIT {int(limit)}
             """
-            frame = self.client.fetch_custom(query)
-            if frame is None or len(frame) == 0:
-                continue
 
+        frame = self.client.fetch_custom(query)
+        ranked: list[dict[str, Any]] = []
+        if frame is not None and len(frame):
             for item in frame.to_dict("records"):
                 # roiInfo is an optional JSON object per ConnectsTo edge.
                 # Its keys are ROI entries, *not* necessarily primary
@@ -309,6 +323,12 @@ class MaleCNSConnectome:
                         if isinstance(value, dict)
                         and isinstance(value.get("post"), (int, float))
                         and value["post"] > 0
+                    )
+
+                side = item.get("direction", direction)
+                if side not in {"inputs", "outputs"}:
+                    raise ValueError(
+                        "neuPrint returned an invalid connection direction"
                     )
 
                 ranked.append(
