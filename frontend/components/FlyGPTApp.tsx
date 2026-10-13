@@ -386,6 +386,9 @@ export default function FlyGPTApp({
       setRouter(response.router ?? null);
 
       const meta: MessageMeta[] = [];
+      if (response.type === "logic_verified") {
+        meta.push({ text: "VERIFIED · ALL ARRANGEMENTS", tone: "good" });
+      }
       if (response.router) {
         if (response.router.semantic_override) {
           meta.push({

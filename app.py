@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from connectome import MaleCNSConnectome
 from brain_runtime import FlyBrainRuntime
 from semantic_route_guard import apply_semantic_route_override
+from seating_solver import solve_linear_seating
 from dispatcher import dispatch, dispatch_math_fast_path, is_math_fast_path
 from generator_runtime import GENERATIVE_ROUTES, GeneratorRuntime
 from memory_store import MemoryStore, format_recall
@@ -25,7 +26,7 @@ from research_runtime import BraveResearchRuntime, validated_fact_candidates
 from auth_store import AuthStore, SESSION_TTL_SECONDS
 
 
-APP_VERSION = "0.12.3"
+APP_VERSION = "0.12.4"
 
 
 def _env_seconds(name: str, default: float, minimum: float, maximum: float) -> float:
@@ -638,6 +639,32 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 data=result.to_dict(),
                 route=None,
                 session_id=session_id,
+            )
+
+        # Verify supported linear-position constraints with exhaustive
+        # enumeration, *before* asking a small LLM to invent an arrangement.
+        # The parser opts out on unknown participant constraints rather than
+        # silently claiming a partial solution is proved.
+        seating = solve_linear_seating(msg)
+        if seating is not None:
+            elapsed_ms = round((time.perf_counter() - request_started) * 1000)
+            return response_with_router(
+                answer=seating.answer,
+                response_type="logic_verified",
+                data={
+                    "solver": "deterministic_seating_v1",
+                    "possible_count": seating.possible_count,
+                    "checked_count": seating.checked_count,
+                    "rule_count": seating.rule_count,
+                    "ui_meta": {
+                        "mode": "logic_verified",
+                        "app_version": APP_VERSION,
+                    },
+                    "timings": {"total_ms": elapsed_ms},
+                },
+                route=None,
+                session_id=session_id,
+                timings={"total_ms": elapsed_ms},
             )
 
         if "통계" in msg or "stats" in lower or "statistics" in lower:
