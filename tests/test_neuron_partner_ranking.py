@@ -27,6 +27,8 @@ class NeuronPartnerRankingTests(unittest.TestCase):
 
     def test_korean_number_suffix_parsing_excludes_unrelated_years(self):
         self.assertEqual(flygpt_app.extract_root_ids("10009번 뉴런"), [10009])
+        self.assertEqual(flygpt_app.extract_root_ids("10009에 연결된 뉴런"), [10009])
+        self.assertEqual(flygpt_app.extract_root_ids("10009와 이웃한 뉴런"), [10009])
         self.assertEqual(flygpt_app.extract_root_ids("10009(CT1)"), [10009])
         self.assertEqual(flygpt_app.extract_root_ids("2026년 통계"), [])
 
