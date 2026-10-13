@@ -78,6 +78,24 @@ unauthenticated client or that a language-model provider is available.
 suspends/stops it. For a public, always-on release, deploy to a hosting service
 rather than relying on a Codespaces preview.
 
+## Verified positional logic (experimental)
+
+For explicitly formatted Korean line-up puzzles (3 to 7 named participants),
+FlyGPT has a small **deterministic** solver for constraints it recognizes:
+fixed positions from the left, immediately left/right, not being at an
+endpoint, adjacent participants, and specified position differences.
+
+The solver tests all candidate permutations and reports **no solution**,
+**one solution**, or **multiple solutions**, along with the candidate counts
+after each rule. This prevents small generation models from inventing seating
+orders that violate the given constraints. It appears as `VERIFIED · ALL
+ARRANGEMENTS` in chat and does not require the LLM to reason about the answer.
+
+This is not a general-purpose natural language or logic prover. If a
+participant-specific clause is unfamiliar, the solver declines to claim a
+verified result and the request proceeds through the normal experimental LLM
+path. Important unsolved questions should still be checked independently.
+
 ## Bounded generator recovery
 
 FlyGPT now distinguishes the generation stage from the fly-connectome
