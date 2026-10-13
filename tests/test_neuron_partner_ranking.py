@@ -25,6 +25,11 @@ class NeuronPartnerRankingTests(unittest.TestCase):
         self.assertEqual(flygpt_app.extract_root_ids(USER_QUESTION), [10009])
         self.assertEqual(flygpt_app.extract_limit(USER_QUESTION), 10)
 
+    def test_korean_number_suffix_parsing_excludes_unrelated_years(self):
+        self.assertEqual(flygpt_app.extract_root_ids("10009번 뉴런"), [10009])
+        self.assertEqual(flygpt_app.extract_root_ids("10009(CT1)"), [10009])
+        self.assertEqual(flygpt_app.extract_root_ids("2026년 통계"), [])
+
     def test_global_leaderboard_remains_supported(self):
         question = "네 뉴런중 연결이 가장 강한 뉴런은 뭐야?"
         self.assertTrue(flygpt_app.is_strongest_neuron_query(question))
