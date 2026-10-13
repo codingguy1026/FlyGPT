@@ -26,7 +26,7 @@ from research_runtime import BraveResearchRuntime, validated_fact_candidates
 from auth_store import AuthStore, SESSION_TTL_SECONDS
 
 
-APP_VERSION = "0.12.5"
+APP_VERSION = "0.12.6"
 
 
 def _env_seconds(name: str, default: float, minimum: float, maximum: float) -> float:
@@ -742,32 +742,10 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 direction = "both"
 
             query_started = time.perf_counter()
-            partner_groups = get_connectome().neuron(
+            ranked = get_connectome().ranked_partners(
                 neuron_id, direction=direction, limit=limit,
             )
             query_ms = round((time.perf_counter() - query_started) * 1000)
-
-            ranked: list[dict[str, Any]] = []
-            for group, direction_label in (
-                ("inputs", "입력"),
-                ("outputs", "출력"),
-            ):
-                for partner in partner_groups.get(group, []):
-                    ranked.append({
-                        "partner_root_id": int(partner["partner_root_id"]),
-                        "syn_count": int(partner["syn_count"]),
-                        "direction": direction_label,
-                        "neuropil_count": int(partner.get("neuropil_count") or 0),
-                        "dominant_nt": dominant_nt(partner),
-                    })
-            ranked.sort(
-                key=lambda item: (
-                    -item["syn_count"],
-                    item["partner_root_id"],
-                    item["direction"],
-                )
-            )
-            ranked = ranked[:limit]
             total_ms = round((time.perf_counter() - request_started) * 1000)
 
             sections = [
@@ -778,15 +756,23 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 sections.append("해당 방향에서 확인된 연결 상대가 없습니다.")
 
             for index, partner in enumerate(ranked, 1):
+                direction_label = (
+                    "입력" if partner["direction"] == "inputs" else "출력"
+                )
                 arrow = (
                     f"{partner['partner_root_id']} → {neuron_id}"
-                    if partner["direction"] == "입력"
+                    if partner["direction"] == "inputs"
                     else f"{neuron_id} → {partner['partner_root_id']}"
                 )
+                roi_count = partner.get("roi_count")
+                roi_line = (
+                    f"   ROI 항목: {roi_count}\n"
+                    if roi_count is not None else ""
+                )
                 sections.append(
-                    f"{index}. {arrow} · {partner['direction']}\n"
+                    f"{index}. {arrow} · {direction_label}\n"
                     f"   연결 시냅스 수: {partner['syn_count']:,}\n"
-                    f"   Neuropils: {partner['neuropil_count']}\n"
+                    f"{roi_line}"
                     f"   Consensus NT (presynaptic): {partner['dominant_nt']}"
                 )
 
