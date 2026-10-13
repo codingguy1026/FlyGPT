@@ -9,6 +9,7 @@ a partial parse from being mistaken for a proof.
 from __future__ import annotations
 
 import itertools
+import math
 import re
 from dataclasses import dataclass
 
@@ -21,7 +22,7 @@ _ORDINALS = {
 
 _PARTICIPANTS = re.compile(
     r"(?P<names>[A-Z](?:\s*,\s*[A-Z]){2,6})\s+"
-    r"(?P<count>[3-7])\s*명(?:이|은|은|가|은)?\s*일렬로\s*서"
+    r"(?P<count>[3-7])\s*명(?:이|가|은|는)?\s*일렬로\s*서"
 )
 
 _RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
@@ -158,7 +159,7 @@ def solve_linear_seating(message: str) -> SeatingResult | None:
     # Present fixed positions first so pruning can be followed by a reader.
     order = {"fixed": 0, "direct": 1, "not_end": 2, "neighbor": 3, "distance": 4}
     rules.sort(key=lambda item: order[item.kind])
-    total = len(list(itertools.permutations(participants)))
+    total = math.factorial(len(participants))
     candidates = list(itertools.permutations(participants))
     steps = [f"총 {total}가지 순서를 모두 검사합니다."]
 
