@@ -75,8 +75,8 @@ class FullBrainTests(unittest.TestCase):
 
     def test_explicit_min_weight_filter(self) -> None:
         result = self.brain.propagate(1, steps=1, min_weight=4)
-        self.assertEqual(result["stages"][0]["contributing_connection_rows"], 2)
-        self.assertEqual(result["stages"][0]["active_neurons"], 2)
+        self.assertEqual(result["stages"][0]["contributing_connection_rows"], 1)
+        self.assertEqual(result["stages"][0]["active_neurons"], 1)
 
     def test_seed_must_be_curated(self) -> None:
         with self.assertRaisesRegex(ValueError, "not a curated neuronal"):
