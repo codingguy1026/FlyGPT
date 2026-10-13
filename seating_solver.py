@@ -171,8 +171,8 @@ def solve_linear_seating(message: str) -> SeatingResult | None:
 
     if len(candidates) == 0:
         verdict = (
-            "결론: 모든 조건을 동시에 만족하는 배치는 없습니다. "
-            "따라서 주어진 조건은 서로 모순됩니다."
+            "결론: 가능한 배치는 없습니다. "
+            "모든 조건을 동시에 만족할 수 없으므로 주어진 조건은 서로 모순됩니다."
         )
     elif len(candidates) == 1:
         verdict = "결론: 유일한 배치는 " + " → ".join(candidates[0]) + " 입니다."
