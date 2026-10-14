@@ -668,7 +668,13 @@ def chat_endpoint(req: ChatRequest, request: Request):
         _memory.add(session_id, "user", msg)
 
     lower = msg.lower()
-    root_ids = extract_root_ids(msg)
+    # Numbers in arithmetic (e.g. 1972^2) and years are NOT neuron body IDs.
+    # Require an explicit graph lookup before extracting body IDs.
+    neuron_lookup = bool(
+        re.search(r"뉴런|신경세포|neuron|body\s*id|root\s*id|연결|시냅스|synapse|connection|->|→", msg, re.IGNORECASE)
+        or re.fullmatch(r"\d{4,16}", msg.strip())
+    )
+    root_ids = extract_root_ids(msg) if neuron_lookup else []
 
     try:
         if is_math_fast_path(msg):
