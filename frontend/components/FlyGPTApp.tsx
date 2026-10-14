@@ -554,7 +554,7 @@ export default function FlyGPTApp({
           </div>
           <div className={"labPulse" + (sending ? " active" : "")}>
             <i />
-            <span>{sending ? "SIGNAL MOVING" : online ? "SYSTEM NOMINAL" : "BACKEND CHECK"}</span>
+            <span>{sending ? "REQUEST RUNNING" : online ? "SYSTEM NOMINAL" : "BACKEND CHECK"}</span>
           </div>
         </div>
 
@@ -698,8 +698,8 @@ export default function FlyGPTApp({
       <aside className={"telemetryDock" + (telemetryOpen ? " open" : "")}>
         <div className="telemetryHeader">
           <div>
-            <span>LIVE TELEMETRY</span>
-            <h2>MaleCNS Live Trace</h2>
+            <span>ROUTER TELEMETRY</span>
+            <h2>MaleCNS Activity Trace</h2>
           </div>
           <button className="dockClose" type="button" aria-label="Telemetry 닫기" onClick={() => setTelemetryOpen(false)}>
             <Icon name="close" />
