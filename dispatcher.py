@@ -96,6 +96,7 @@ def _normalize_math(text: str) -> str:
         .replace("✕", "*")
         .replace("÷", "/")
         .replace("^", "**")
+        .replace("²", "**2")
         .replace("−", "-")
     )
 
@@ -195,27 +196,29 @@ def run_math_tool(message: str) -> str | None:
 
 
 def is_math_fast_path(message: str) -> bool:
-    """Return True for short expressions that are obviously arithmetic."""
+    """Route short, unambiguous arithmetic and one-variable linear equations."""
     raw = message.strip()
     raw = re.sub(
-        r"\s*(?:은|는)?\s*(?:얼마(?:야|인가|지)?|몇(?:이야|인가)?)?\s*\?\s*$",
+        r"\s*(?:은|는|이|가)?\s*(?:얼마(?:야|인가|지)?|몇(?:이야|인가)?|뭐야|뭐니|무엇인가요)?\s*[?？]?\s*$",
         "",
         raw,
     ).strip()
-    raw = raw.rstrip("?").strip()
-
     if not raw or len(raw) > 120:
         return False
 
     normalized = _normalize_math(raw).replace(" ", "")
-
     if re.fullmatch(r"\d{4}-\d{1,2}-\d{1,2}", normalized):
         return False
-
-    if not re.fullmatch(r"[0-9.()+\-*/%]+", normalized):
+    if not re.fullmatch(r"[0-9xX.()+\-*/%=]+", normalized):
+        return False
+    if "x" in normalized.lower():
+        if normalized.count("=") != 1:
+            return False
+    elif not re.search(r"[+*/%]|\*\*|(?<!^)-", normalized):
         return False
 
-    return bool(re.search(r"[+*/%]|\*\*|(?<!^)-", normalized))
+    # Unsupported expressions must not trigger a fast-path exception.
+    return run_math_tool(message) is not None
 
 
 def dispatch_math_fast_path(message: str) -> DispatchResult:
