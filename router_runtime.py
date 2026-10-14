@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 class FlyRouterRuntime:
@@ -118,7 +118,7 @@ class FlyRouterRuntime:
             "min_margin": self.min_margin,
         }
 
-    def predict(self, text: str, *, top_k: int = 3) -> dict[str, Any]:
+    def predict(self, text: str, *, top_k: int = 3, on_frame: Callable[[dict[str, Any]], None] | None = None) -> dict[str, Any]:
         torch = self._torch
         x = self._vectorize(text, self.vocab_size, self.vectorizer_version).unsqueeze(0)
         feature_signal = float(torch.linalg.vector_norm(x).item())
@@ -126,6 +126,8 @@ class FlyRouterRuntime:
         with torch.no_grad():
             h = torch.tanh(self.model.encoder(x))
             trace = [self._activation_frame(h, "input")]
+            if on_frame is not None:
+                on_frame(trace[-1])
 
             weights = (
                 self.model.base_weight
@@ -140,6 +142,8 @@ class FlyRouterRuntime:
                 agg = agg / self.model.in_degree.unsqueeze(0)
                 h = self.model.norm(h + torch.tanh(agg))
                 trace.append(self._activation_frame(h, f"step_{step}"))
+                if on_frame is not None:
+                    on_frame(trace[-1])
 
             logits = self.model.output(h)
             if feature_signal <= 1e-8:
