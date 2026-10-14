@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./refinements.css";
 
 export const metadata: Metadata = {
   title: "FlyGPT v0.7.1",
