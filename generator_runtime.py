@@ -39,7 +39,7 @@ _PLAN_LEAK_RE = re.compile(
     r"(?:utterance_plan|semantic_authority|speech_act|content_units|"
     r"forbidden_additions|neural_signature|brain_state|mouth_only_v1|"
     r"semantic_steps|grounded_project_fact|fact_id)"
-    r"(?:\\?['\"])?|trusted upstream utterance plan|"
+    r"(?:\\?['\"])?|(?:trusted upstream|provided) utterance plan|state-exact-math-result|"
     r"말할 목적\s*:|사용할 사실|speaking goal\s*:|facts in order\s*:"
 )
 
@@ -109,8 +109,13 @@ def _safe_surface_fallback(plan: dict[str, Any]) -> str | None:
 
 
 def _wrong_output_language(answer: str, plan: dict[str, Any]) -> bool:
-    """Detect language mismatch only for localized project-fact plans."""
-    if not plan.get("semantic_steps"):
+    """Also enforce the planned language for simple social responses."""
+    social_acts = {
+        "return_greeting", "acknowledge_thanks", "return_farewell",
+        "return_welcome", "acknowledge_presence", "request_specific_task",
+        "introduce_flygpt", "describe_supported_features", "explain_malecns",
+    }
+    if not plan.get("semantic_steps") and plan.get("speech_act") not in social_acts:
         return False
     language = str((plan.get("style") or {}).get("language") or "")
     if language == "ko":
