@@ -27,11 +27,13 @@ import {
   getHealth,
   getKnowledgeStatus,
   getRouteLearningStatus,
-  sendChat,
+  sendChatStream,
   type HealthResponse,
   type KnowledgeStatus,
   type RouteLearningStatus,
   type RouterResult,
+  type TraceFrame,
+  type ChatStreamEvent,
 } from "@/lib/api";
 import {
   createMemorySessionId,
@@ -57,6 +59,10 @@ export default function FlyGPTApp({
   const [railOpen, setRailOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [router, setRouter] = useState<RouterResult | null>(null);
+  const [liveFrames, setLiveFrames] = useState<TraceFrame[]>([]);
+  const [liveRoute, setLiveRoute] = useState<RouterResult | null>(null);
+  const [monitorPhase, setMonitorPhase] = useState<"idle" | "processing" | "router_loading" | "routing" | "generation" | "tool" | "done" | "error">("idle");
+  const [traceRequestId, setTraceRequestId] = useState(0);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [learningStatus, setLearningStatus] = useState<RouteLearningStatus | null>(null);
   const [knowledgeStatus, setKnowledgeStatus] = useState<KnowledgeStatus | null>(null);
@@ -209,14 +215,35 @@ export default function FlyGPTApp({
 
     setInput("");
     setSending(true);
+    setRouter(null);
+    setLiveFrames([]);
+    setLiveRoute(null);
+    setMonitorPhase("processing");
+    setTraceRequestId((current) => current + 1);
+    // The live monitor opens before inference, not after the response.
+    setBrainOpen(true);
     setMessages((current) => [
       ...current,
       { id: makeId("user"), role: "user", content: text },
     ]);
 
     try {
-      const response = await sendChat(text, sessionId);
+      const response = await sendChatStream(text, sessionId, (event: ChatStreamEvent) => {
+        if (event.type === "status") {
+          setMonitorPhase(event.phase);
+        } else if (event.type === "trace") {
+          setLiveFrames((current) => [...current, event.frame]);
+          setMonitorPhase("routing");
+        } else if (event.type === "route") {
+          setLiveRoute({
+            route: event.route,
+            confidence: event.confidence,
+            accepted: event.accepted,
+          });
+        }
+      });
       setRouter(response.router ?? null);
+      setMonitorPhase(response.router?.trace?.length ? "done" : response.type === "math_fast_path" ? "tool" : "done");
 
       const meta = buildMessageMeta(response);
       setMessages((current) => [
@@ -245,6 +272,7 @@ export default function FlyGPTApp({
         getKnowledgeStatus().then(setKnowledgeStatus).catch(() => undefined);
       }
     } catch (reason: unknown) {
+      setMonitorPhase("error");
       const detail = reason instanceof Error ? reason.message : String(reason);
       setMessages((current) => [
         ...current,
@@ -765,7 +793,15 @@ export default function FlyGPTApp({
 
       {telemetryOpen && <button className="telemetryScrim" type="button" aria-label="Telemetry 닫기" onClick={() => setTelemetryOpen(false)} />}
 
-      <BrainPanel open={brainOpen} onClose={() => setBrainOpen(false)} router={router} />
+      <BrainPanel
+        open={brainOpen}
+        onClose={() => setBrainOpen(false)}
+        router={sending ? (
+          liveFrames.length ? { ...(liveRoute ?? { route: "pending", confidence: 0 }), trace: liveFrames, n_nodes: liveFrames[0]?.activations.length } : liveRoute
+        ) : router}
+        phase={monitorPhase}
+        requestId={traceRequestId}
+      />
 
       {settingsOpen && (
         <div className="settingsBackdrop" onMouseDown={() => setSettingsOpen(false)}>
