@@ -20,6 +20,20 @@ class MathFastPathTests(unittest.TestCase):
         self.assertTrue(is_math_fast_path("11*11은?"))
         self.assertTrue(is_math_fast_path("(8+4)*3은 얼마야?"))
 
+    def test_malecns_body_id_is_not_a_math_operand(self):
+        self.assertFalse(is_math_fast_path("뉴런 12781의 출력 연결 5개"))
+
+    def test_exponent_with_korean_question(self):
+        self.assertTrue(is_math_fast_path("1972^2는 뭐야"))
+        self.assertIn("3888784", dispatch_math_fast_path("1972^2는 뭐야").answer)
+
+    def test_linear_equation_no_generator(self):
+        self.assertTrue(is_math_fast_path("8x=8"))
+        self.assertIn("x = 1", dispatch_math_fast_path("8x=8").answer)
+
+    def test_unsupported_math_expression_is_not_fast_path(self):
+        self.assertFalse(is_math_fast_path("2^100"))
+
     def test_date_is_not_math_fast_path(self):
         self.assertFalse(is_math_fast_path("2026-09-26"))
 
