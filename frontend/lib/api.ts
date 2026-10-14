@@ -1,3 +1,5 @@
+import { requestJson } from "./http";
+
 export type RouteScore = {
   route: string;
   confidence: number;
@@ -184,40 +186,11 @@ export type RouteLearningStatus = {
   max_examples: number;
 };
 
-async function jsonRequest<T>(
-  input: RequestInfo | URL,
-  init?: RequestInit,
-): Promise<T> {
-  const response = await fetch(input, {
-    credentials: "same-origin",
-    ...init,
-  });
-  let payload: unknown;
-
-  try {
-    payload = await response.json();
-  } catch {
-    throw new Error(`HTTP ${response.status}`);
-  }
-
-  if (!response.ok) {
-    const detail =
-      typeof payload === "object" &&
-      payload !== null &&
-      "detail" in payload
-        ? String((payload as { detail: unknown }).detail)
-        : `HTTP ${response.status}`;
-    throw new Error(detail);
-  }
-
-  return payload as T;
-}
-
 export function sendChat(
   message: string,
   sessionId: string,
 ): Promise<ChatResponse> {
-  return jsonRequest<ChatResponse>("/api/chat", {
+  return requestJson<ChatResponse>("/api/chat", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -230,13 +203,13 @@ export function sendChat(
 }
 
 export function getHealth(): Promise<HealthResponse> {
-  return jsonRequest<HealthResponse>("/api/health", {
+  return requestJson<HealthResponse>("/api/health", {
     cache: "no-store",
   });
 }
 
 export function getRouterGraph(): Promise<GraphResponse> {
-  return jsonRequest<GraphResponse>("/api/router/graph", {
+  return requestJson<GraphResponse>("/api/router/graph", {
     cache: "no-store",
   });
 }
@@ -245,7 +218,7 @@ export function clearMemory(sessionId: string): Promise<{
   cleared: number;
   session_id_present: boolean;
 }> {
-  return jsonRequest("/api/memory/clear", {
+  return requestJson("/api/memory/clear", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -257,7 +230,7 @@ export function clearMemory(sessionId: string): Promise<{
 }
 
 export function getRouteLearningStatus(): Promise<RouteLearningStatus> {
-  return jsonRequest<RouteLearningStatus>("/api/router/learning/status", {
+  return requestJson<RouteLearningStatus>("/api/router/learning/status", {
     cache: "no-store",
   });
 }
@@ -270,7 +243,7 @@ export function confirmRouteLearning(
   route: string;
   status: RouteLearningStatus;
 }> {
-  return jsonRequest("/api/router/learning/feedback", {
+  return requestJson("/api/router/learning/feedback", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -283,13 +256,13 @@ export function clearRouteLearning(): Promise<{
   cleared: number;
   status: RouteLearningStatus;
 }> {
-  return jsonRequest("/api/router/learning/clear", {
+  return requestJson("/api/router/learning/clear", {
     method: "POST",
   });
 }
 
 export function getKnowledgeStatus(): Promise<KnowledgeStatus> {
-  return jsonRequest<KnowledgeStatus>("/api/knowledge/status", {
+  return requestJson<KnowledgeStatus>("/api/knowledge/status", {
     cache: "no-store",
   });
 }
@@ -298,7 +271,7 @@ export function clearKnowledge(): Promise<{
   cleared: number;
   status: KnowledgeStatus;
 }> {
-  return jsonRequest("/api/knowledge/clear", {
+  return requestJson("/api/knowledge/clear", {
     method: "POST",
   });
 }
