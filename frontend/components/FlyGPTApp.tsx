@@ -9,6 +9,15 @@ import {
   useState,
 } from "react";
 import BrainPanel from "./BrainPanel";
+import { Icon, FlyOrb } from "./FlightIdentity";
+import { THEMES } from "@/lib/flight-theme";
+import {
+  activeChatKey, formatChatTime, INITIAL_MESSAGE, loadChatHistory,
+  makeId, MAX_STORED_CHATS, titleFrom, writeChatHistory,
+  type ChatRecord, type Message,
+} from "@/lib/chat-history";
+import { buildMessageMeta, formatRouterModel } from "@/lib/chat-presentation";
+
 import type { AuthUser } from "@/lib/auth";
 import {
   clearKnowledge,
@@ -29,194 +38,6 @@ import {
   getMemorySessionId,
   setMemorySessionId,
 } from "@/lib/session";
-
-type MessageMeta = {
-  text: string;
-  tone?: "good" | "info" | "warn" | "muted";
-};
-
-type Message = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  meta?: MessageMeta[];
-  learning?: {
-    prompt: string;
-    route: string;
-    confirmed?: boolean;
-  };
-};
-
-type ChatRecord = {
-  id: string;
-  title: string;
-  sessionId: string;
-  messages: Message[];
-  updatedAt: number;
-};
-
-const CHAT_HISTORY_KEY_PREFIX = "flygpt-chat-history-v0.7";
-const ACTIVE_CHAT_KEY_PREFIX = "flygpt-active-chat-v0.7";
-const MAX_STORED_CHATS = 40;
-
-function chatHistoryKey(userId: string) {
-  return CHAT_HISTORY_KEY_PREFIX + ":" + userId;
-}
-
-function activeChatKey(userId: string) {
-  return ACTIVE_CHAT_KEY_PREFIX + ":" + userId;
-}
-
-function loadChatHistory(userId: string): ChatRecord[] {
-  if (typeof window === "undefined") return [];
-
-  try {
-    const raw = window.localStorage.getItem(chatHistoryKey(userId));
-    if (!raw) return [];
-
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed
-      .filter(
-        (item): item is ChatRecord =>
-          Boolean(
-            item &&
-              typeof item.id === "string" &&
-              typeof item.title === "string" &&
-              typeof item.sessionId === "string" &&
-              Array.isArray(item.messages) &&
-              typeof item.updatedAt === "number",
-          ),
-      )
-      .slice(0, MAX_STORED_CHATS);
-  } catch {
-    return [];
-  }
-}
-
-function writeChatHistory(userId: string, history: ChatRecord[]) {
-  try {
-    window.localStorage.setItem(
-      chatHistoryKey(userId),
-      JSON.stringify(history.slice(0, MAX_STORED_CHATS)),
-    );
-  } catch {
-    // Local chat history is best-effort.
-  }
-}
-
-function formatChatTime(updatedAt: number) {
-  try {
-    return new Intl.DateTimeFormat("ko-KR", {
-      month: "numeric",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(new Date(updatedAt));
-  } catch {
-    return "";
-  }
-}
-
-type IconName =
-  | "home"
-  | "plus"
-  | "brain"
-  | "palette"
-  | "settings"
-  | "copy"
-  | "thumb"
-  | "retry"
-  | "spark"
-  | "code"
-  | "search"
-  | "send"
-  | "menu"
-  | "close";
-
-const THEMES = [
-  { id: "bio", name: "Biolume", accent: "#67f7a7", accent2: "#8ad8ff", glow: "103,247,167" },
-  { id: "violet", name: "Iris", accent: "#6e63ff", accent2: "#9f7cff", glow: "110,99,255" },
-  { id: "aqua", name: "Aqua", accent: "#2bbfd3", accent2: "#62e0d1", glow: "43,191,211" },
-  { id: "sun", name: "Solar", accent: "#f0a83a", accent2: "#ffd06b", glow: "240,168,58" },
-  { id: "rose", name: "Rose", accent: "#e96a9f", accent2: "#ff9fbd", glow: "233,106,159" },
-] as const;
-
-const INITIAL_MESSAGE: Message = {
-  id: "welcome",
-  role: "assistant",
-  content:
-    "안녕하세요. flewGPT MaleCNS 인터페이스 준비 완료 🪰\n질문을 보내면 실제 Drosophila MaleCNS 배선에서 만든 라우터 scaffold를 따라 경로를 선택해요.",
-};
-
-function makeId(prefix: string) {
-  return prefix + "-" + Date.now() + "-" + Math.random().toString(16).slice(2);
-}
-
-function titleFrom(text: string) {
-  const clean = text.replace(/\s+/g, " ").trim();
-  if (!clean) return "Untitled flight";
-  return clean.length > 28 ? clean.slice(0, 28) + "…" : clean;
-}
-
-function formatRouterModel(raw?: string | null) {
-  if (!raw) return "Router pending";
-
-  const filename = raw.split("/").pop() || raw;
-  let version = filename
-    .replace(/^fly_router_/, "")
-    .replace(/\.pt$/, "");
-
-  if (version.startsWith("v")) version = version.slice(1);
-  version = version.replaceAll("_", ".");
-
-  return version ? "Router v" + version : "Router";
-}
-
-function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
-  const common = {
-    width: size,
-    height: size,
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 1.8,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-    "aria-hidden": true,
-  };
-
-  if (name === "home") return <svg {...common}><path d="M4 10.5 12 4l8 6.5v8.5a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z" /></svg>;
-  if (name === "plus") return <svg {...common}><path d="M12 5v14M5 12h14" /></svg>;
-  if (name === "brain") return <svg {...common}><path d="M9 4.5A3.5 3.5 0 0 0 5.5 8v1A3.5 3.5 0 0 0 4 15.7 3.5 3.5 0 0 0 9.5 19H11V5.5A2 2 0 0 0 9 3.5zM15 4.5A3.5 3.5 0 0 1 18.5 8v1a3.5 3.5 0 0 1 1.5 6.7A3.5 3.5 0 0 1 14.5 19H13V5.5a2 2 0 0 1 2-2z" /><path d="M7 10h4M13 13h4M8 16h3M13 8h4" /></svg>;
-  if (name === "palette") return <svg {...common}><path d="M12 3a9 9 0 1 0 0 18h1.5a2 2 0 0 0 0-4H12a2 2 0 0 1 0-4h4a5 5 0 0 0 0-10z" /><circle cx="7.5" cy="9" r="1" /><circle cx="9.5" cy="6.5" r="1" /><circle cx="13" cy="6.2" r="1" /></svg>;
-  if (name === "settings") return <svg {...common}><circle cx="12" cy="12" r="3" /><path d="M19 13.5v-3l-2-.7a7 7 0 0 0-.7-1.7l.9-1.9-2.1-2.1-1.9.9a7 7 0 0 0-1.7-.7L10.5 2h-3l-.7 2a7 7 0 0 0-1.7.7l-1.9-.9-2.1 2.1.9 1.9a7 7 0 0 0-.7 1.7L0 10.5v3l2 .7a7 7 0 0 0 .7 1.7l-.9 1.9 2.1 2.1 1.9-.9a7 7 0 0 0 1.7.7l.7 2h3l.7-2a7 7 0 0 0 1.7-.7l1.9.9 2.1-2.1-.9-1.9a7 7 0 0 0 .7-1.7z" /></svg>;
-  if (name === "copy") return <svg {...common}><rect x="8" y="8" width="11" height="11" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></svg>;
-  if (name === "thumb") return <svg {...common}><path d="M7 21H4V10h3zM7 11l4-8 2 .5a2 2 0 0 1 1.3 2.5L13 10h5.5a2 2 0 0 1 2 2.3l-1 6A3 3 0 0 1 16.5 21H7z" /></svg>;
-  if (name === "retry") return <svg {...common}><path d="M20 7v5h-5" /><path d="M18.5 16a8 8 0 1 1 .7-7L20 12" /></svg>;
-  if (name === "spark") return <svg {...common}><path d="m12 3 1.2 3.8L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2zM5 14l.8 2.2L8 17l-2.2.8L5 20l-.8-2.2L2 17l2.2-.8zM19 14l.7 1.8 1.8.7-1.8.7L19 19l-.7-1.8-1.8-.7 1.8-.7z" /></svg>;
-  if (name === "code") return <svg {...common}><path d="m9 7-5 5 5 5M15 7l5 5-5 5M13.5 4l-3 16" /></svg>;
-  if (name === "search") return <svg {...common}><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5" /></svg>;
-  if (name === "send") return <svg {...common}><path d="M12 19V5M6.5 10.5 12 5l5.5 5.5" /></svg>;
-  if (name === "menu") return <svg {...common}><path d="M4 7h16M4 12h16M4 17h16" /></svg>;
-  if (name === "close") return <svg {...common}><path d="m6 6 12 12M18 6 6 18" /></svg>;
-  return null;
-}
-
-function FlyOrb({ small = false }: { small?: boolean }) {
-  return (
-    <div className={small ? "flyOrb small" : "flyOrb"} aria-hidden="true">
-      <span className="orbRing ringOne" />
-      <span className="orbRing ringTwo" />
-      <span className="flyCore">
-        <span className="flyWing leftWing" />
-        <span className="flyWing rightWing" />
-        <span className="flyBody">FLY</span>
-      </span>
-    </div>
-  );
-}
 
 export default function FlyGPTApp({
   user,
@@ -281,13 +102,6 @@ export default function FlyGPTApp({
       // Theme persistence is optional.
     }
 
-    getHealth()
-      .then((result) => {
-        setHealth(result);
-        setHealthError(false);
-      })
-      .catch(() => setHealthError(true));
-
     getRouteLearningStatus()
       .then(setLearningStatus)
       .catch(() => setLearningStatus(null));
@@ -295,6 +109,25 @@ export default function FlyGPTApp({
     getKnowledgeStatus()
       .then(setKnowledgeStatus)
       .catch(() => setKnowledgeStatus(null));
+  }, [user.id]);
+
+  useEffect(() => {
+    // Periodic heartbeat keeps the status honest after a connection drops.
+    let active = true;
+    const refreshHealth = () => {
+      getHealth()
+        .then((result) => {
+          if (!active) return;
+          setHealth(result);
+          setHealthError(false);
+        })
+        .catch(() => {
+          if (active) { setHealth(null); setHealthError(true); }
+        });
+    };
+    refreshHealth();
+    const timer = window.setInterval(refreshHealth, 30_000);
+    return () => { active = false; window.clearInterval(timer); };
   }, [user.id]);
 
   useEffect(() => {
@@ -385,130 +218,7 @@ export default function FlyGPTApp({
       const response = await sendChat(text, sessionId);
       setRouter(response.router ?? null);
 
-      const meta: MessageMeta[] = [];
-      if (response.type === "logic_verified") {
-        meta.push({ text: "VERIFIED · ALL ARRANGEMENTS", tone: "good" });
-      }
-      if (response.router) {
-        if (response.router.semantic_override) {
-          meta.push({
-            text: response.router.route + " · semantic rule",
-            tone: "good",
-          });
-          meta.push({
-            text:
-              "MODEL " +
-              response.router.semantic_override.model_route +
-              " " +
-              (response.router.semantic_override.model_confidence * 100).toFixed(1) +
-              "%",
-            tone: "muted",
-          });
-        } else {
-          meta.push({
-            text:
-              response.router.route +
-              " · " +
-              (response.router.confidence * 100).toFixed(1) +
-              "%",
-            tone: response.router.confidence >= 0.55 ? "good" : "warn",
-          });
-        }
-
-        if (response.router.model) {
-          meta.push({
-            text: formatRouterModel(response.router.model),
-            tone: "muted",
-          });
-        }
-      }
-
-      const generation = response.data?.generation;
-      if (generation?.used) {
-        meta.push({
-          text: "GEN · " + (generation.model ?? generation.provider ?? "ready"),
-          tone: "info",
-        });
-        if ((generation.attempts ?? 0) > 1) {
-          meta.push({
-            text: "RECOVERED · " + generation.attempts + " attempts",
-            tone: "good",
-          });
-        }
-
-        if (generation.latency_ms != null) {
-          meta.push({
-            text: "GEN " + generation.latency_ms + " ms",
-            tone: "muted",
-          });
-        }
-      } else if (generation && !generation.used) {
-        meta.push({
-          text: "GEN · " + (generation.error_code ?? "unavailable"),
-          tone: "warn",
-        });
-      }
-
-      const timings = response.timings ?? response.data?.timings;
-      if (timings?.query_ms != null) {
-        meta.push({
-          text: "QUERY " + timings.query_ms + " ms",
-          tone: "info",
-        });
-      }
-      if (timings?.router_ms != null) {
-        meta.push({
-          text: "ROUTE " + timings.router_ms + " ms",
-          tone: "muted",
-        });
-      }
-      if (timings?.dispatch_ms != null) {
-        meta.push({
-          text: "DISPATCH " + timings.dispatch_ms + " ms",
-          tone: "muted",
-        });
-      }
-      if (timings?.total_ms != null) {
-        meta.push({
-          text: "TOTAL " + timings.total_ms + " ms",
-          tone: timings.total_ms >= 10000 ? "warn" : "muted",
-        });
-      }
-
-      if (response.router?.learning_observed) {
-        meta.push({ text: "LEARNED", tone: "info" });
-      } else if (response.router?.personalization?.applied) {
-        meta.push({
-          text:
-            "PERSONAL " +
-            Math.round((response.router.personalization.blend ?? 0) * 100) +
-            "%",
-          tone: "info",
-        });
-      }
-
-      if ((response.data?.knowledge_learned?.length ?? 0) > 0) {
-        meta.push({
-          text: "KNOWLEDGE +" + (response.data?.knowledge_learned?.length ?? 0),
-          tone: "info",
-        });
-      }
-
-      const research = response.data?.research;
-      if ((research?.sources?.length ?? 0) > 0) {
-        meta.push({
-          text: "WEB · " + research!.sources.length + " sources",
-          tone: "info",
-        });
-      } else if (response.router?.route === "research" && research?.error) {
-        meta.push({ text: "WEB unavailable", tone: "warn" });
-      }
-
-      const verifiedCount = response.data?.web_verified_facts?.length ?? 0;
-      if (verifiedCount > 0) {
-        meta.push({ text: "VERIFIED +" + verifiedCount, tone: "good" });
-      }
-
+      const meta = buildMessageMeta(response);
       setMessages((current) => [
         ...current,
         {
@@ -601,6 +311,7 @@ export default function FlyGPTApp({
   }
 
   function newFlight() {
+    if (sending) return;
     const nextSessionId = createMemorySessionId(user.id);
     const nextChatId = makeId("chat");
 
@@ -639,7 +350,7 @@ export default function FlyGPTApp({
   }
 
   async function resetMemory() {
-    if (!sessionId) return;
+    if (!sessionId || sending) return;
     const confirmed = window.confirm("현재 비행 세션의 기억을 초기화할까요?");
     if (!confirmed) return;
 
@@ -693,13 +404,13 @@ export default function FlyGPTApp({
           </div>
         </div>
 
-        <button className="newFlightButton" type="button" onClick={newFlight}>
+        <button className="newFlightButton" type="button" onClick={newFlight} disabled={sending}>
           <Icon name="plus" size={18} />
           <span>새 채팅</span>
         </button>
 
         <nav className="railNav" aria-label="FlyGPT navigation">
-          <button className="railButton active" type="button" title="홈">
+          <button className="railButton active" type="button" title="홈" aria-current="page">
             <Icon name="home" size={18} />
             <span>홈</span>
           </button>
@@ -799,7 +510,7 @@ export default function FlyGPTApp({
         <div className="labStatusStrip" aria-label="MaleCNS system status">
           <div>
             <span>DATASET</span>
-            <strong>{health?.connectome?.dataset ?? "male-cns:v1.0"}</strong>
+            <strong>{health?.connectome?.dataset ?? (healthError ? "unavailable" : "checking")}</strong>
           </div>
           <div>
             <span>ROUTER</span>
@@ -811,7 +522,7 @@ export default function FlyGPTApp({
           </div>
           <div>
             <span>GENERATOR</span>
-            <strong>{health?.generator?.model ?? (health?.generator?.configured ? "ready" : "local fallback")}</strong>
+            <strong>{health?.generator?.model ?? (health?.generator?.configured ? "ready" : healthError ? "unavailable" : "checking")}</strong>
           </div>
           <div className={"labPulse" + (sending ? " active" : "")}>
             <i />
@@ -823,8 +534,8 @@ export default function FlyGPTApp({
           <div className="airCurrent currentOne" />
           <div className="airCurrent currentTwo" />
 
-          <section className="messageViewport" aria-live="polite">
-            <div className="flightConversation">
+          <section className="messageViewport" aria-label="대화 내용">
+            <div className="flightConversation" role="log" aria-live="polite" aria-relevant="additions">
               {messages.map((message, index) => (
                 <article key={message.id} className={"flightMessage " + message.role}>
                   {message.role === "assistant" && (
@@ -917,8 +628,10 @@ export default function FlyGPTApp({
                   onChange={(event) => setInput(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" && !event.shiftKey) {
-                      event.preventDefault();
-                      event.currentTarget.form?.requestSubmit();
+                      if (!event.nativeEvent.isComposing) {
+                        event.preventDefault();
+                        event.currentTarget.form?.requestSubmit();
+                      }
                     }
                   }}
                   placeholder="Signal something to FlyGPT…"
@@ -938,9 +651,9 @@ export default function FlyGPTApp({
             </form>
 
             <div className="dockStatus">
-              <span>flewGPT v{health?.app_version ?? "0.8.0"}</span>
+              <span>{health?.app_version ? "FlyGPT v" + health.app_version : "FlyGPT · " + (healthError ? "offline" : "checking")}</span>
               <span>•</span>
-              <span>{health?.connectome?.dataset ?? "male-cns:v1.0"}</span>
+              <span>{health?.connectome?.dataset ?? "dataset pending"}</span>
               <span>•</span>
               <span>{modelLabel}</span>
               {router && (
@@ -1039,11 +752,11 @@ export default function FlyGPTApp({
         </section>
 
         <div className="telemetryActions">
-          <button type="button" onClick={newFlight}>
+          <button type="button" onClick={newFlight} disabled={sending}>
             <Icon name="plus" size={17} />
             New flight
           </button>
-          <button type="button" onClick={resetMemory}>
+          <button type="button" onClick={resetMemory} disabled={sending}>
             <Icon name="retry" size={17} />
             Clear memory
           </button>
@@ -1101,7 +814,7 @@ export default function FlyGPTApp({
                 </strong>
               </div>
             </div>
-            <button className="settingsDanger" type="button" onClick={resetMemory}>Clear current memory</button>
+            <button className="settingsDanger" type="button" onClick={resetMemory} disabled={sending}>Clear current memory</button>
             <button className="settingsDanger" type="button" onClick={() => void resetRouteLearning()}>
               Clear learned routing
             </button>

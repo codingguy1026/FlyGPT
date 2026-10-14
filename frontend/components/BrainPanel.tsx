@@ -35,18 +35,23 @@ function nodePosition(index: number, count: number) {
 export default function BrainPanel({ open, onClose, router }: Props) {
   const [graph, setGraph] = useState<GraphResponse | null>(null);
   const [error, setError] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
   const [frameIndex, setFrameIndex] = useState(-1);
   const [calciumStep, setCalciumStep] = useState(-1);
 
   useEffect(() => {
-    if (!open || graph || error) return;
+    if (!open || graph) return;
+    let active = true;
+    setError("");
 
     getRouterGraph()
-      .then(setGraph)
+      .then((result) => { if (active) setGraph(result); })
       .catch((reason: unknown) => {
-        setError(reason instanceof Error ? reason.message : String(reason));
+        if (active) setError(reason instanceof Error ? reason.message : String(reason));
       });
-  }, [open, graph, error]);
+
+    return () => { active = false; };
+  }, [open, graph, retryCount]);
 
   useEffect(() => {
     if (!open) setCalciumStep(-1);
@@ -56,7 +61,7 @@ export default function BrainPanel({ open, onClose, router }: Props) {
     const trace = router?.trace ?? [];
     setCalciumStep(-1);
 
-    if (trace.length === 0) {
+    if (!open || trace.length === 0) {
       setFrameIndex(-1);
       return;
     }
@@ -73,10 +78,10 @@ export default function BrainPanel({ open, onClose, router }: Props) {
     }, 420);
 
     return () => window.clearInterval(timer);
-  }, [router]);
+  }, [open, router]);
 
   useEffect(() => {
-    if (calciumStep < 0) return;
+    if (!open || calciumStep < 0) return;
 
     if (calciumStep >= CALCIUM_STEPS) {
       const stopTimer = window.setTimeout(() => setCalciumStep(-1), 360);
@@ -89,7 +94,7 @@ export default function BrainPanel({ open, onClose, router }: Props) {
     );
 
     return () => window.clearTimeout(timer);
-  }, [calciumStep]);
+  }, [calciumStep, open]);
 
   const activeFrame: TraceFrame | null =
     frameIndex >= 0 ? router?.trace?.[frameIndex] ?? null : null;
@@ -165,7 +170,7 @@ export default function BrainPanel({ open, onClose, router }: Props) {
   if (!open) return null;
 
   return (
-    <aside className="brainPanel">
+    <aside className="brainPanel" aria-label="MaleCNS 신경망 패널">
       <header className="brainHeader">
         <div>
           <div className="eyebrow">MALECNS · ROUTER TRACE VIEW</div>
@@ -183,7 +188,7 @@ export default function BrainPanel({ open, onClose, router }: Props) {
           </button>
           <div className={"brainStatus" + (isActive ? " live" : "")}>
             {error
-              ? "OFFLINE"
+              ? "ERROR"
               : !graph
                 ? "LOADING"
                 : isActive
@@ -209,12 +214,15 @@ export default function BrainPanel({ open, onClose, router }: Props) {
 
       <div className={"brainStage calciumStage" + (isActive ? " calciumLive" : "")}>
         {error ? (
-          <div className="brainEmpty">
+          <div className="brainEmpty" role="alert">
             뉴런 지도를 불러오지 못했습니다.{"\n"}
             {error}
+            <button type="button" className="brainRetryButton" onClick={() => setRetryCount((count) => count + 1)}>
+              다시 시도
+            </button>
           </div>
         ) : !graph ? (
-          <div className="brainEmpty">파리 뇌 지도를 불러오는 중...</div>
+          <div className="brainEmpty" role="status">파리 뇌 지도를 불러오는 중...</div>
         ) : (
           <svg
             viewBox="0 0 100 100"
