@@ -1,0 +1,81 @@
+/* FlyGPT front-end refinement layer.
+   Keep the original visual language; only accessibility and failure states live here. */
+
+.flightApp :is(button, a, input, textarea, select):focus-visible,
+.authShell :is(button, a, input, textarea):focus-visible,
+.brainPanel :is(button, a):focus-visible {
+  outline: 2px solid var(--accent, #67f7a7);
+  outline-offset: 3px;
+}
+
+.flightApp :is(button, input, textarea):disabled,
+.authShell :is(button, input):disabled {
+  cursor: not-allowed;
+  opacity: .56;
+}
+
+.brainEmpty .brainRetryButton {
+  display: block;
+  margin: 14px auto 0;
+  padding: 9px 15px;
+  border-radius: 10px;
+  border: 1px solid rgba(103, 247, 167, .55);
+  background: rgba(103, 247, 167, .12);
+  color: #b8ffde;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.brainEmpty .brainRetryButton:hover {
+  background: rgba(103, 247, 167, .23);
+}
+
+.authSignoutError {
+  position: fixed;
+  z-index: 10000;
+  right: 18px;
+  bottom: 18px;
+  max-width: min(420px, calc(100vw - 36px));
+  border: 1px solid rgba(255, 159, 172, .55);
+  border-radius: 14px;
+  padding: 12px 42px 12px 16px;
+  color: #ffe4e8;
+  background: #40212d;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, .3);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.authSignoutError button {
+  position: absolute;
+  right: 8px;
+  top: 7px;
+  padding: 2px 7px;
+  border: 0;
+  border-radius: 8px;
+  color: #ffe9ec;
+  background: transparent;
+  cursor: pointer;
+  font-size: 19px;
+}
+
+.authSignoutError button:hover { background: rgba(255, 255, 255, .12); }
+
+@media (prefers-reduced-motion: reduce) {
+  .flightApp *, .flightApp *::before, .flightApp *::after,
+  .brainPanel *, .brainPanel *::before, .brainPanel *::after,
+  .authShell *, .authShell *::before, .authShell *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .001ms !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .flightApp .messageBubble,
+  .flightApp .launchComposer,
+  .flightApp .historyItem,
+  .brainPanel .brainStage { border-width: 2px; }
+}
