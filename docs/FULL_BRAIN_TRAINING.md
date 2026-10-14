@@ -20,11 +20,10 @@ space for the source file (about 1.05 GB). The data files must NOT be committed.
 
 ```bash
 df -h .
-python -m pip install -r requirements-full-connectome.txt
-# PyTorch + numpy must also be available (e.g. via make train-setup).
-python -m unittest discover -s tests -p 'test_full_connectome_training.py' -v
-python training/train_full_connectome.py --epochs 1 --batch-size 32768 \
-  --out artifacts/malecns_full_structural_embeddings.pt
+make train-setup
+.venv-train/bin/python -m pip install -r requirements-full-connectome.txt
+.venv-train/bin/python -m unittest discover -s tests -p 'test_full_connectome_training.py' -v
+make train-full-structural
 ```
 
 One epoch means a full pass through the huge file and can be compute-intensive.
