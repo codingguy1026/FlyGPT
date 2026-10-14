@@ -151,6 +151,20 @@ def run_math_tool(message: str) -> str | None:
                 return "Exact math tool result: no real square root for a negative input."
             return f"Exact math tool result: {_format_number(math.sqrt(value))}"
 
+    # Apply postfix exponentiation to the whole expression, not its last token.
+    # Example: 1972^2의 제곱 = (1972**2)**2, NOT 2**2.
+    postfix_square = re.search(
+        r"([0-9][0-9.+\-*/()^²\s]*)\s*의\s*제곱\s*(?:은|는)?\s*[?？]?\s*$",
+        message,
+    )
+    if postfix_square:
+        expression = _normalize_math(postfix_square.group(1)).strip()
+        try:
+            value = _safe_eval(expression)
+            return f"Exact math tool result: {_format_number(_safe_number(value ** 2))}"
+        except (SyntaxError, ValueError, OverflowError, ZeroDivisionError):
+            return None
+
     square_match = re.search(
         r"(-?\d+(?:\.\d+)?)\s*(?:의\s*제곱|squared)",
         text,
@@ -206,6 +220,12 @@ def is_math_fast_path(message: str) -> bool:
     if not raw or len(raw) > 120:
         return False
 
+    # Remove the postfix square only when checking whether this entire
+    # arithmetic request is supported; run_math_tool applies it to the value.
+    postfix_square = re.fullmatch(r"(.+?)\s*의\s*제곱\s*(?:은|는)?", raw)
+    if postfix_square:
+        raw = postfix_square.group(1).strip()
+
     normalized = _normalize_math(raw).replace(" ", "")
     if re.fullmatch(r"\d{4}-\d{1,2}-\d{1,2}", normalized):
         return False
@@ -214,7 +234,7 @@ def is_math_fast_path(message: str) -> bool:
     if "x" in normalized.lower():
         if normalized.count("=") != 1:
             return False
-    elif not re.search(r"[+*/%]|\*\*|(?<!^)-", normalized):
+    elif not postfix_square and not re.search(r"[+*/%]|\*\*|(?<!^)-", normalized):
         return False
 
     # Unsupported expressions must not trigger a fast-path exception.
