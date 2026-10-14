@@ -102,13 +102,6 @@ export default function FlyGPTApp({
       // Theme persistence is optional.
     }
 
-    getHealth()
-      .then((result) => {
-        setHealth(result);
-        setHealthError(false);
-      })
-      .catch(() => setHealthError(true));
-
     getRouteLearningStatus()
       .then(setLearningStatus)
       .catch(() => setLearningStatus(null));
@@ -116,6 +109,25 @@ export default function FlyGPTApp({
     getKnowledgeStatus()
       .then(setKnowledgeStatus)
       .catch(() => setKnowledgeStatus(null));
+  }, [user.id]);
+
+  useEffect(() => {
+    // Periodic heartbeat keeps the status honest after a connection drops.
+    let active = true;
+    const refreshHealth = () => {
+      getHealth()
+        .then((result) => {
+          if (!active) return;
+          setHealth(result);
+          setHealthError(false);
+        })
+        .catch(() => {
+          if (active) { setHealth(null); setHealthError(true); }
+        });
+    };
+    refreshHealth();
+    const timer = window.setInterval(refreshHealth, 30_000);
+    return () => { active = false; window.clearInterval(timer); };
   }, [user.id]);
 
   useEffect(() => {
@@ -299,6 +311,7 @@ export default function FlyGPTApp({
   }
 
   function newFlight() {
+    if (sending) return;
     const nextSessionId = createMemorySessionId(user.id);
     const nextChatId = makeId("chat");
 
@@ -337,7 +350,7 @@ export default function FlyGPTApp({
   }
 
   async function resetMemory() {
-    if (!sessionId) return;
+    if (!sessionId || sending) return;
     const confirmed = window.confirm("현재 비행 세션의 기억을 초기화할까요?");
     if (!confirmed) return;
 
@@ -391,13 +404,13 @@ export default function FlyGPTApp({
           </div>
         </div>
 
-        <button className="newFlightButton" type="button" onClick={newFlight}>
+        <button className="newFlightButton" type="button" onClick={newFlight} disabled={sending}>
           <Icon name="plus" size={18} />
           <span>새 채팅</span>
         </button>
 
         <nav className="railNav" aria-label="FlyGPT navigation">
-          <button className="railButton active" type="button" title="홈">
+          <button className="railButton active" type="button" title="홈" aria-current="page">
             <Icon name="home" size={18} />
             <span>홈</span>
           </button>
@@ -497,7 +510,7 @@ export default function FlyGPTApp({
         <div className="labStatusStrip" aria-label="MaleCNS system status">
           <div>
             <span>DATASET</span>
-            <strong>{health?.connectome?.dataset ?? "male-cns:v1.0"}</strong>
+            <strong>{health?.connectome?.dataset ?? (healthError ? "unavailable" : "checking")}</strong>
           </div>
           <div>
             <span>ROUTER</span>
@@ -509,7 +522,7 @@ export default function FlyGPTApp({
           </div>
           <div>
             <span>GENERATOR</span>
-            <strong>{health?.generator?.model ?? (health?.generator?.configured ? "ready" : "local fallback")}</strong>
+            <strong>{health?.generator?.model ?? (health?.generator?.configured ? "ready" : healthError ? "unavailable" : "checking")}</strong>
           </div>
           <div className={"labPulse" + (sending ? " active" : "")}>
             <i />
@@ -521,8 +534,8 @@ export default function FlyGPTApp({
           <div className="airCurrent currentOne" />
           <div className="airCurrent currentTwo" />
 
-          <section className="messageViewport" aria-live="polite">
-            <div className="flightConversation">
+          <section className="messageViewport" aria-label="대화 내용">
+            <div className="flightConversation" role="log" aria-live="polite" aria-relevant="additions">
               {messages.map((message, index) => (
                 <article key={message.id} className={"flightMessage " + message.role}>
                   {message.role === "assistant" && (
@@ -615,8 +628,10 @@ export default function FlyGPTApp({
                   onChange={(event) => setInput(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" && !event.shiftKey) {
-                      event.preventDefault();
-                      event.currentTarget.form?.requestSubmit();
+                      if (!event.nativeEvent.isComposing) {
+                        event.preventDefault();
+                        event.currentTarget.form?.requestSubmit();
+                      }
                     }
                   }}
                   placeholder="Signal something to FlyGPT…"
@@ -636,9 +651,9 @@ export default function FlyGPTApp({
             </form>
 
             <div className="dockStatus">
-              <span>flewGPT v{health?.app_version ?? "0.8.0"}</span>
+              <span>{health?.app_version ? "FlyGPT v" + health.app_version : "FlyGPT · " + (healthError ? "offline" : "checking")}</span>
               <span>•</span>
-              <span>{health?.connectome?.dataset ?? "male-cns:v1.0"}</span>
+              <span>{health?.connectome?.dataset ?? "dataset pending"}</span>
               <span>•</span>
               <span>{modelLabel}</span>
               {router && (
@@ -737,11 +752,11 @@ export default function FlyGPTApp({
         </section>
 
         <div className="telemetryActions">
-          <button type="button" onClick={newFlight}>
+          <button type="button" onClick={newFlight} disabled={sending}>
             <Icon name="plus" size={17} />
             New flight
           </button>
-          <button type="button" onClick={resetMemory}>
+          <button type="button" onClick={resetMemory} disabled={sending}>
             <Icon name="retry" size={17} />
             Clear memory
           </button>
@@ -799,7 +814,7 @@ export default function FlyGPTApp({
                 </strong>
               </div>
             </div>
-            <button className="settingsDanger" type="button" onClick={resetMemory}>Clear current memory</button>
+            <button className="settingsDanger" type="button" onClick={resetMemory} disabled={sending}>Clear current memory</button>
             <button className="settingsDanger" type="button" onClick={() => void resetRouteLearning()}>
               Clear learned routing
             </button>
