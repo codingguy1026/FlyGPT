@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+import asyncio
+from contextvars import ContextVar
+import json
 import os
 import re
 import threading
 import time
 from pathlib import Path
+from typing import Callable
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.responses import StreamingResponse
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -88,6 +93,18 @@ _connectome_lock = threading.Lock()
 _router: Any | None = None
 _router_lock = threading.Lock()
 _router_error: str | None = None
+
+
+# Per-request streaming sink. The normal /api/chat endpoint is unaffected.
+_TRACE_SINK: ContextVar[Callable[[dict[str, Any]], None] | None] = ContextVar(
+    "flygpt_trace_sink", default=None,
+)
+
+
+def _emit_live_trace(event: dict[str, Any]) -> None:
+    sink = _TRACE_SINK.get()
+    if sink is not None:
+        sink(event)
 
 _generator = GeneratorRuntime()
 _brain = FlyBrainRuntime()
@@ -213,7 +230,15 @@ def predict_route(text: str, user_id: str | None = None) -> dict[str, Any] | Non
 
     predict_started = time.perf_counter()
     try:
-        result = router.predict(text, top_k=len(router.routes))
+        sink = _TRACE_SINK.get()
+        if sink is None:
+            result = router.predict(text, top_k=len(router.routes))
+        else:
+            result = router.predict(
+                text,
+                top_k=len(router.routes),
+                on_frame=lambda frame: sink({"type": "trace", "frame": frame}),
+            )
     except Exception as exc:
         global _router_error
         _router_error = f"{type(exc).__name__}: {exc}"
@@ -638,6 +663,57 @@ def memory_clear(req: MemoryRequest, request: Request):
     }
 
 
+@app.post("/api/chat/stream")
+async def chat_stream_endpoint(req: ChatRequest, request: Request):
+    """SSE over POST: trace frames emitted by the actual chat router invocation.
+
+    No extra router inference, synthetic frames, or changes to persisted chat.
+    Keep /api/chat available for existing clients.
+    """
+    _require_user(request)  # authenticate before opening a stream
+    if not req.message.strip():
+        raise HTTPException(status_code=400, detail="메시지가 비어 있습니다.")
+
+    async def events():
+        queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+        loop = asyncio.get_running_loop()
+
+        def emit(event: dict[str, Any]) -> None:
+            loop.call_soon_threadsafe(queue.put_nowait, event)
+
+        def worker() -> None:
+            token = _TRACE_SINK.set(emit)
+            try:
+                response = chat_endpoint(req, request)
+                emit({"type": "result", "response": response})
+            except HTTPException as exc:
+                emit({"type": "error", "message": str(exc.detail), "status": exc.status_code})
+            except Exception:
+                emit({"type": "error", "message": "FlyGPT request failed"})
+            finally:
+                _TRACE_SINK.reset(token)
+
+        task = asyncio.create_task(asyncio.to_thread(worker))
+        try:
+            yield 'data: {"type":"status","phase":"processing"}\n\n'
+            while True:
+                event = await queue.get()
+                yield "data: " + json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n\n"
+                if event["type"] in {"result", "error"}:
+                    break
+        finally:
+            # Cancelling a running worker cannot roll back an in-flight request;
+            # its existing request budget still applies. Never launch a retry.
+            if task.done():
+                await task
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
+    )
+
+
 @app.post("/api/chat")
 def chat_endpoint(req: ChatRequest, request: Request):
     request_started = time.perf_counter()
@@ -960,11 +1036,19 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 session_id=session_id,
             )
 
+        _emit_live_trace({"type": "status", "phase": "router_loading"})
         router_started = time.perf_counter()
         route = predict_route(msg, user["id"])
         router_ms = round((time.perf_counter() - router_started) * 1000)
 
         if route is not None:
+            _emit_live_trace({
+                "type": "route",
+                "route": route["route"],
+                "confidence": route["confidence"],
+                "accepted": route.get("accepted", False),
+                "semantic_override": bool(route.get("semantic_override")),
+            })
             dispatch_started = time.perf_counter()
             result = dispatch(msg, route)
             dispatch_ms = round((time.perf_counter() - dispatch_started) * 1000)
@@ -1079,6 +1163,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 - CHAT_RESPONSE_RESERVE_SECONDS,
             )
 
+            _emit_live_trace({"type": "status", "phase": "generation"})
             generation = _generator.generate(
                 msg,
                 result.route,
