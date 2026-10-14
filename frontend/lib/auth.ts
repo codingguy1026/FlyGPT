@@ -1,3 +1,5 @@
+import { requestJson } from "./http";
+
 export type AuthUser = {
   id: string;
   email: string;
@@ -8,35 +10,6 @@ export type AuthUser = {
 type AuthResponse = {
   user: AuthUser;
 };
-
-async function authRequest<T>(
-  input: string,
-  init?: RequestInit,
-): Promise<T> {
-  const response = await fetch(input, {
-    ...init,
-    credentials: "same-origin",
-  });
-
-  let payload: unknown = null;
-  try {
-    payload = await response.json();
-  } catch {
-    // handled below
-  }
-
-  if (!response.ok) {
-    const detail =
-      typeof payload === "object" &&
-      payload !== null &&
-      "detail" in payload
-        ? String((payload as { detail: unknown }).detail)
-        : `HTTP ${response.status}`;
-    throw new Error(detail);
-  }
-
-  return payload as T;
-}
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
   const response = await fetch("/api/auth/me", {
@@ -55,7 +28,7 @@ export async function login(
   email: string,
   password: string,
 ): Promise<AuthUser> {
-  const payload = await authRequest<AuthResponse>("/api/auth/login", {
+  const payload = await requestJson<AuthResponse>("/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -68,7 +41,7 @@ export async function signup(
   password: string,
   displayName: string,
 ): Promise<AuthUser> {
-  const payload = await authRequest<AuthResponse>("/api/auth/signup", {
+  const payload = await requestJson<AuthResponse>("/api/auth/signup", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -81,7 +54,7 @@ export async function signup(
 }
 
 export async function logout(): Promise<void> {
-  await authRequest<{ ok: boolean }>("/api/auth/logout", {
+  await requestJson<{ ok: boolean }>("/api/auth/logout", {
     method: "POST",
   });
 }
