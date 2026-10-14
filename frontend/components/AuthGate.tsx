@@ -21,6 +21,7 @@ export default function AuthGate() {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
+  const [signOutError, setSignOutError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -66,11 +67,13 @@ export default function AuthGate() {
   }
 
   async function signOut() {
+    setSignOutError("");
     try {
       await logout();
-    } finally {
       setUser(null);
       setPassword("");
+    } catch (reason: unknown) {
+      setSignOutError(reason instanceof Error ? reason.message : "로그아웃에 실패했습니다. 다시 시도해 주세요.");
     }
   }
 
@@ -118,7 +121,10 @@ export default function AuthGate() {
   }
 
   if (user) {
-    return <FlyGPTApp user={user} onSignOut={signOut} />;
+    return <>
+      <FlyGPTApp user={user} onSignOut={signOut} />
+      {signOutError && <div className="authSignoutError" role="alert">로그아웃 실패: {signOutError}<button type="button" onClick={() => setSignOutError("")} aria-label="오류 닫기">×</button></div>}
+    </>;
   }
 
   return (
@@ -145,6 +151,8 @@ export default function AuthGate() {
         <div className="authTabs" role="tablist" aria-label="인증 방식">
           <button
             className={mode === "login" ? "active" : ""}
+            role="tab"
+            aria-selected={mode === "login"}
             type="button"
             onClick={() => { setMode("login"); setError(""); }}
           >
@@ -152,6 +160,8 @@ export default function AuthGate() {
           </button>
           <button
             className={mode === "signup" ? "active" : ""}
+            role="tab"
+            aria-selected={mode === "signup"}
             type="button"
             onClick={() => { setMode("signup"); setError(""); }}
           >
@@ -159,7 +169,7 @@ export default function AuthGate() {
           </button>
         </div>
 
-        <form className="authForm" onSubmit={submit}>
+        <form className="authForm" onSubmit={submit} aria-label={mode === "login" ? "FlyGPT 로그인" : "FlyGPT 회원가입"}>
           {mode === "signup" && (
             <label>
               <span>닉네임</span>
@@ -199,7 +209,7 @@ export default function AuthGate() {
             />
           </label>
 
-          {error && <div className="authError">{error}</div>}
+          {error && <div className="authError" role="alert">{error}</div>}
 
           <button className="authSubmit" type="submit" disabled={busy}>
             {busy
