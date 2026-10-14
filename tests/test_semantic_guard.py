@@ -235,6 +235,34 @@ class PlanDisclosureGuardTests(unittest.TestCase):
         self.assertFalse(result.used)
         self.assertIsNone(result.answer)
 
+    def test_plain_english_leak_is_blocked(self):
+        runtime = self.make_runtime()
+        with patch.object(
+            runtime, "_generate_once",
+            return_value=fake_generated(
+                "The provided utterance plan is already in a state-exact-math-result format. "
+                "No changes are necessary."
+            ),
+        ):
+            brain = FlyBrainRuntime()
+            state = brain.finalize(
+                planned("8x=8", route="math"),
+                tool_context="Exact math tool result: x = 1",
+            )
+            result = runtime.generate("8x=8", "math", brain_state=state)
+        self.assertFalse(result.used)
+        self.assertIsNone(result.answer)
+
+    def test_wrong_language_for_korean_greeting_falls_back(self):
+        runtime = self.make_runtime()
+        with patch.object(
+            runtime, "_generate_once",
+            return_value=fake_generated("You're welcome."),
+        ):
+            result = runtime.generate("안녕", "general", brain_state=planned("안녕"))
+        self.assertTrue(result.used)
+        self.assertEqual(result.answer, "안녕! 🪰")
+
     def test_clean_prose_still_passes_unchanged(self):
         runtime = self.make_runtime()
         with patch.object(

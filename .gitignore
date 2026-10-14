@@ -13,3 +13,6 @@ data/flygpt_auth.sqlite3-wal
 frontend/node_modules/
 frontend/.next/
 frontend/.env.local
+
+# Experimental full-connectome structural embeddings (large local checkpoint)
+artifacts/malecns_full_structural_embeddings.pt
