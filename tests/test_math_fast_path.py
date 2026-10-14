@@ -34,6 +34,17 @@ class MathFastPathTests(unittest.TestCase):
     def test_unsupported_math_expression_is_not_fast_path(self):
         self.assertFalse(is_math_fast_path("2^100"))
 
+    def test_square_of_expression_not_last_token(self):
+        # (1972^2)^2 is not 2^2 and must bypass the LLM entirely.
+        self.assertTrue(is_math_fast_path("1972^2의 제곱은?"))
+        result = dispatch_math_fast_path("1972^2의 제곱은?")
+        self.assertIn("15122640998656", result.answer)
+        self.assertEqual(result.handler, "math_fast_path")
+
+    def test_simple_korean_square(self):
+        self.assertTrue(is_math_fast_path("1972의 제곱은?"))
+        self.assertIn("3888784", dispatch_math_fast_path("1972의 제곱은?").answer)
+
     def test_date_is_not_math_fast_path(self):
         self.assertFalse(is_math_fast_path("2026-09-26"))
 
