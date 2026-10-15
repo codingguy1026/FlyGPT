@@ -10,6 +10,12 @@ import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
+import sys
+
+# CLI execution (`python training/train_router.py`) also needs package imports.
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 import torch
 from torch import nn
