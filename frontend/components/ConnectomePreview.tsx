@@ -64,7 +64,7 @@ export default function ConnectomePreview({ router, pending, onExpand }: Props) 
   );
   const frame = frameIndex < 0 ? null : router?.trace?.[frameIndex] ?? null;
   const compatible = !!graph && !!frame && frame.activations.length === graph.nodes.length;
-  const activations = compatible ? frame.activations : [];
+  const activations = compatible && frame ? frame.activations : [];
   const hasTrace = !!router?.trace?.length;
   const status = pending
     ? "REQUEST IN PROGRESS"
