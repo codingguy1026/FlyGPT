@@ -275,16 +275,64 @@ class FlyGraphRouter(nn.Module):
         degree.index_add_(0, dst, torch.ones_like(base_weight))
         self.register_buffer("in_degree", degree.clamp_min(1.0))
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        h = torch.tanh(self.encoder(x))
+    def _encode(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.tanh(self.encoder(x))
+
+    def _relay(self, h: torch.Tensor) -> torch.Tensor:
+        return h
+
+    def _readout(self, h: torch.Tensor) -> torch.Tensor:
+        return h
+
+    def propagate(self, x: torch.Tensor, on_stage=None) -> torch.Tensor:
+        """Single source of truth for training and live inference traces."""
+        h = self._encode(x)
+        if on_stage is not None:
+            on_stage(h, "input")
         weights = self.base_weight * torch.sigmoid(self.edge_gain) * 2.0
-        for _ in range(self.steps):
-            messages = h[:, self.src] * weights.unsqueeze(0)
+        for step in range(1, self.steps + 1):
+            messages = self._relay(h)[:, self.src] * weights.unsqueeze(0)
             agg = torch.zeros_like(h)
             agg.index_add_(1, self.dst, messages)
             agg = agg / self.in_degree.unsqueeze(0)
             h = self.norm(h + torch.tanh(agg))
-        return self.output(h)
+            if on_stage is not None:
+                on_stage(h, f"step_{step}")
+        return h
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.output(self._readout(self.propagate(x)))
+
+
+class RoleAwareFlyGraphRouter(FlyGraphRouter):
+    """Scaffold-identical model with nonzero per-role encoder/relay/readout priors.
+
+    The biological labels are NOT assigned mathematical or conversational
+    meanings. These are fixed, testable inductive biases, not learned biology.
+    """
+
+    def __init__(
+        self, vocab_size: int, n_nodes: int, n_classes: int,
+        src: torch.Tensor, dst: torch.Tensor, base_weight: torch.Tensor,
+        steps: int = 3, *, roles: list[str],
+    ) -> None:
+        from training.role_prior import ROLE_GAINS, VALID_ROLES
+        if len(roles) != n_nodes or any(role not in VALID_ROLES for role in roles):
+            raise ValueError("Biological roles must match every scaffold node")
+        super().__init__(vocab_size, n_nodes, n_classes, src, dst, base_weight, steps)
+        gains = torch.tensor([ROLE_GAINS[role] for role in roles], dtype=torch.float32)
+        self.register_buffer("role_input_gain", gains[:, 0])
+        self.register_buffer("role_relay_gain", gains[:, 1])
+        self.register_buffer("role_readout_gain", gains[:, 2])
+
+    def _encode(self, x: torch.Tensor) -> torch.Tensor:
+        return super()._encode(x) * self.role_input_gain.unsqueeze(0)
+
+    def _relay(self, h: torch.Tensor) -> torch.Tensor:
+        return h * self.role_relay_gain.unsqueeze(0)
+
+    def _readout(self, h: torch.Tensor) -> torch.Tensor:
+        return h * self.role_readout_gain.unsqueeze(0)
 
 
 def batchify(
@@ -419,6 +467,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Train FlyGPT's connectome-inspired task router")
     parser.add_argument("--dataset", type=Path, default=Path("training/teacher_seed.jsonl"))
     parser.add_argument("--scaffold", type=Path, help="JSON scaffold built from MaleCNS; omit only for smoke tests")
+    parser.add_argument("--roles", type=Path, help="Opt-in verified MaleCNS biological role labels; trains a separate candidate")
     parser.add_argument("--out", type=Path, default=Path("artifacts/fly_router_v0_2.pt"))
     parser.add_argument("--epochs", type=int, default=60)
     parser.add_argument("--lr", type=float, default=2e-3)
@@ -456,7 +505,20 @@ def main() -> None:
     train, val = stratified_split(examples, args.val_ratio, args.seed)
 
     n_nodes, src, dst, base, scaffold_meta = load_scaffold(args.scaffold, args.synthetic_nodes, args.seed)
-    model = FlyGraphRouter(args.vocab_size, n_nodes, len(routes), src, dst, base, args.steps)
+    role_labels = None
+    role_metadata = None
+    if args.roles is not None:
+        if args.scaffold is None:
+            raise ValueError("--roles requires an authentic MaleCNS --scaffold")
+        from training.role_prior import load_role_assignment
+        role_labels, role_metadata = load_role_assignment(args.roles, scaffold_meta, n_nodes)
+        model = RoleAwareFlyGraphRouter(
+            args.vocab_size, n_nodes, len(routes), src, dst, base, args.steps,
+            roles=role_labels,
+        )
+        print("role_aware=experimental counts=" + str(role_metadata["counts"]))
+    else:
+        model = FlyGraphRouter(args.vocab_size, n_nodes, len(routes), src, dst, base, args.steps)
 
     train_x, train_y = batchify(train, route_to_idx, args.vocab_size, args.vectorizer_version)
     val_x, val_y = batchify(val, route_to_idx, args.vocab_size, args.vectorizer_version)
@@ -573,6 +635,9 @@ def main() -> None:
             "dst": dst,
             "base_weight": base,
             "scaffold_meta": scaffold_meta,
+            "role_aware": role_labels is not None,
+            "role_labels": role_labels,
+            "role_metadata": role_metadata,
             "teacher_dataset": str(args.dataset),
             "teacher_dataset_sha256": dataset_sha256,
             "train_examples": len(train),
