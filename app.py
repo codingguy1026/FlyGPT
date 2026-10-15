@@ -90,6 +90,11 @@ templates = Jinja2Templates(directory="templates")
 _connectome: MaleCNSConnectome | None = None
 _connectome_lock = threading.Lock()
 
+# Bounded process-local cache; annotations do not change with chat requests.
+_neuron_annotation_cache: dict[str, Any] = {}
+_neuron_annotation_cache_lock = threading.Lock()
+
+
 _router: Any | None = None
 _router_lock = threading.Lock()
 _router_error: str | None = None
@@ -496,6 +501,59 @@ def router_graph(request: Request):
             detail=_router_error or f"Fly router model not found: {MODEL_PATH}",
         )
     return router.graph()
+
+
+@app.get("/api/router/annotations")
+def router_annotations(request: Request):
+    """Annotated scaffold cells, not guessed from task-router activations."""
+    _require_user(request)
+    router = get_router()
+    if router is None:
+        raise HTTPException(status_code=503, detail="Router checkpoint unavailable")
+
+    graph = router.graph()
+    raw_ids = [node.get("root_id") for node in graph["nodes"]]
+    if len(raw_ids) > 512:
+        raise HTTPException(status_code=503, detail="Annotation batch supports at most 512 nodes")
+    try:
+        ids = [int(value) for value in raw_ids if value is not None]
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=503, detail="Router contains invalid neuron identifiers") from exc
+    if not ids or any(body_id <= 0 for body_id in ids):
+        raise HTTPException(status_code=503, detail="Router has no valid MaleCNS body IDs")
+
+    try:
+        connectome = get_connectome()
+        if connectome.dataset != "male-cns:v1.0":
+            raise RuntimeError("Neuron categories require male-cns:v1.0 annotations")
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="neuPrint annotations are not configured") from exc
+
+    cache_key = (str(router.model_path), tuple(ids), connectome.dataset)
+    with _neuron_annotation_cache_lock:
+        cached = _neuron_annotation_cache.get("item")
+        if cached and cached["key"] == cache_key and time.monotonic() - cached["at"] < 600:
+            return cached["response"]
+
+    try:
+        found = connectome.neuron_annotations(ids)
+    except Exception as exc:
+        # Do not invent classes if the upstream database cannot be queried.
+        raise HTTPException(status_code=503, detail="Cannot retrieve official neuPrint neuron annotations") from exc
+
+    payload = {
+        "dataset": connectome.dataset,
+        "source": "Janelia MaleCNS v1.0 via neuPrint",
+        "annotation_kind": "official_superclass_derived_display_group",
+        "requested": len(ids),
+        "annotated": sum(bool(x.get("superclass")) for x in found.values()),
+        "by_body_id": found,
+    }
+    with _neuron_annotation_cache_lock:
+        _neuron_annotation_cache["item"] = {
+            "key": cache_key, "at": time.monotonic(), "response": payload,
+        }
+    return payload
 
 
 @app.get("/api/health")
