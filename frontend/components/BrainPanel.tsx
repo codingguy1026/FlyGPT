@@ -182,18 +182,20 @@ export default function BrainPanel({ open, onClose, router }: Props) {
             onClick={runCalciumDemo}
             type="button"
             disabled={!graph}
-            title="MaleCNS 라우터 활성화 데모"
+            title="GCaMP 스타일 시각화 데모 · 실제 측정 아님"
           >
-            ◉ {calciumStep >= 0 ? "IMAGING" : "CALCIUM DEMO"}
+            ◉ {calciumStep >= 0 ? "DEMO PLAYING" : "VISUAL DEMO"}
           </button>
           <div className={"brainStatus" + (isActive ? " live" : "")}>
             {error
               ? "ERROR"
               : !graph
                 ? "LOADING"
-                : isActive
-                  ? "ΔF/F LIVE"
-                  : "READY"}
+                : calciumStep >= 0
+                  ? "SIMULATED DEMO"
+                  : isActive
+                    ? "TRACE REPLAY"
+                    : "READY"}
           </div>
           <button
             className="iconButton"
@@ -209,7 +211,7 @@ export default function BrainPanel({ open, onClose, router }: Props) {
       <div className="brainStats">
         <span>{graph ? `${graph.n_nodes} nodes` : "— nodes"}</span>
         <span>{graph ? `${graph.n_edges} edges` : "— edges"}</span>
-        <span>{isActive ? `ΔF/F ${(meanActivity * 100).toFixed(1)}%` : graph ? `${graph.steps} steps` : "— steps"}</span>
+        <span>{isActive ? `Display activity ${(meanActivity * 100).toFixed(1)}%` : graph ? `${graph.steps} steps` : "— steps"}</span>
       </div>
 
       <div className={"brainStage calciumStage" + (isActive ? " calciumLive" : "")}>
@@ -228,7 +230,7 @@ export default function BrainPanel({ open, onClose, router }: Props) {
             viewBox="0 0 100 100"
             className="brainSvg calciumSvg"
             role="img"
-            aria-label="FlyGPT activation map rendered in a GCaMP calcium-imaging style"
+            aria-label="MaleCNS router trace replay or explicitly simulated GCaMP-style demo"
           >
             <defs>
               <filter
@@ -322,7 +324,7 @@ export default function BrainPanel({ open, onClose, router }: Props) {
                   >
                     <title>
                       Node {index} · MaleCNS body {node.root_id ?? "not mapped"} ·
-                      relative fluorescence {(activity * 100).toFixed(1)}%
+                      normalized display activation {(activity * 100).toFixed(1)}%
                     </title>
                   </circle>
                 </g>
@@ -332,7 +334,7 @@ export default function BrainPanel({ open, onClose, router }: Props) {
         )}
 
         <div className="calciumHud" aria-hidden="true">
-          <span>GCaMP</span>
+          <span>{calciumStep >= 0 ? "GCaMP-STYLE DEMO" : "ROUTER TRACE"}</span>
           <i style={{ width: `${Math.max(3, meanActivity * 100)}%` }} />
         </div>
 
@@ -346,9 +348,9 @@ export default function BrainPanel({ open, onClose, router }: Props) {
       <RoutePanel router={router} />
 
       <div className="brainNote">
-        이 화면은 GCaMP 칼슘 이미징의 형광 표현을 참고해 MaleCNS 기반 FlyGPT의
-        router trace activation을 시각화한 것입니다. 살아있는 파리를 실시간 촬영한
-        영상은 아니며, 밝아질수록 모델 활성도가 높은 것으로 표시됩니다.
+        기본 지도는 MaleCNS 기반 라우터의 실행 trace를 기록 재생합니다. CALCIUM 데모는
+        형광 이미징을 참고한 합성 애니메이션이며 실제 칼슘 측정이나 신경 발화 관측이
+        아닙니다. 응답 중 신경망 활동을 스트리밍하는 화면도 아닙니다.
       </div>
     </aside>
   );
