@@ -22,6 +22,7 @@ from connectome import MaleCNSConnectome
 from brain_runtime import FlyBrainRuntime
 from semantic_route_guard import apply_semantic_route_override
 from seating_solver import solve_linear_seating
+from novel_rule_solver import solve_defined_operations
 from dispatcher import dispatch, dispatch_math_fast_path, is_math_fast_path
 from generator_runtime import GENERATIVE_ROUTES, GeneratorRuntime
 from memory_store import MemoryStore, format_recall
@@ -822,6 +823,28 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 session_id=session_id,
             )
 
+        # Explicitly-defined named arithmetic operations need real execution,
+        # even when an older router mislabels the question as "general".
+        # Keep unsupported/ambiguous language on the normal inference path.
+        defined_rule = solve_defined_operations(msg, memory_context)
+        if defined_rule is not None:
+            elapsed_ms = round((time.perf_counter() - request_started) * 1000)
+            return response_with_router(
+                answer=defined_rule.answer,
+                response_type="logic_verified",
+                data={
+                    "solver": "user_defined_arithmetic_v1",
+                    "start": defined_rule.start,
+                    "result": defined_rule.result,
+                    "steps": list(defined_rule.steps),
+                    "ui_meta": {"mode": "rule_verified", "app_version": APP_VERSION},
+                    "timings": {"total_ms": elapsed_ms},
+                },
+                route=None,
+                session_id=session_id,
+                timings={"total_ms": elapsed_ms},
+            )
+
         # Verify supported linear-position constraints with exhaustive
         # enumeration, *before* asking a small LLM to invent an arrangement.
         # The parser opts out on unknown participant constraints rather than
@@ -1290,6 +1313,13 @@ def chat_endpoint(req: ChatRequest, request: Request):
                         "질문을 조금 나누거나 응답 시간 설정을 확인해 줘."
                     )
                     mode_label = f"{result.route} · generator_timeout"
+                elif failure == "non_answer_echo":
+                    answer = (
+                        "⚠️ 답변 생성기가 질문을 되풀이했어. "
+                        "검증된 답을 만들지 못해서 추측하지 않았어. "
+                        "질문을 조금 더 구체적으로 알려주면 다시 시도할게."
+                    )
+                    mode_label = f"{result.route} · non_answer_blocked"
                 elif failure == "truncated":
                     answer = (
                         "📏 답변이 길이 제한에 걸려 끝까지 생성되지 않았어. "
