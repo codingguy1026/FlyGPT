@@ -157,6 +157,33 @@ class RepeatedPromptTests(unittest.TestCase):
         self.assertTrue(result.used)
         self.assertEqual(result.answer, "정답은 14입니다.")
 
+class GeneratorTemperatureRegressionTests(unittest.TestCase):
+    def test_health_status_does_not_require_request_override(self):
+        runtime = make_runtime()
+        status = runtime.status()
+        self.assertAlmostEqual(status["temperature"], runtime.temperature)
+        self.assertTrue(status["configured"])
+
+    def test_override_changes_request_payload_only(self):
+        import json
+        import urllib.error
+        runtime = make_runtime()
+        request_messages = [{"role": "user", "content": "안녕"}]
+        with patch("urllib.request.build_opener") as build_opener:
+            build_opener.return_value.open.side_effect = urllib.error.URLError("offline")
+            runtime._generate_once(
+                model=runtime.model, messages=request_messages,
+                temperature_override=0.82,
+            )
+            request = build_opener.return_value.open.call_args.args[0]
+            self.assertAlmostEqual(json.loads(request.data)["temperature"], 0.82)
+            runtime._generate_once(model=runtime.model, messages=request_messages)
+            request = build_opener.return_value.open.call_args.args[0]
+            self.assertAlmostEqual(
+                json.loads(request.data)["temperature"], runtime.temperature,
+            )
+        self.assertAlmostEqual(runtime.status()["temperature"], runtime.temperature)
+
 
 if __name__ == "__main__":
     unittest.main()
