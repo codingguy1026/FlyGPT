@@ -16,7 +16,7 @@ _DISALLOWED = re.compile(
     r"뉴스|날씨|환율|주가|가격|검색|웹|인터넷|사이트|링크|"
     r"기억|아까|방금|예전에|저번|전에\s*말|우리\s*대화|"
     r"코드|코딩|파이썬|javascript|python|sql|react|fastapi|"
-    r"계산|몇\s*(?:이야|이지|개|살)|\\d+|[+*/=^]|"
+    r"계산|몇\s*(?:이야|이지|개|살)|\d+|[+*/=^]|"
     r"만들어|작성해|해줘|추천|가르쳐|사용법|방법|절차|"
     r"약|질병|치료|증상|진단|의학|자해|자살|폭탄|무기|"
     r"선거|투표|정당|법률|대출|투자|계좌|인증|비밀번호|"
@@ -29,10 +29,10 @@ _DISALLOWED = re.compile(
 # Definition and WHY questions only, never generic imperatives or instructions.
 _SIMPLE_QUESTION = re.compile(
     r"(?:"
-    r"왜\s*.+(?:\\?|？|까|나요|어|지)$|"
-    r".+(?:뭐야|뭔데|무슨\\s*뜻|뜻이\\s*뭐|의미가\\s*뭐|무엇인가요|"
-    r"무엇인지|이유가\\s*뭐|왜\\s*그런|설명해\\s*줄래)(?:\\?|？|\\.)?$|"
-    r"(?:what is|what are|why (?:is|are|does|do)|what does .+ mean)\\b.+\\??$"
+    r"왜\s*.+(?:\?|？|까|나요|어|지)$|"
+    r".+(?:뭐야|뭔데|무슨\s*뜻|뜻이\s*뭐|의미가\s*뭐|무엇인가요|"
+    r"무엇인지|이유가\s*뭐|왜\s*그런|설명해\s*줄래)(?:\?|？|\.)?$|"
+    r"(?:what is|what are|why (?:is|are|does|do)|what does .+ mean)\b.+\??$"
     r")",
     re.IGNORECASE,
 )
