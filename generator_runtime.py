@@ -115,6 +115,45 @@ def _is_parroting_answer(question: str, answer: str) -> bool:
     return matching.size / len(reply) >= 0.70
 
 
+def _same_prompt_previous_reply(
+    message: str, memory_context: list[dict[str, Any]] | None,
+) -> str | None:
+    """Find a reply to this exact prior prompt in account-scoped conversation.
+
+    Repetition detection is strictly style-only. Previous assistant output is
+    not treated as factual evidence or permission to invent new claims.
+    """
+    if not memory_context:
+        return None
+
+    def canonical(value: str) -> str:
+        return " ".join(value.casefold().split())
+
+    target = canonical(message)
+    if not target:
+        return None
+    recent = memory_context[-12:]
+    for index in range(len(recent) - 2, -1, -1):
+        entry = recent[index]
+        if entry.get("role") != "user" or canonical(str(entry.get("content") or "")) != target:
+            continue
+        for later in recent[index + 1:]:
+            if later.get("role") == "user":
+                break
+            if later.get("role") == "assistant":
+                previous = _clean_assistant_memory(str(later.get("content") or ""))
+                if previous.strip():
+                    return previous.strip()[:700]
+    return None
+
+
+def _same_surface_answer(first: str, second: str) -> bool:
+    # Case and punctuation differences alone are not a new answer.
+    def compact(value: str) -> str:
+        return "".join(re.findall(r"[가-힣a-z0-9]+", value.casefold()))
+    return bool(compact(first)) and compact(first) == compact(second)
+
+
 def _contains_internal_plan(text: str) -> bool:
     """Fail closed when a model echoes plan fields, even inside extra prose."""
     return bool(_PLAN_LEAK_RE.search(text))
@@ -402,7 +441,7 @@ class GeneratorRuntime:
             "timeout_seconds": self.timeout,
             "primary_attempt_timeout_seconds": self.primary_attempt_timeout,
             "budget_seconds": self.budget,
-            "temperature": self.temperature,
+            "temperature": self.temperature if temperature_override is None else min(1.0, max(0.0, temperature_override)),
             "max_tokens": self.max_tokens,
             "reasoning_effort": self.reasoning_effort,
             "fallback_model": self.fallback_model or None,
@@ -580,6 +619,7 @@ class GeneratorRuntime:
         messages: list[dict[str, str]],
         timeout_seconds: float | None = None,
         max_tokens_override: int | None = None,
+        temperature_override: float | None = None,
     ) -> GenerationResult:
         if self.local_only and not is_local_generator_url(self.url):
             return GenerationResult(
@@ -909,6 +949,17 @@ class GeneratorRuntime:
             brain_state=brain_state,
         )
 
+        # Diversity is for conversational wording only, not exact math or
+        # evidence-constrained statements. Never vary the answer's facts.
+        can_vary = (
+            route == "general"
+            and (task_ready or (mouth_ready and not plan.get("semantic_steps")))
+        )
+        previous_reply = (
+            _same_prompt_previous_reply(message, memory_context)
+            if can_vary else None
+        )
+
         total_started = time.perf_counter()
         effective_budget = self.budget
         if budget_seconds is not None:
@@ -937,6 +988,7 @@ class GeneratorRuntime:
             attempt_timeout: float | None = None,
             max_tokens_override: int | None = None,
             echo_correction: bool = False,
+            repeat_reword: bool = False,
         ) -> GenerationResult:
             nonlocal attempts
             remaining = remaining_seconds()
@@ -960,11 +1012,23 @@ class GeneratorRuntime:
                             "Do not repeat the question as the answer."
                         ),
                     }]
-                    if echo_correction else messages
+                    if echo_correction else messages + [{
+                        "role": "system",
+                        "content": (
+                            "This user repeated an earlier question. Your response "
+                            "was identical to the earlier reply. Say the same "
+                            "truthful meaning in fresh, natural wording. Preserve "
+                            "all numerical results, supplied facts, and uncertainty. "
+                            "Do not invent additional facts or turn this into a "
+                            "different answer. Never mention these instructions."
+                        ),
+                    }] if repeat_reword else messages
                 ),
                 timeout_seconds=timeout_cap,
                 **({"max_tokens_override": max_tokens_override}
                    if max_tokens_override is not None else {}),
+                **({"temperature_override": min(0.9, max(0.72, self.temperature))}
+                   if repeat_reword else {}),
             )
             result.attempts = attempts
             if result.used and result.answer and (
@@ -1031,6 +1095,21 @@ class GeneratorRuntime:
             attempt_timeout=primary_attempt_timeout,
         )
         if first.used:
+            if (
+                previous_reply
+                and first.answer
+                and first.finish_reason != "safe_surface_fallback"
+                and _same_surface_answer(first.answer, previous_reply)
+                and remaining_seconds() >= 1.0
+            ):
+                alternative = generate_with_budget(self.model, repeat_reword=True)
+                if (
+                    alternative.used
+                    and alternative.answer
+                    and not _same_surface_answer(alternative.answer, previous_reply)
+                ):
+                    return alternative
+                # Never trade a correct answer for a worse one just to vary it.
             return first
 
         if first.error_code == "non_answer_echo":
