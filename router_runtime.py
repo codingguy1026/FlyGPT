@@ -11,7 +11,7 @@ class FlyRouterRuntime:
     def __init__(self, model_path: str | Path) -> None:
         import torch
 
-        from training.train_router import FlyGraphRouter, vectorize
+        from training.train_router import FlyGraphRouter, RoleAwareFlyGraphRouter, vectorize
 
         self._torch = torch
         self._vectorize = vectorize
@@ -49,15 +49,32 @@ class FlyRouterRuntime:
         self.dst = checkpoint["dst"].to(dtype=torch.long, device="cpu")
         self.base_weight = checkpoint["base_weight"].to(dtype=torch.float32, device="cpu")
 
-        self.model = FlyGraphRouter(
-            vocab_size=self.vocab_size,
-            n_nodes=self.n_nodes,
-            n_classes=len(self.routes),
-            src=self.src,
-            dst=self.dst,
-            base_weight=self.base_weight,
-            steps=self.steps,
-        )
+        self.role_aware = bool(checkpoint.get("role_aware", False))
+        self.role_metadata = checkpoint.get("role_metadata") if self.role_aware else None
+        role_labels = checkpoint.get("role_labels") if self.role_aware else None
+        if self.role_aware:
+            if not isinstance(role_labels, list):
+                raise ValueError("Role-aware checkpoint is missing role_labels")
+            self.model = RoleAwareFlyGraphRouter(
+                vocab_size=self.vocab_size,
+                n_nodes=self.n_nodes,
+                n_classes=len(self.routes),
+                src=self.src,
+                dst=self.dst,
+                base_weight=self.base_weight,
+                steps=self.steps,
+                roles=role_labels,
+            )
+        else:
+            self.model = FlyGraphRouter(
+                vocab_size=self.vocab_size,
+                n_nodes=self.n_nodes,
+                n_classes=len(self.routes),
+                src=self.src,
+                dst=self.dst,
+                base_weight=self.base_weight,
+                steps=self.steps,
+            )
         self.model.load_state_dict(checkpoint["model_state"])
         self.model.eval()
 
@@ -116,6 +133,8 @@ class FlyRouterRuntime:
             "temperature": self.temperature,
             "min_confidence": self.min_confidence,
             "min_margin": self.min_margin,
+            "role_aware_experimental": self.role_aware,
+            "role_metadata": self.role_metadata,
         }
 
     def predict(self, text: str, *, top_k: int = 3, on_frame: Callable[[dict[str, Any]], None] | None = None) -> dict[str, Any]:
@@ -124,28 +143,16 @@ class FlyRouterRuntime:
         feature_signal = float(torch.linalg.vector_norm(x).item())
 
         with torch.no_grad():
-            h = torch.tanh(self.model.encoder(x))
-            trace = [self._activation_frame(h, "input")]
-            if on_frame is not None:
-                on_frame(trace[-1])
+            trace: list[dict[str, Any]] = []
 
-            weights = (
-                self.model.base_weight
-                * torch.sigmoid(self.model.edge_gain)
-                * 2.0
-            )
-
-            for step in range(1, self.steps + 1):
-                messages = h[:, self.model.src] * weights.unsqueeze(0)
-                agg = torch.zeros_like(h)
-                agg.index_add_(1, self.model.dst, messages)
-                agg = agg / self.model.in_degree.unsqueeze(0)
-                h = self.model.norm(h + torch.tanh(agg))
-                trace.append(self._activation_frame(h, f"step_{step}"))
+            def record(h: Any, stage: str) -> None:
+                frame = self._activation_frame(h, stage)
+                trace.append(frame)
                 if on_frame is not None:
-                    on_frame(trace[-1])
+                    on_frame(frame)
 
-            logits = self.model.output(h)
+            h = self.model.propagate(x, on_stage=record)
+            logits = self.model.output(self.model._readout(h))
             if feature_signal <= 1e-8:
                 probabilities = torch.full(
                     (len(self.routes),),
@@ -201,4 +208,5 @@ class FlyRouterRuntime:
             "vectorizer_version": self.vectorizer_version,
             "feature_signal": feature_signal,
             "trace": trace,
+            "role_aware_experimental": self.role_aware,
         }
