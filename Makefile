@@ -1,4 +1,4 @@
-.PHONY: run local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-full-structural help stop
+.PHONY: run local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural help stop
 
 run:
 	@bash scripts/run_all.sh
@@ -23,6 +23,13 @@ train-v0.4:
 
 train-v0.5:
 	@bash training/train_malecns_v0_5.sh
+
+# Offline experiment only. Never changes the app's default router checkpoint.
+train-role-experiment:
+	@ROLE_EXPERIMENT=1 bash training/train_malecns_v0_5.sh
+
+compare-role-experiment:
+	@.venv-train/bin/python training/compare_role_aware.py --baseline artifacts/fly_router_malecns_v0_5.pt --candidate artifacts/fly_router_malecns_role_experiment.pt
 
 # Explicit offline command. Never run the full ~1 GB source scan on app startup.
 train-full-structural:
@@ -54,6 +61,8 @@ help:
 	@echo "  make train-setup Create isolated CPU PyTorch training environment"
 	@echo "  make train-v0.4  Build MaleCNS scaffold and train/evaluate router v0.4"
 	@echo "  make train-v0.5  Train calibrated v0.5 router on the frozen MaleCNS scaffold"
+	@echo "  make train-role-experiment  Train isolated neuron-role-aware candidate (needs neuPrint)"
+	@echo "  make compare-role-experiment  Compare candidate and baseline on held-out regression sets"
 	@echo "  make train-full-structural  Run one full offline MaleCNS structural training epoch"
 	@echo "  make reclaim     Clear safe rebuildable caches and obsolete FlyWire data"
 	@echo "  make disk        Show disk usage for common large FlyGPT paths"
