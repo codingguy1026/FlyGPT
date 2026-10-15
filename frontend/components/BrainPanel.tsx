@@ -1,9 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { GraphResponse, RouterResult, TraceFrame } from "@/lib/api";
-import { getRouterGraph } from "@/lib/api";
+import type { GraphResponse, RouterResult, TraceFrame, NeuronKind, NeuronAnnotationsResponse } from "@/lib/api";
+import { getRouterGraph, getRouterAnnotations } from "@/lib/api";
 import RoutePanel from "./RoutePanel";
+
+const NEURON_KINDS: { kind: NeuronKind; label: string; color: string }[] = [
+  { kind: "sensory", label: "감각", color: "#73e7f4" },
+  { kind: "motor", label: "운동", color: "#8caaff" },
+  { kind: "interneuron", label: "국소/중간", color: "#e6c874" },
+  { kind: "projection", label: "투사/상행·하행", color: "#cf9cff" },
+  { kind: "other", label: "기타", color: "#f4a574" },
+  { kind: "unclassified", label: "미분류", color: "#687a6e" },
+];
+const KIND_COLOR: Record<NeuronKind, string> = Object.fromEntries(
+  NEURON_KINDS.map(({ kind, color }) => [kind, color]),
+) as Record<NeuronKind, string>;
+const KIND_LABEL: Record<NeuronKind, string> = Object.fromEntries(
+  NEURON_KINDS.map(({ kind, label }) => [kind, label]),
+) as Record<NeuronKind, string>;
 
 type MonitorPhase = "idle" | "processing" | "router_loading" | "routing" | "generation" | "tool" | "done" | "error";
 type Props = {
@@ -33,6 +48,11 @@ export default function BrainPanel({ open, onClose, router, phase, requestId }: 
   const [retryCount, setRetryCount] = useState(0);
   const [replayIndex, setReplayIndex] = useState<number | null>(null);
   const [selectedNode, setSelectedNode] = useState<number | null>(null);
+  const [annotations, setAnnotations] = useState<NeuronAnnotationsResponse | null>(null);
+  const [annotationError, setAnnotationError] = useState("");
+  const [annotationRetry, setAnnotationRetry] = useState(0);
+  const [mapMode, setMapMode] = useState<"activity" | "types">("activity");
+  const [kindFilter, setKindFilter] = useState<NeuronKind | "all">("all");
 
   useEffect(() => {
     // Preload topology even while the monitor is closed so fast inferences
@@ -47,6 +67,19 @@ export default function BrainPanel({ open, onClose, router, phase, requestId }: 
       });
     return () => { active = false; };
   }, [graph, retryCount]);
+
+  // Neuron identities are lazily loaded from official neuPrint annotations.
+  // A failed query never becomes a synthetic classification.
+  useEffect(() => {
+    if (!open || !graph || annotations || annotationError) return;
+    let active = true;
+    getRouterAnnotations()
+      .then((result) => { if (active) setAnnotations(result); })
+      .catch((reason: unknown) => {
+        if (active) setAnnotationError(reason instanceof Error ? reason.message : String(reason));
+      });
+    return () => { active = false; };
+  }, [open, graph, annotations, annotationError, annotationRetry]);
 
   // A new request starts from real incoming events, never the previous replay.
   useEffect(() => {
@@ -78,6 +111,18 @@ export default function BrainPanel({ open, onClose, router, phase, requestId }: 
   const inspectedNode = selectedNode ?? topNode;
   const inspectedValue = inspectedNode === null ? 0 : activations[inspectedNode] ?? 0;
   const bodyId = inspectedNode === null ? null : graph?.nodes[inspectedNode]?.root_id ?? null;
+  const annotationFor = (rootId?: string) => rootId ? annotations?.by_body_id[rootId] : undefined;
+  const selectedAnnotation = bodyId ? annotationFor(bodyId) : undefined;
+  const selectedCategory: NeuronKind = selectedAnnotation?.kind ?? "unclassified";
+  const categoryCounts = useMemo(() => {
+    const counts = Object.fromEntries(NEURON_KINDS.map(({ kind }) => [kind, 0])) as Record<NeuronKind, number>;
+    graph?.nodes.forEach((node) => {
+      const category = node.root_id ? annotations?.by_body_id[node.root_id]?.kind : undefined;
+      counts[category ?? "unclassified"] += 1;
+    });
+    return counts;
+  }, [graph, annotations]);
+
   const meanActivity = activations.length
     ? activations.reduce((sum, value) => sum + value, 0) / activations.length
     : 0;
@@ -115,6 +160,45 @@ export default function BrainPanel({ open, onClose, router, phase, requestId }: 
         <span>{graph ? graph.n_edges + " edges" : "— edges"}</span>
         <span>{activeFrame ? "mean relative activity " + (meanActivity * 100).toFixed(1) + "%" : graph ? graph.steps + " steps" : "— steps"}</span>
       </div>
+
+      <section className="neuronTypeToolbar" aria-label="뉴런 시각화 모드">
+        <div className="neuronTypeMode">
+          <button type="button" className={mapMode === "activity" ? "selected" : ""} onClick={() => setMapMode("activity")}>활성도</button>
+          <button type="button" className={mapMode === "types" ? "selected" : ""} onClick={() => setMapMode("types")}>뉴런 종류</button>
+        </div>
+        {mapMode === "types" && (
+          <>
+            <div className="neuronTypeCoverage" role="status">
+              {annotations
+                ? "공식 주석 확인: " + annotations.annotated + " / " + annotations.requested + "개"
+                : annotationError
+                  ? "뉴런 주석 조회 실패 · 임의 분류하지 않음"
+                  : "neuPrint 공식 주석 조회 중..."}
+              {annotationError && (
+                <button type="button" onClick={() => { setAnnotationError(""); setAnnotationRetry((n) => n + 1); }}>다시 조회</button>
+              )}
+            </div>
+            <div className="neuronTypeLegend" aria-label="뉴런 종류별 필터">
+              <button type="button" className={kindFilter === "all" ? "selected" : ""} onClick={() => setKindFilter("all")}>
+                전체 {graph?.n_nodes ?? 0}
+              </button>
+              {NEURON_KINDS.map((item) => (
+                <button
+                  type="button"
+                  key={item.kind}
+                  disabled={!annotations}
+                  className={kindFilter === item.kind ? "selected" : ""}
+                  onClick={() => setKindFilter(item.kind)}
+                  title={item.kind === "interneuron" ? "공식 intrinsic superclass로부터 분류한 넓은 범주" : item.label}
+                >
+                  <i style={{ backgroundColor: item.color }} />
+                  {item.label} {annotations ? categoryCounts[item.kind] : "·"}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
 
       <div className="traceEvidence" role="status">
         {phase === "tool"
@@ -177,6 +261,9 @@ export default function BrainPanel({ open, onClose, router, phase, requestId }: 
               const active = activity > 0.08;
               const hot = activity > 0.48;
               const selected = inspectedNode === index;
+              const kind: NeuronKind = annotationFor(node.root_id)?.kind ?? "unclassified";
+              const color = KIND_COLOR[kind];
+              const filtered = mapMode === "types" && kindFilter !== "all" && kind !== kindFilter;
               return (
                 <g
                   key={node.root_id ?? index}
@@ -187,7 +274,7 @@ export default function BrainPanel({ open, onClose, router, phase, requestId }: 
                   onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") setSelectedNode(index); }}
                   style={{ cursor: "pointer" }}
                 >
-                  {active && (
+                  {active && mapMode === "activity" && (
                     <circle
                       cx={point.x} cy={point.y}
                       r={1.9 + activity * 3.9}
@@ -198,12 +285,13 @@ export default function BrainPanel({ open, onClose, router, phase, requestId }: 
                   <circle
                     cx={point.x} cy={point.y}
                     r={selected ? 1.5 + activity * 1.5 : 0.44 + activity * 1.5}
-                    className={hot ? "calciumNode hot" : active ? "calciumNode active" : "calciumNode"}
-                    style={{ opacity: selected ? 1 : active ? 0.62 + activity * 0.38 : 0.15, stroke: selected ? "#d5ffc9" : "none", strokeWidth: selected ? 0.32 : 0 }}
+                    className={mapMode === "types" ? "calciumNode" : hot ? "calciumNode hot" : active ? "calciumNode active" : "calciumNode"}
+                    style={{ opacity: filtered ? 0.08 : selected ? 1 : mapMode === "types" ? 0.92 : active ? 0.62 + activity * 0.38 : 0.15, fill: mapMode === "types" ? color : undefined, stroke: selected ? "#d5ffc9" : "none", strokeWidth: selected ? 0.32 : 0 }}
                   >
                     <title>
                       Node {index} · MaleCNS body {node.root_id ?? "not mapped"} ·
-                      normalized router activation {(activity * 100).toFixed(1)}%
+                      normalized router activation {(activity * 100).toFixed(1)}% ·
+                      class {KIND_LABEL[kind]} · official superclass {annotationFor(node.root_id)?.superclass ?? "not available"}
                     </title>
                   </circle>
                 </g>
@@ -252,11 +340,41 @@ export default function BrainPanel({ open, onClose, router, phase, requestId }: 
           <small>Normalized activation {(inspectedValue * 100).toFixed(1)}% · selected edges are highlighted</small>
         </div>
       )}
+      {inspectedNode !== null && graph && (
+        <section className="neuronInspector" aria-label="선택된 뉴런 주석">
+          <header>
+            <strong>NEURON INSPECTOR</strong>
+            <span>MALECNS · BIOLOGICAL ANNOTATION</span>
+          </header>
+          <div className="neuronInspectorPrimary">
+            <span className="neuronInspectorDot" style={{ background: KIND_COLOR[selectedCategory] }} />
+            <div>
+              <strong>{KIND_LABEL[selectedCategory]}</strong>
+              <small>Body {bodyId ?? "not mapped"} · graph node {inspectedNode}</small>
+            </div>
+          </div>
+          <dl>
+            <div><dt>Superclass</dt><dd>{selectedAnnotation?.superclass ?? "미확인"}</dd></div>
+            <div><dt>Cell type</dt><dd>{selectedAnnotation?.type ?? "미확인"}</dd></div>
+            <div><dt>Instance</dt><dd>{selectedAnnotation?.instance ?? "미확인"}</dd></div>
+            <div><dt>Consensus NT</dt><dd>{selectedAnnotation?.consensus_nt ?? "미확인"}</dd></div>
+            <div><dt>활성도</dt><dd>{activeFrame ? (inspectedValue * 100).toFixed(1) + "% (프레임 내 정규화)" : "신호 기록 없음"}</dd></div>
+          </dl>
+          <p>{annotations
+            ? selectedAnnotation
+              ? "출처: Janelia MaleCNS v1.0 / neuPrint. 화면용 그룹은 superclass에 근거하며 이 뉴런이 FlyGPT에서 수행하는 업무를 의미하지 않아."
+              : "이 body ID에 대한 neuPrint 뉴런 주석을 찾지 못했어. 추측해서 분류하지 않았어."
+            : annotationError
+              ? "공식 주석을 불러올 수 없어. 주석 정보 없이 뉴런 역할을 단정할 수 없어."
+              : "공식 주석 조회를 기다리는 중이야."}</p>
+        </section>
+      )}
       <RoutePanel router={router} />
 
       <div className="brainNote">
         실제 FlyGPT 라우터의 단계별 절댓값 활성도를 프레임별 최대값으로 정규화한 그림이야.
         그래프 배치는 설명용 도식이며 초파리의 실제 뉴런 위치나 GCaMP 칼슘 촬영을 뜻하지 않아.
+        뉴런 종류 분류는 공식 superclass를 넓은 그룹으로 표시한 것이며 FlyGPT 라우터가 학습한 기능을 나타내지 않아.
         단계가 끝난 후에는 LIVE가 아닌 REPLAY로만 확인할 수 있어.
       </div>
     </aside>

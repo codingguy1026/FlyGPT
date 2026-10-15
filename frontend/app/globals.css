@@ -3342,3 +3342,121 @@ body::before {
   line-height: 1.4;
 }
 
+
+
+/* Scientific neuron annotation layer, independent of router signal intensity. */
+.neuronTypeToolbar {
+  margin: 12px 16px 6px;
+  display: grid;
+  gap: 9px;
+}
+.neuronTypeMode { display: flex; gap: 5px; }
+.neuronTypeMode button,
+.neuronTypeLegend button,
+.neuronTypeCoverage button {
+  border: 1px solid rgba(108, 218, 148, .17);
+  border-radius: 8px;
+  background: rgba(74, 172, 111, .055);
+  color: #a1b8a8;
+  padding: 7px 10px;
+  font-size: 10px;
+  cursor: pointer;
+}
+.neuronTypeMode button.selected,
+.neuronTypeLegend button.selected {
+  color: #cbffe0;
+  border-color: rgba(104, 239, 150, .38);
+  background: rgba(55, 207, 114, .16);
+}
+.neuronTypeCoverage {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 10px;
+  line-height: 1.6;
+  color: #8aa995;
+}
+.neuronTypeCoverage button {
+  padding: 4px 8px;
+}
+.neuronTypeLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.neuronTypeLegend button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.neuronTypeLegend button:disabled { opacity: .5; cursor: default; }
+.neuronTypeLegend button i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+}
+.neuronInspector {
+  margin: 12px 16px;
+  border: 1px solid rgba(105, 226, 155, .18);
+  border-radius: 12px;
+  background: rgba(19, 44, 29, .22);
+  padding: 13px;
+  display: grid;
+  gap: 12px;
+}
+.neuronInspector header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+  color: #b8f6d0;
+  letter-spacing: .08em;
+  font-size: 10px;
+}
+.neuronInspector header span {
+  color: #718b7d;
+  font-size: 8px;
+}
+.neuronInspectorPrimary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.neuronInspectorPrimary > .neuronInspectorDot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  box-shadow: 0 0 13px currentColor;
+  flex: 0 0 13px;
+}
+.neuronInspectorPrimary > div { display: grid; gap: 5px; }
+.neuronInspectorPrimary strong { color: #e0ffeb; font-size: 16px; }
+.neuronInspectorPrimary small { color: #849a8c; font-size: 10px; }
+.neuronInspector dl { margin: 0; display: grid; gap: 8px; }
+.neuronInspector dl > div {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: baseline;
+  border-top: 1px solid rgba(126, 189, 146, .09);
+  padding-top: 8px;
+}
+.neuronInspector dt { color: #7d9988; font-size: 10px; }
+.neuronInspector dd {
+  margin: 0;
+  color: #bfdfce;
+  text-align: right;
+  overflow-wrap: anywhere;
+  font-size: 10px;
+}
+.neuronInspector p {
+  margin: 0;
+  color: #809e89;
+  font-size: 10px;
+  line-height: 1.65;
+}
