@@ -111,6 +111,26 @@ export type ChatResponse = {
   router?: RouterResult;
 };
 
+export type NeuronKind = "sensory" | "motor" | "interneuron" | "projection" | "other" | "unclassified";
+
+export type NeuronAnnotation = {
+  body_id: string;
+  kind: NeuronKind;
+  superclass: string | null;
+  type: string | null;
+  instance: string | null;
+  consensus_nt: string | null;
+};
+
+export type NeuronAnnotationsResponse = {
+  dataset: string;
+  source: string;
+  annotation_kind: string;
+  requested: number;
+  annotated: number;
+  by_body_id: Record<string, NeuronAnnotation>;
+};
+
 export type GraphNode = {
   root_id?: string;
 };
@@ -267,6 +287,12 @@ export function sendChat(
 
 export function getHealth(): Promise<HealthResponse> {
   return requestJson<HealthResponse>("/api/health", {
+    cache: "no-store",
+  });
+}
+
+export function getRouterAnnotations(): Promise<NeuronAnnotationsResponse> {
+  return requestJson<NeuronAnnotationsResponse>("/api/router/annotations", {
     cache: "no-store",
   });
 }
