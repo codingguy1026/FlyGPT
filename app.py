@@ -23,6 +23,7 @@ from brain_runtime import FlyBrainRuntime
 from semantic_route_guard import apply_semantic_route_override
 from seating_solver import solve_linear_seating
 from novel_rule_solver import solve_defined_operations
+from low_confidence_general import eligible_basic_general
 from dispatcher import dispatch, dispatch_math_fast_path, is_math_fast_path
 from generator_runtime import GENERATIVE_ROUTES, GeneratorRuntime
 from memory_store import MemoryStore, format_recall
@@ -1141,6 +1142,73 @@ def chat_endpoint(req: ChatRequest, request: Request):
             )
 
             if result.status == "uncertain":
+                # A low-confidence classification is still rejected as a route.
+                # For a narrow set of evergreen WHAT/WHY questions, attempt a
+                # separate, clearly marked general explanation instead of
+                # returning identical confidence-gate prose for every question.
+                # No memory, fresh research, code or math request is promoted.
+                if eligible_basic_general(msg, route):
+                    cautious_state = dict(brain_state)
+                    cautious_state["task_plan"] = {
+                        "contract": "bounded_task_v1",
+                        "ready": True,
+                        "route": "general",
+                        "language": str(
+                            (brain_state.get("utterance_plan") or {})
+                            .get("style", {}).get("language", "match_user")
+                        ),
+                        "grounding": "user_request",
+                    }
+                    cautious_state["low_confidence_fallback"] = True
+                    elapsed = time.perf_counter() - request_started
+                    budget = max(
+                        0.0,
+                        CHAT_REQUEST_BUDGET_SECONDS
+                        - elapsed
+                        - CHAT_RESPONSE_RESERVE_SECONDS,
+                    )
+                    _emit_live_trace({"type": "status", "phase": "generation"})
+                    fallback = _generator.generate(
+                        msg,
+                        "general",
+                        memory_context=None,
+                        tool_context=None,
+                        knowledge_context=None,
+                        brain_state=cautious_state,
+                        budget_seconds=budget,
+                    )
+                    fallback_answer = (
+                        fallback.answer if fallback.used and fallback.answer
+                        else (
+                            "이 질문은 아직 확실하게 답하지 못했어. "
+                            "부정확한 답을 만들기보다 다른 표현으로 질문해 줘."
+                        )
+                    )
+                    return response_with_router(
+                        answer=fallback_answer,
+                        response_type="dispatch",
+                        data={
+                            "dispatch": result.to_dict(),
+                            "brain_state": cautious_state,
+                            "generation": fallback.to_dict(),
+                            "low_confidence_fallback": True,
+                            "ui_meta": {
+                                "mode": "general · cautious_low_confidence",
+                                "router_model": model_label,
+                                "app_version": APP_VERSION,
+                            },
+                            "timings": {
+                                "router_ms": router_ms,
+                                "dispatch_ms": dispatch_ms,
+                                "generation_ms": fallback.latency_ms,
+                                "total_ms": round(
+                                    (time.perf_counter() - request_started) * 1000
+                                ),
+                            },
+                        },
+                        route=route,  # Keep accepted=False and real router scores.
+                        session_id=session_id,
+                    )
                 return response_with_router(
                     answer=result.answer,
                     response_type="dispatch",
