@@ -441,7 +441,7 @@ class GeneratorRuntime:
             "timeout_seconds": self.timeout,
             "primary_attempt_timeout_seconds": self.primary_attempt_timeout,
             "budget_seconds": self.budget,
-            "temperature": self.temperature if temperature_override is None else min(1.0, max(0.0, temperature_override)),
+            "temperature": self.temperature,
             "max_tokens": self.max_tokens,
             "reasoning_effort": self.reasoning_effort,
             "fallback_model": self.fallback_model or None,
@@ -632,7 +632,10 @@ class GeneratorRuntime:
         body = {
             "model": model,
             "messages": messages,
-            "temperature": self.temperature,
+            "temperature": (
+                self.temperature if temperature_override is None
+                else min(1.0, max(0.0, temperature_override))
+            ),
             "max_tokens": max_tokens_override or self.max_tokens,
         }
         if self.reasoning_effort is not None:
