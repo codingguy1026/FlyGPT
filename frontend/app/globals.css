@@ -3021,3 +3021,241 @@ body::before {
     animation: none !important;
   }
 }
+
+/* Brain-first landing and trace explorer (Oct 2026) */
+.flightApp.isWelcome .flightWorkspace {
+  grid-template-rows: 70px minmax(0, 1fr);
+}
+.flightApp.isWelcome .labStatusStrip { display: none; }
+.flightApp.isWelcome .airCanvas {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 22px;
+  padding: 28px 0 40px;
+  overflow-y: auto;
+}
+.flightApp.isWelcome .messageViewport {
+  flex: 0 0 auto;
+  min-height: auto;
+  width: 100%;
+  overflow: visible;
+}
+.flightApp.isWelcome .launchDock {
+  flex: 0 0 auto;
+  width: 100%;
+  padding: 0 24px;
+  background: transparent;
+}
+.flightApp.isWelcome .dockStatus { text-align: center; }
+.welcomeLanding {
+  width: min(810px, calc(100% - 48px));
+  margin: 0 auto;
+  text-align: center;
+  position: relative;
+  z-index: 2;
+  animation: welcomeAppear .38s ease-out both;
+}
+.welcomeEmblem {
+  width: 62px;
+  height: 62px;
+  margin: 0 auto 25px;
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+  border: 1px solid rgba(var(--accent-rgb), .26);
+  border-radius: 19px;
+  background: linear-gradient(145deg, rgba(var(--accent-rgb), .11), rgba(var(--accent-rgb), .025));
+  box-shadow: 0 12px 38px rgba(var(--accent-rgb), .05);
+}
+.welcomeEyebrow {
+  color: var(--accent);
+  font: 700 10px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: .16em;
+}
+.welcomeLanding h2 {
+  margin: 14px 0 11px;
+  color: #f0f7f3;
+  font-size: clamp(26px, 3vw, 39px);
+  font-weight: 690;
+  letter-spacing: -.055em;
+}
+.welcomeLanding p {
+  margin: 0;
+  color: #8c9a93;
+  font-size: 13px;
+  line-height: 1.85;
+  word-break: keep-all;
+}
+@keyframes welcomeAppear {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.connectomePreview {
+  margin-top: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(var(--accent-rgb), .16);
+  border-radius: 15px;
+  background: radial-gradient(circle at 50% 32%, rgba(var(--accent-rgb), .09), transparent 68%), #080d0e;
+}
+.connectomePreviewTop {
+  padding: 16px 15px 8px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.connectomePreviewTop > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.connectomePreviewTop span,
+.connectomePreviewFooter,
+.connectomeTraceStatus strong {
+  color: #7a9186;
+  font: 700 9px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: .08em;
+}
+.connectomePreviewTop strong {
+  color: #e1eee6;
+  font-size: 16px;
+  font-weight: 650;
+}
+.connectomePreviewTop button {
+  padding: 6px 8px;
+  border: 1px solid rgba(var(--accent-rgb), .22);
+  border-radius: 7px;
+  background: rgba(var(--accent-rgb), .06);
+  color: var(--accent);
+  font: 700 9px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  cursor: pointer;
+}
+.connectomePreviewTop button:hover,
+.connectomeGraphEmpty button:hover {
+  background: rgba(var(--accent-rgb), .14);
+}
+.connectomeGraph {
+  width: 100%;
+  aspect-ratio: 1 / 0.92;
+  padding: 0 10px;
+  display: grid;
+  place-items: center;
+}
+.connectomeGraph svg {
+  display: block;
+  width: 100%;
+  max-height: 100%;
+  overflow: visible;
+}
+.connectomeOutline {
+  fill: rgba(var(--accent-rgb), .018);
+  stroke: rgba(var(--accent-rgb), .23);
+  stroke-width: .48;
+}
+.connectomeEdge {
+  stroke: var(--accent);
+  stroke-width: .20;
+  opacity: .15;
+}
+.connectomeNode {
+  fill: var(--accent-2);
+  transition: opacity .32s, r .32s;
+}
+.connectomeNode.active {
+  fill: var(--accent);
+  filter: drop-shadow(0 0 1px var(--accent));
+}
+.connectomeGraphEmpty {
+  max-width: 235px;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  color: #86978e;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.connectomeGraphEmpty button {
+  padding: 8px 12px;
+  border: 1px solid rgba(var(--accent-rgb), .22);
+  border-radius: 8px;
+  background: rgba(var(--accent-rgb), .055);
+  color: var(--accent);
+  cursor: pointer;
+}
+.connectomeTraceStatus {
+  margin: 0 14px;
+  padding: 12px 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border-top: 1px solid rgba(var(--accent-rgb), .11);
+}
+.connectomeTraceStatus > span {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  margin-top: 3px;
+  border-radius: 50%;
+  background: #55665e;
+}
+.connectomeTraceStatus > span.lit {
+  background: var(--accent);
+  box-shadow: 0 0 11px rgba(var(--accent-rgb), .6);
+}
+.connectomeTraceStatus > div {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+.connectomeTraceStatus strong { color: #cbdcd2; }
+.connectomeTraceStatus small {
+  color: #71847a;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.connectomePreviewFooter {
+  padding: 9px 14px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px;
+  color: #62766a;
+  font-size: 8px;
+  border-top: 1px solid rgba(var(--accent-rgb), .07);
+}
+.telemetryDetails {
+  padding: 14px 0;
+  border-top: 1px solid rgba(var(--accent-rgb), .09);
+}
+.telemetryDetails > summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  color: #9aaa9f;
+  font-size: 11px;
+  cursor: pointer;
+  list-style: none;
+}
+.telemetryDetails > summary::-webkit-details-marker { display: none; }
+.telemetryDetails[open] > summary span { transform: rotate(180deg); }
+.telemetryDetails > .telemetrySection { padding-left: 0; padding-right: 0; }
+@media (max-width: 760px) {
+  .flightApp.isWelcome .flightWorkspace { grid-template-rows: 64px minmax(0, 1fr); }
+  .flightApp.isWelcome .airCanvas { padding: 22px 0; gap: 18px; }
+  .flightApp.isWelcome .launchDock { padding: 0 12px; }
+  .welcomeLanding { width: calc(100% - 36px); }
+  .welcomeLanding p { font-size: 12px; }
+  .welcomeLanding .desktopOnly { display: none; }
+  .welcomeEmblem { margin-bottom: 18px; }
+  .welcomeLanding h2 { font-size: clamp(24px, 7vw, 33px); }
+}
+@media (max-height: 590px) {
+  .flightApp.isWelcome .airCanvas { justify-content: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcomeLanding { animation: none; }
+  .connectomeNode { transition: none; }
+}
