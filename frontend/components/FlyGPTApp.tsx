@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import BrainPanel from "./BrainPanel";
+import ConnectomePreview from "./ConnectomePreview";
 import { Icon, FlyOrb } from "./FlightIdentity";
 import { THEMES } from "@/lib/flight-theme";
 import {
@@ -220,8 +221,8 @@ export default function FlyGPTApp({
     setLiveRoute(null);
     setMonitorPhase("processing");
     setTraceRequestId((current) => current + 1);
-    // The live monitor opens before inference, not after the response.
-    setBrainOpen(true);
+    // The desktop Brain preview is already present; narrow screens need the overlay.
+    if (window.matchMedia("(max-width: 1180px)").matches) setBrainOpen(true);
     setMessages((current) => [
       ...current,
       { id: makeId("user"), role: "user", content: text },
@@ -348,6 +349,11 @@ export default function FlyGPTApp({
     setMessages([INITIAL_MESSAGE]);
     setInput("");
     setRouter(null);
+    setLiveFrames([]);
+    setLiveRoute(null);
+    setMonitorPhase("idle");
+    setTraceRequestId((current) => current + 1);
+    setBrainOpen(false);
     setConversationTitle("Untitled flight");
     setRailOpen(false);
 
@@ -367,6 +373,11 @@ export default function FlyGPTApp({
     setMessages(chat.messages.length ? chat.messages : [INITIAL_MESSAGE]);
     setConversationTitle(chat.title);
     setRouter(null);
+    setLiveFrames([]);
+    setLiveRoute(null);
+    setMonitorPhase("idle");
+    setTraceRequestId((current) => current + 1);
+    setBrainOpen(false);
     setInput("");
     setRailOpen(false);
 
@@ -414,9 +425,22 @@ export default function FlyGPTApp({
   }
 
   const topRoutes = router?.top_routes?.slice(0, 4) ?? [];
+  const traceRouter = useMemo<RouterResult | null>(() => {
+    if (!sending) return router;
+    if (!liveFrames.length) return liveRoute;
+    return {
+      ...(liveRoute ?? { route: "pending", confidence: 0 }),
+      trace: liveFrames,
+      n_nodes: liveFrames[0]?.activations.length,
+    };
+  }, [sending, router, liveFrames, liveRoute]);
+  // The historical welcome message is retained for storage compatibility,
+  // but the landing screen renders its own centered welcome instead.
+  const conversationMessages = messages.filter((message) => message.id !== INITIAL_MESSAGE.id);
+  const hasConversation = conversationMessages.length > 0;
 
   return (
-    <main className={"flightApp" + (sending ? " isThinking" : "")} style={themeVars}>
+    <main className={"flightApp" + (sending ? " isThinking" : "") + (hasConversation ? " hasConversation" : " isWelcome")} style={themeVars}>
       <aside className={"flightRail" + (railOpen ? " open" : "")}>
         <div className="railBrandFull">
           <div className="railBrand">
@@ -513,7 +537,7 @@ export default function FlyGPTApp({
             </button>
             <div className="flightTitle">
               <span className="flightEyebrow">MALECNS / LIVE SESSION</span>
-              <h1>{conversationTitle}</h1>
+              <h1>{hasConversation ? conversationTitle : "FlyGPT"}</h1>
             </div>
           </div>
 
@@ -530,7 +554,7 @@ export default function FlyGPTApp({
             )}
             <button className="telemetryToggle" type="button" onClick={() => setTelemetryOpen((value) => !value)}>
               <Icon name="spark" size={18} />
-              <span>Telemetry</span>
+              <span>Brain</span>
             </button>
           </div>
         </header>
@@ -562,14 +586,22 @@ export default function FlyGPTApp({
           <div className="airCurrent currentOne" />
           <div className="airCurrent currentTwo" />
 
-          <section className="messageViewport" aria-label="대화 내용">
+          <section className="messageViewport" aria-label={hasConversation ? "대화 내용" : "새 대화 시작"}>
+            {!hasConversation ? (
+              <div className="welcomeLanding">
+                <div className="welcomeEmblem" aria-hidden="true"><Icon name="brain" size={27} /></div>
+                <span className="welcomeEyebrow">FLYGPT / MALECNS CONNECTOME</span>
+                <h2>무엇을 탐색해 볼까요?</h2>
+                <p>질문을 보내면 MaleCNS 기반 라우터가 경로를 선택하고,<br className="desktopOnly" /> 실제 실행 기록을 Brain에서 확인할 수 있어요.</p>
+              </div>
+            ) : (
             <div className="flightConversation" role="log" aria-live="polite" aria-relevant="additions">
-              {messages.map((message, index) => (
+              {conversationMessages.map((message, index) => (
                 <article key={message.id} className={"flightMessage " + message.role}>
                   {message.role === "assistant" && (
                     <div className="messageBeacon">
                       <FlyOrb small />
-                      {index < messages.length - 1 && <span className="beaconTrail" />}
+                      {index < conversationMessages.length - 1 && <span className="beaconTrail" />}
                     </div>
                   )}
 
@@ -631,6 +663,7 @@ export default function FlyGPTApp({
 
               <div ref={bottomRef} />
             </div>
+            )}
           </section>
 
           <footer className="launchDock">
@@ -698,30 +731,20 @@ export default function FlyGPTApp({
       <aside className={"telemetryDock" + (telemetryOpen ? " open" : "")}>
         <div className="telemetryHeader">
           <div>
-            <span>ROUTER TELEMETRY</span>
-            <h2>MaleCNS Activity Trace</h2>
+            <span>MALECNS / CONNECTOME</span>
+            <h2>Brain Observatory</h2>
           </div>
           <button className="dockClose" type="button" aria-label="Telemetry 닫기" onClick={() => setTelemetryOpen(false)}>
             <Icon name="close" />
           </button>
         </div>
 
-        <div className="pulseStage">
-          <div className="pulseHalo haloOne" />
-          <div className="pulseHalo haloTwo" />
-          <div className="pulseHalo haloThree" />
-          <FlyOrb />
-          <div className="pulseLabel">
-            <span>CURRENT ROUTE</span>
-            <strong>{router?.route ?? "awaiting signal"}</strong>
-            <b>{router ? (router.semantic_override ? "semantic rule" : (router.confidence * 100).toFixed(1) + "%") : "—"}</b>
-          </div>
-        </div>
+        <ConnectomePreview router={traceRouter} pending={sending} live={sending} phase={monitorPhase} onExpand={() => setBrainOpen(true)} />
 
         <section className="telemetrySection">
           <div className="sectionTitle">
-            <span>ROUTE MIX</span>
-            <button type="button" onClick={() => setBrainOpen(true)}>open brain ↗</button>
+            <span>LAST ROUTE MIX</span>
+            <button type="button" onClick={() => setBrainOpen(true)}>view graph ↗</button>
           </div>
 
           <div className="routeMix">
@@ -741,6 +764,8 @@ export default function FlyGPTApp({
           </div>
         </section>
 
+        <details className="telemetryDetails">
+          <summary>System details &amp; appearance <span>⌄</span></summary>
         <section className="telemetrySection systemGrid">
           <div>
             <span>BACKEND</span>
@@ -789,6 +814,7 @@ export default function FlyGPTApp({
             Clear memory
           </button>
         </div>
+        </details>
       </aside>
 
       {telemetryOpen && <button className="telemetryScrim" type="button" aria-label="Telemetry 닫기" onClick={() => setTelemetryOpen(false)} />}
@@ -796,9 +822,7 @@ export default function FlyGPTApp({
       <BrainPanel
         open={brainOpen}
         onClose={() => setBrainOpen(false)}
-        router={sending ? (
-          liveFrames.length ? { ...(liveRoute ?? { route: "pending", confidence: 0 }), trace: liveFrames, n_nodes: liveFrames[0]?.activations.length } : liveRoute
-        ) : router}
+        router={traceRouter}
         phase={monitorPhase}
         requestId={traceRequestId}
       />
