@@ -35,7 +35,9 @@ export default function BrainPanel({ open, onClose, router, phase, requestId }: 
   const [selectedNode, setSelectedNode] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!open || graph) return;
+    // Preload topology even while the monitor is closed so fast inferences
+    // can be displayed without first waiting for a separate graph request.
+    if (graph) return;
     let active = true;
     setError("");
     getRouterGraph()
@@ -44,7 +46,7 @@ export default function BrainPanel({ open, onClose, router, phase, requestId }: 
         if (active) setError(reason instanceof Error ? reason.message : String(reason));
       });
     return () => { active = false; };
-  }, [open, graph, retryCount]);
+  }, [graph, retryCount]);
 
   // A new request starts from real incoming events, never the previous replay.
   useEffect(() => {
