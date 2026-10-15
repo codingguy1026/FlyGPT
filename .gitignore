@@ -16,3 +16,8 @@ frontend/.env.local
 
 # Experimental full-connectome structural embeddings (large local checkpoint)
 artifacts/malecns_full_structural_embeddings.pt
+
+# Role-aware router is an offline experiment, not the active deployment checkpoint
+artifacts/malecns_roles_v1.json
+artifacts/fly_router_malecns_role_experiment.pt
+artifacts/role_aware_comparison.json
