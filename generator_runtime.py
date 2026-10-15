@@ -90,6 +90,31 @@ _SAFE_SURFACE: dict[str, dict[str, str]] = {
 }
 
 
+def _is_parroting_answer(question: str, answer: str) -> bool:
+    """Reject clear question restatements, not genuinely new computations.
+
+    This intentionally checks only near-verbatim echoes of substantial
+    excerpts. Short greetings, quotations, and new numerical results must
+    not be blanket-blocked by a similarity heuristic.
+    """
+    from difflib import SequenceMatcher
+
+    prompt = "".join(re.findall(r"[가-힣a-z0-9]+", question.lower()))
+    reply = "".join(re.findall(r"[가-힣a-z0-9]+", answer.lower()))
+    if len(prompt) < 18 or len(reply) < 19:
+        return False
+    # An answer producing a numerical result not already in the question
+    # is not a mere restatement, even when it also repeats the problem.
+    input_numbers = set(re.findall(r"\d+(?:\.\d+)?", question))
+    response_numbers = set(re.findall(r"\d+(?:\.\d+)?", answer))
+    if response_numbers - input_numbers:
+        return False
+    matching = SequenceMatcher(None, prompt, reply, autojunk=False).find_longest_match(
+        0, len(prompt), 0, len(reply)
+    )
+    return matching.size / len(reply) >= 0.70
+
+
 def _contains_internal_plan(text: str) -> bool:
     """Fail closed when a model echoes plan fields, even inside extra prose."""
     return bool(_PLAN_LEAK_RE.search(text))
@@ -431,6 +456,9 @@ class GeneratorRuntime:
             "For logic puzzles, extract each constraint, check all candidates "
             "for consistency, and say clearly when no solution exists. "
             "For calculations, verify steps and admit uncertainty if you cannot. "
+            "Never merely restate the task or repeat the user's question as an "
+            "answer. If you cannot produce a substantive result, clearly say "
+            "what is missing instead of pretending the task is finished. "
             "For programming, give a concrete solution with honest assumptions. "
             "For summarization, use only supplied material; never invent details. "
             "Do not invent facts, sources, URLs, past conversations, capabilities, "
@@ -908,6 +936,7 @@ class GeneratorRuntime:
             *,
             attempt_timeout: float | None = None,
             max_tokens_override: int | None = None,
+            echo_correction: bool = False,
         ) -> GenerationResult:
             nonlocal attempts
             remaining = remaining_seconds()
@@ -921,7 +950,18 @@ class GeneratorRuntime:
             attempts += 1
             result = self._generate_once(
                 model=model,
-                messages=messages,
+                messages=(
+                    messages + [{
+                        "role": "system",
+                        "content": (
+                            "Your previous completion merely restated the question. "
+                            "Try once to provide a substantive answer with verified "
+                            "steps. If you cannot solve it, explicitly say so. "
+                            "Do not repeat the question as the answer."
+                        ),
+                    }]
+                    if echo_correction else messages
+                ),
                 timeout_seconds=timeout_cap,
                 **({"max_tokens_override": max_tokens_override}
                    if max_tokens_override is not None else {}),
@@ -941,6 +981,14 @@ class GeneratorRuntime:
                     result.answer = None
                     result.finish_reason = "blocked_internal_plan"
                     result.error = "internal generation metadata blocked from chat output"
+            if task_ready and result.used and result.answer and _is_parroting_answer(
+                message, result.answer
+            ):
+                result.used = False
+                result.answer = None
+                result.finish_reason = "blocked_parrot"
+                result.error_code = "non_answer_echo"
+                result.error = "generator returned a near-verbatim question echo"
             if (
                 not result.used
                 and remaining_seconds() <= 0.05
@@ -983,6 +1031,13 @@ class GeneratorRuntime:
             attempt_timeout=primary_attempt_timeout,
         )
         if first.used:
+            return first
+
+        if first.error_code == "non_answer_echo":
+            # One bounded corrective attempt, without silently accepting a
+            # second parrot response or hiding the failure.
+            if remaining_seconds() >= 1.0:
+                return generate_with_budget(self.model, echo_correction=True)
             return first
 
         if first.error_code == "truncated":
