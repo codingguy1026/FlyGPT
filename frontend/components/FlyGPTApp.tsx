@@ -10,6 +10,7 @@ import {
 } from "react";
 import BrainPanel from "./BrainPanel";
 import ConnectomePreview from "./ConnectomePreview";
+import FlyThinkingIndicator from "./FlyThinkingIndicator";
 import { Icon, FlyOrb } from "./FlightIdentity";
 import { THEMES } from "@/lib/flight-theme";
 import {
@@ -651,11 +652,11 @@ export default function FlyGPTApp({
                     <FlyOrb small />
                   </div>
                   <div className="messagePayload">
-                    <div className="messageBubble loadingPayload">
-                      <span />
-                      <span />
-                      <span />
-                      <b>route tracing</b>
+                    <div className="messageBubble flyThinkingBubble">
+                      <FlyThinkingIndicator
+                        phase={monitorPhase}
+                        frame={liveFrames.length ? liveFrames[liveFrames.length - 1] : null}
+                      />
                     </div>
                   </div>
                 </article>
