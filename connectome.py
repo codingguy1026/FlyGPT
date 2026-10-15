@@ -123,6 +123,39 @@ class MaleCNSConnectome:
             "last_database_edit": meta.get("lastDatabaseEdit"),
         }
 
+    def neuron_annotations(self, body_ids: list[int]) -> dict[str, dict[str, str | None]]:
+        """Batch-fetch official neuPrint neuron properties for known body IDs.
+
+        Values are only read from the Janelia MaleCNS dataset. A blank or
+        missing superclass is explicitly unclassified; other annotations
+        are never inferred from graph degree, position or text.
+        """
+        from neuron_annotations import annotation_record
+
+        if len(body_ids) > 512:
+            raise ValueError("At most 512 neuron annotations can be fetched at once")
+        if any(type(body_id) is not int or body_id <= 0 for body_id in body_ids):
+            raise ValueError("Neuron body IDs must be positive integers")
+        ids = sorted(set(body_ids))
+        if not ids:
+            return {}
+
+        # Integer-only interpolation prevents Cypher injection. One bounded
+        # query is much cheaper than querying each of the 256 scaffold nodes.
+        numbers = ", ".join(str(body_id) for body_id in ids)
+        query = (
+            "MATCH (n:Neuron) WHERE n.bodyId IN [" + numbers + "] "
+            "RETURN n.bodyId AS body_id, n.superclass AS superclass, "
+            "n.type AS type, n.instance AS instance, "
+            "n.consensusNt AS consensus_nt"
+        )
+        rows = self.client.fetch_custom(query)
+        return {
+            record["body_id"]: record
+            for raw in rows.to_dict("records")
+            if (record := annotation_record(raw))
+        }
+
     @staticmethod
     def _nt_lookup(neurons_df: Any) -> dict[int, str]:
         if neurons_df is None or len(neurons_df) == 0 or "bodyId" not in neurons_df.columns:
