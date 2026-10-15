@@ -10,6 +10,13 @@ export type TraceFrame = {
   activations: number[];
 };
 
+export type ChatStreamEvent =
+  | { type: "status"; phase: "processing" | "router_loading" | "generation" }
+  | { type: "trace"; frame: TraceFrame }
+  | { type: "route"; route: string; confidence: number; accepted: boolean; semantic_override: boolean }
+  | { type: "result"; response: ChatResponse }
+  | { type: "error"; message: string; status?: number };
+
 export type RouterResult = {
   model?: string;
   route: string;
@@ -185,6 +192,62 @@ export type RouteLearningStatus = {
   stores_raw_prompts: boolean;
   max_examples: number;
 };
+
+/** Stream genuine backend inference events; never run a second router pass. */
+export async function sendChatStream(
+  message: string,
+  sessionId: string,
+  onEvent: (event: ChatStreamEvent) => void,
+): Promise<ChatResponse> {
+  const response = await fetch("/api/chat/stream", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+    body: JSON.stringify({ message, session_id: sessionId }),
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    throw new Error("HTTP " + response.status + ": 채팅 스트림을 열지 못했어.");
+  }
+  if (!response.body) throw new Error("스트리밍을 지원하지 않는 응답이야.");
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finalResult: ChatResponse | null = null;
+
+  function parseBlock(block: string) {
+    const json = block.split("\n")
+      .filter((line) => line.startsWith("data:"))
+      .map((line) => line.slice(5).trimStart())
+      .join("\n");
+    if (!json) return;
+    const event = JSON.parse(json) as ChatStreamEvent;
+    onEvent(event);
+    if (event.type === "result") finalResult = event.response;
+    if (event.type === "error") throw new Error(event.message);
+  }
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
+      let index = buffer.indexOf("\n\n");
+      while (index >= 0) {
+        parseBlock(buffer.slice(0, index));
+        buffer = buffer.slice(index + 2);
+        index = buffer.indexOf("\n\n");
+      }
+    }
+    buffer += decoder.decode();
+    if (buffer.trim()) parseBlock(buffer);
+  } finally {
+    reader.releaseLock();
+  }
+  if (!finalResult) throw new Error("채팅 스트림이 최종 응답 없이 종료됐어.");
+  return finalResult;
+}
 
 export function sendChat(
   message: string,

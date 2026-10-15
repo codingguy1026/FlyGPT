@@ -28,11 +28,13 @@ import {
   getHealth,
   getKnowledgeStatus,
   getRouteLearningStatus,
-  sendChat,
+  sendChatStream,
   type HealthResponse,
   type KnowledgeStatus,
   type RouteLearningStatus,
   type RouterResult,
+  type TraceFrame,
+  type ChatStreamEvent,
 } from "@/lib/api";
 import {
   createMemorySessionId,
@@ -58,6 +60,10 @@ export default function FlyGPTApp({
   const [railOpen, setRailOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [router, setRouter] = useState<RouterResult | null>(null);
+  const [liveFrames, setLiveFrames] = useState<TraceFrame[]>([]);
+  const [liveRoute, setLiveRoute] = useState<RouterResult | null>(null);
+  const [monitorPhase, setMonitorPhase] = useState<"idle" | "processing" | "router_loading" | "routing" | "generation" | "tool" | "done" | "error">("idle");
+  const [traceRequestId, setTraceRequestId] = useState(0);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [learningStatus, setLearningStatus] = useState<RouteLearningStatus | null>(null);
   const [knowledgeStatus, setKnowledgeStatus] = useState<KnowledgeStatus | null>(null);
@@ -210,14 +216,35 @@ export default function FlyGPTApp({
 
     setInput("");
     setSending(true);
+    setRouter(null);
+    setLiveFrames([]);
+    setLiveRoute(null);
+    setMonitorPhase("processing");
+    setTraceRequestId((current) => current + 1);
+    // The desktop Brain preview is already present; narrow screens need the overlay.
+    if (window.matchMedia("(max-width: 1180px)").matches) setBrainOpen(true);
     setMessages((current) => [
       ...current,
       { id: makeId("user"), role: "user", content: text },
     ]);
 
     try {
-      const response = await sendChat(text, sessionId);
+      const response = await sendChatStream(text, sessionId, (event: ChatStreamEvent) => {
+        if (event.type === "status") {
+          setMonitorPhase(event.phase);
+        } else if (event.type === "trace") {
+          setLiveFrames((current) => [...current, event.frame]);
+          setMonitorPhase("routing");
+        } else if (event.type === "route") {
+          setLiveRoute({
+            route: event.route,
+            confidence: event.confidence,
+            accepted: event.accepted,
+          });
+        }
+      });
       setRouter(response.router ?? null);
+      setMonitorPhase(response.router?.trace?.length ? "done" : response.type === "math_fast_path" ? "tool" : "done");
 
       const meta = buildMessageMeta(response);
       setMessages((current) => [
@@ -246,6 +273,7 @@ export default function FlyGPTApp({
         getKnowledgeStatus().then(setKnowledgeStatus).catch(() => undefined);
       }
     } catch (reason: unknown) {
+      setMonitorPhase("error");
       const detail = reason instanceof Error ? reason.message : String(reason);
       setMessages((current) => [
         ...current,
@@ -321,6 +349,11 @@ export default function FlyGPTApp({
     setMessages([INITIAL_MESSAGE]);
     setInput("");
     setRouter(null);
+    setLiveFrames([]);
+    setLiveRoute(null);
+    setMonitorPhase("idle");
+    setTraceRequestId((current) => current + 1);
+    setBrainOpen(false);
     setConversationTitle("Untitled flight");
     setRailOpen(false);
 
@@ -340,6 +373,11 @@ export default function FlyGPTApp({
     setMessages(chat.messages.length ? chat.messages : [INITIAL_MESSAGE]);
     setConversationTitle(chat.title);
     setRouter(null);
+    setLiveFrames([]);
+    setLiveRoute(null);
+    setMonitorPhase("idle");
+    setTraceRequestId((current) => current + 1);
+    setBrainOpen(false);
     setInput("");
     setRailOpen(false);
 
@@ -387,6 +425,15 @@ export default function FlyGPTApp({
   }
 
   const topRoutes = router?.top_routes?.slice(0, 4) ?? [];
+  const traceRouter = useMemo<RouterResult | null>(() => {
+    if (!sending) return router;
+    if (!liveFrames.length) return liveRoute;
+    return {
+      ...(liveRoute ?? { route: "pending", confidence: 0 }),
+      trace: liveFrames,
+      n_nodes: liveFrames[0]?.activations.length,
+    };
+  }, [sending, router, liveFrames, liveRoute]);
   // The historical welcome message is retained for storage compatibility,
   // but the landing screen renders its own centered welcome instead.
   const conversationMessages = messages.filter((message) => message.id !== INITIAL_MESSAGE.id);
@@ -531,7 +578,7 @@ export default function FlyGPTApp({
           </div>
           <div className={"labPulse" + (sending ? " active" : "")}>
             <i />
-            <span>{sending ? "SIGNAL MOVING" : online ? "SYSTEM NOMINAL" : "BACKEND CHECK"}</span>
+            <span>{sending ? "REQUEST RUNNING" : online ? "SYSTEM NOMINAL" : "BACKEND CHECK"}</span>
           </div>
         </div>
 
@@ -692,7 +739,7 @@ export default function FlyGPTApp({
           </button>
         </div>
 
-        <ConnectomePreview router={router} pending={sending} onExpand={() => setBrainOpen(true)} />
+        <ConnectomePreview router={traceRouter} pending={sending} live={sending} phase={monitorPhase} onExpand={() => setBrainOpen(true)} />
 
         <section className="telemetrySection">
           <div className="sectionTitle">
@@ -772,7 +819,13 @@ export default function FlyGPTApp({
 
       {telemetryOpen && <button className="telemetryScrim" type="button" aria-label="Telemetry 닫기" onClick={() => setTelemetryOpen(false)} />}
 
-      <BrainPanel open={brainOpen} onClose={() => setBrainOpen(false)} router={router} />
+      <BrainPanel
+        open={brainOpen}
+        onClose={() => setBrainOpen(false)}
+        router={traceRouter}
+        phase={monitorPhase}
+        requestId={traceRequestId}
+      />
 
       {settingsOpen && (
         <div className="settingsBackdrop" onMouseDown={() => setSettingsOpen(false)}>

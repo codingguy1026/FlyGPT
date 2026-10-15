@@ -3259,3 +3259,86 @@ body::before {
   .welcomeLanding { animation: none; }
   .connectomeNode { transition: none; }
 }
+
+
+/* Real router trace monitor: distinguish LIVE computation from replay. */
+.traceEvidence {
+  margin: 10px 16px 8px;
+  font-size: 10px;
+  line-height: 1.6;
+  color: #8fa99a;
+  border-left: 2px solid rgba(94, 226, 134, .35);
+  padding-left: 9px;
+}
+
+.traceControls {
+  margin: 12px 16px;
+  padding: 12px;
+  border: 1px solid rgba(100, 220, 142, .18);
+  border-radius: 10px;
+  background: rgba(21, 49, 32, .22);
+  display: grid;
+  gap: 9px;
+}
+
+.traceControlHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 10px;
+  color: #a6dec0;
+  letter-spacing: .035em;
+}
+
+.traceControls input[type="range"] {
+  width: 100%;
+  accent-color: #5ee996;
+  cursor: pointer;
+}
+
+.traceControls button {
+  justify-self: start;
+  font-size: 10px;
+  border: 1px solid rgba(97, 255, 150, .22);
+  border-radius: 7px;
+  color: #b7f3ca;
+  background: rgba(97, 255, 150, .07);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.traceDecision {
+  margin: 9px 16px;
+  padding: 11px 12px;
+  border: 1px solid rgba(97, 255, 150, .12);
+  background: rgba(50, 120, 72, .065);
+  border-radius: 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow-wrap: anywhere;
+}
+
+.traceDecision span {
+  color: #7ab491;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+.traceDecision strong {
+  color: #baf5cb;
+  font-size: 13px;
+}
+
+.traceDecision small {
+  color: #7d9d89;
+  line-height: 1.5;
+}
+
+.brainStatus {
+  max-width: 240px;
+  white-space: normal;
+  line-height: 1.4;
+}
+

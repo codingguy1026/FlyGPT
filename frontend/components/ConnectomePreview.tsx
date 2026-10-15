@@ -6,6 +6,8 @@ import { getRouterGraph, type GraphResponse, type RouterResult } from "@/lib/api
 type Props = {
   router: RouterResult | null;
   pending: boolean;
+  live: boolean;
+  phase: string;
   onExpand: () => void;
 };
 
@@ -24,7 +26,7 @@ function nodePosition(index: number, count: number) {
   };
 }
 
-export default function ConnectomePreview({ router, pending, onExpand }: Props) {
+export default function ConnectomePreview({ router, pending, live, phase, onExpand }: Props) {
   const [graph, setGraph] = useState<GraphResponse | null>(null);
   const [error, setError] = useState(false);
   const [retry, setRetry] = useState(0);
@@ -40,6 +42,12 @@ export default function ConnectomePreview({ router, pending, onExpand }: Props) 
   }, [retry]);
 
   useEffect(() => {
+    // While streaming, show the most recently received real frame immediately.
+    // Only replay older frames after the request has completed.
+    if (live) {
+      setFrameIndex(-1);
+      return;
+    }
     const frames = router?.trace ?? [];
     if (frames.length === 0) {
       setFrameIndex(-1);
@@ -56,23 +64,26 @@ export default function ConnectomePreview({ router, pending, onExpand }: Props) 
       setFrameIndex(index);
     }, 420);
     return () => window.clearInterval(timer);
-  }, [router]);
+  }, [router, live]);
 
   const positions = useMemo(
     () => graph?.nodes.map((_, index) => nodePosition(index, graph.nodes.length)) ?? [],
     [graph],
   );
-  const frame = frameIndex < 0 ? null : router?.trace?.[frameIndex] ?? null;
+  const frame = live
+    ? router?.trace?.[Math.max(0, (router.trace?.length ?? 0) - 1)] ?? null
+    : frameIndex < 0 ? null : router?.trace?.[frameIndex] ?? null;
   const compatible = !!graph && !!frame && frame.activations.length === graph.nodes.length;
   const activations = compatible && frame ? frame.activations : [];
   const hasTrace = !!router?.trace?.length;
-  const status = pending
-    ? "REQUEST IN PROGRESS"
-    : compatible
-      ? "TRACE REPLAY"
-      : hasTrace
-        ? "TRACE UNAVAILABLE"
-        : "AWAITING SIGNAL";
+  const status = phase === "tool" ? "EXACT TOOL · NO ROUTER"
+    : phase === "error" ? "REQUEST ERROR"
+    : pending && phase === "routing" && compatible ? "LIVE · ROUTER FRAME"
+    : pending && phase === "generation" ? "ROUTER COMPLETE · GENERATING"
+    : pending ? "REQUEST IN PROGRESS"
+    : compatible ? "TRACE REPLAY"
+    : hasTrace ? "TRACE UNAVAILABLE"
+    : "AWAITING SIGNAL";
 
   return (
     <section className="connectomePreview" aria-label="MaleCNS 라우터 신경망 미리보기">
@@ -133,15 +144,19 @@ export default function ConnectomePreview({ router, pending, onExpand }: Props) 
         )}
       </div>
       <div className="connectomeTraceStatus" aria-live="polite">
-        <span className={compatible && !pending ? "lit" : ""} />
+        <span className={compatible && (phase === "routing" || !pending) ? "lit" : ""} />
         <div>
           <strong>{status}</strong>
           <small>
-            {pending
-              ? "응답을 기다리는 중 · 스트리밍 측정 아님"
-              : compatible
-                ? `기록 재생 · ${frame?.stage?.replaceAll("_", " ") ?? "step"}`
-                : "질문을 보내면 기록된 활성도가 표시됩니다"}
+            {phase === "tool"
+              ? "확정 도구 처리 · 라우터 실행 없음"
+              : pending && compatible
+                ? `실제 라우터 프레임 · ${frame?.stage?.replaceAll("_", " ") ?? "step"}`
+                : pending
+                  ? "실제 라우터 이벤트를 기다리는 중"
+                  : compatible
+                    ? `기록 재생 · ${frame?.stage?.replaceAll("_", " ") ?? "step"}`
+                    : "질문을 보내면 기록된 활성도가 표시됩니다"}
           </small>
         </div>
       </div>
