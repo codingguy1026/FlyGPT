@@ -389,7 +389,8 @@ export default function FlyGPTApp({
   const topRoutes = router?.top_routes?.slice(0, 4) ?? [];
   // The historical welcome message is retained for storage compatibility,
   // but the landing screen renders its own centered welcome instead.
-  const hasConversation = messages.some((message) => message.id !== INITIAL_MESSAGE.id);
+  const conversationMessages = messages.filter((message) => message.id !== INITIAL_MESSAGE.id);
+  const hasConversation = conversationMessages.length > 0;
 
   return (
     <main className={"flightApp" + (sending ? " isThinking" : "") + (hasConversation ? " hasConversation" : " isWelcome")} style={themeVars}>
@@ -548,12 +549,12 @@ export default function FlyGPTApp({
               </div>
             ) : (
             <div className="flightConversation" role="log" aria-live="polite" aria-relevant="additions">
-              {messages.filter((message) => message.id !== INITIAL_MESSAGE.id).map((message, index) => (
+              {conversationMessages.map((message, index) => (
                 <article key={message.id} className={"flightMessage " + message.role}>
                   {message.role === "assistant" && (
                     <div className="messageBeacon">
                       <FlyOrb small />
-                      {index < messages.length - 1 && <span className="beaconTrail" />}
+                      {index < conversationMessages.length - 1 && <span className="beaconTrail" />}
                     </div>
                   )}
 
