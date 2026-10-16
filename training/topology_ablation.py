@@ -18,6 +18,8 @@ import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 TRAIN_FILES = [
     "teacher_seed.jsonl", "curriculum_v0_3_4.jsonl",
     "curriculum_v0_3_5_short.jsonl", "curriculum_v0_3_6_context.jsonl",
