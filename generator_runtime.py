@@ -178,6 +178,51 @@ def _extract_json_object(text: str) -> dict[str, Any] | None:
     return payload if isinstance(payload, dict) else None
 
 
+def _extract_chat_completion(payload: Any) -> tuple[str, str | None]:
+    """Read only user-facing text from compatible chat-completion responses.
+
+    Some OpenAI-compatible providers return content as typed text blocks rather
+    than a single string. Do not mistake reasoning/tool calls or provider-native
+    response objects for a final answer. The errors intentionally describe
+    *structure*, never quote third-party model output or request content.
+    """
+    if not isinstance(payload, dict):
+        raise ValueError("provider returned a non-object JSON response")
+    if "choices" not in payload:
+        raise ValueError("provider response missing chat-completion choices")
+    choices = payload["choices"]
+    if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
+        raise ValueError("provider response had empty or invalid choices")
+    choice = choices[0]
+    finish_reason = choice.get("finish_reason")
+    if finish_reason is not None and not isinstance(finish_reason, str):
+        raise ValueError("provider returned invalid finish_reason")
+    message = choice.get("message")
+    if not isinstance(message, dict):
+        raise ValueError("provider response missing assistant message")
+    content = message.get("content")
+    if isinstance(content, str):
+        answer = content.strip()
+    elif isinstance(content, list):
+        # OpenAI-compatible typed content parts. Ignore tool/function calls,
+        # thinking/reasoning blocks, images and all unknown part types.
+        pieces = []
+        for part in content:
+            if not isinstance(part, dict) or part.get("type") != "text":
+                continue
+            part_text = part.get("text")
+            if isinstance(part_text, str) and part_text.strip():
+                pieces.append(part_text.strip())
+        answer = "\n".join(pieces).strip()
+    else:
+        answer = ""
+    if not answer:
+        # It is common for some reasoning models to spend their whole output
+        # budget on non-user-visible reasoning. Never display that reasoning.
+        raise ValueError("provider response missing visible assistant text")
+    return answer, finish_reason
+
+
 def _env_int(name: str, default: int, *, minimum: int, maximum: int) -> int:
     raw = os.environ.get(name, "").strip()
     if not raw:
@@ -560,14 +605,10 @@ class GeneratorRuntime:
             payload = json.loads(raw_body.decode("utf-8"))
             json_parse_ms = round((time.perf_counter() - parse_started) * 1000)
 
-            choices = payload.get("choices") or []
-            if not choices:
-                raise ValueError("generator response did not contain choices")
-
-            choice = choices[0]
-            message_obj = choice.get("message") or {}
-            answer = message_obj.get("content")
-            finish_reason = choice.get("finish_reason")
+            # Providers may return either string content or typed text parts.
+            # Still require a valid chat-completion envelope; never interpret
+            # hidden reasoning/tool call fields as a final chat answer.
+            answer, finish_reason = _extract_chat_completion(payload)
             if isinstance(finish_reason, str) and finish_reason.lower() in {
                 "length", "max_tokens", "max_output_tokens",
             }:
@@ -588,9 +629,6 @@ class GeneratorRuntime:
                     request_bytes=len(request_bytes),
                     response_bytes=response_bytes,
                 )
-            if not isinstance(answer, str) or not answer.strip():
-                raise ValueError("generator response did not contain message content")
-
             return GenerationResult(
                 used=True,
                 provider=self.provider_name,
@@ -654,7 +692,12 @@ class GeneratorRuntime:
                 provider=self.provider_name,
                 model=model,
                 answer=None,
-                error=f"{type(exc).__name__}: {exc}",
+                # Keep diagnostics structural. Never copy raw provider text,
+                # request bodies, or API credentials into the UI/logs.
+                error=(
+                    str(exc) if code == "invalid_response"
+                    else type(exc).__name__
+                ),
                 error_code=code,
                 latency_ms=round((time.perf_counter() - started) * 1000),
                 open_wait_ms=open_wait_ms,
