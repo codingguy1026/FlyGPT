@@ -1,4 +1,4 @@
-.PHONY: run local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural enable-trained-router disable-trained-router download-full-neuron-data train-full-neuron-router enable-full-neuron-router disable-full-neuron-router help stop
+.PHONY: run local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural enable-trained-router disable-trained-router download-full-neuron-data train-full-neuron-router enable-full-neuron-router disable-full-neuron-router install-full-neuron-router help stop
 
 run:
 	@bash scripts/run_all.sh
@@ -47,6 +47,9 @@ download-full-neuron-data:
 train-full-neuron-router:
 	@bash scripts/train_full_population_router.sh
 
+install-full-neuron-router:
+	@bash scripts/install_trained_full_neuron_router.sh
+
 enable-full-neuron-router:
 	@bash scripts/enable_full_neuron_router.sh
 
@@ -89,6 +92,7 @@ help:
 	@echo "  make disable-trained-router Restore previous local router settings"
 	@echo "  make download-full-neuron-data Download official 1.1GB full MaleCNS graph (explicit only)"
 	@echo "  make train-full-neuron-router Train exact whole-population structural routing model offline"
+	@echo "  make install-full-neuron-router Download validated 166700-neuron trained checkpoint and opt in locally"
 	@echo "  make enable-full-neuron-router Verify+select the all-neuron model for next site startup"
 	@echo "  make disable-full-neuron-router Return to the previous router model"
 	@echo "  make train-full-structural  Run one full offline MaleCNS structural training epoch"
