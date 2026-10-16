@@ -21,3 +21,9 @@ artifacts/malecns_full_structural_embeddings.pt
 artifacts/malecns_roles_v1.json
 artifacts/fly_router_malecns_role_experiment.pt
 artifacts/role_aware_comparison.json
+
+
+# Research candidate loaded only after explicit opt-in (not an automatic release).
+artifacts/fly_router_malecns_residual_seed44.pt
+data/trained_router_previous_env.json
+.env.tmp
