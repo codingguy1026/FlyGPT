@@ -11,7 +11,9 @@ class FlyRouterRuntime:
     def __init__(self, model_path: str | Path) -> None:
         import torch
 
-        from training.train_router import FlyGraphRouter, RoleAwareFlyGraphRouter, vectorize
+        from training.train_router import (
+            FlyGraphRouter, RoleAwareFlyGraphRouter, ResidualFlyGraphRouter, vectorize,
+        )
 
         self._torch = torch
         self._vectorize = vectorize
@@ -23,6 +25,16 @@ class FlyRouterRuntime:
             weights_only=True,
         )
 
+        self.residual_research = checkpoint.get("format") == "flygpt-research-residual-v1"
+        if self.residual_research:
+            # A research model is an explicit opt-in, never loaded implicitly.
+            import os
+            if os.environ.get("FLYGPT_ALLOW_RESEARCH_ROUTER") != "1":
+                raise ValueError("Research router disabled; set FLYGPT_ALLOW_RESEARCH_ROUTER=1")
+            if checkpoint.get("architecture") != "ResidualFlyGraphRouter":
+                raise ValueError("Unexpected residual architecture")
+            if checkpoint.get("research_only") is not True:
+                raise ValueError("Research provenance flag missing")
         self.routes = list(checkpoint["routes"])
         self.vocab_size = int(checkpoint["vocab_size"])
         self.n_nodes = int(checkpoint["n_nodes"])
@@ -33,6 +45,41 @@ class FlyRouterRuntime:
         )
         self.vectorizer_version = str(checkpoint.get("vectorizer_version", "v1"))
         self.scaffold_meta = dict(checkpoint.get("scaffold_meta", {}))
+        if self.residual_research:
+            # Training archives omit body IDs. Restore only after checking that
+            # the exact frozen MaleCNS graph matches every archived edge.
+            import json
+            scaffold = json.loads(
+                (Path(__file__).resolve().parent / "training/malecns_scaffold.json")
+                .read_text(encoding="utf-8")
+            )
+            if (
+                scaffold.get("dataset") != "male-cns:v1.0"
+                or int(scaffold.get("n_nodes", -1)) != 256
+                or len(scaffold.get("edges", [])) != 948
+                or self.n_nodes != 256
+                or self.steps != 3
+                or self.vocab_size != 8192
+                or self.vectorizer_version != "v6"
+                or self.routes != ["code", "general", "math", "memory", "research", "summarize"]
+            ):
+                raise ValueError("Checkpoint and frozen MaleCNS scaffold metadata mismatch")
+            expected_src = torch.tensor([e["src"] for e in scaffold["edges"]], dtype=torch.long)
+            expected_dst = torch.tensor([e["dst"] for e in scaffold["edges"]], dtype=torch.long)
+            expected_weights = torch.tensor([e["weight"] for e in scaffold["edges"]], dtype=torch.float32)
+            if (
+                not torch.equal(checkpoint["src"].cpu(), expected_src)
+                or not torch.equal(checkpoint["dst"].cpu(), expected_dst)
+                or not torch.allclose(checkpoint["base_weight"].cpu(), expected_weights, atol=1e-6, rtol=0)
+                or len(scaffold["root_ids"]) != 256
+            ):
+                raise ValueError("Research checkpoint does not match the genuine MaleCNS graph")
+            self.scaffold_meta = {
+                "kind": "male-cns:v1.0",
+                "root_ids": scaffold["root_ids"],
+                "source": scaffold.get("source"),
+                "research_only": True,
+            }
         self.temperature = max(0.05, min(float(checkpoint.get("temperature", 1.0)), 10.0))
         self.calibration = dict(checkpoint.get("calibration", {}))
 
@@ -52,6 +99,8 @@ class FlyRouterRuntime:
         self.role_aware = bool(checkpoint.get("role_aware", False))
         self.role_metadata = checkpoint.get("role_metadata") if self.role_aware else None
         role_labels = checkpoint.get("role_labels") if self.role_aware else None
+        if self.residual_research and self.role_aware:
+            raise ValueError("A checkpoint cannot be residual and role-aware")
         if self.role_aware:
             if not isinstance(role_labels, list):
                 raise ValueError("Role-aware checkpoint is missing role_labels")
@@ -64,6 +113,14 @@ class FlyRouterRuntime:
                 base_weight=self.base_weight,
                 steps=self.steps,
                 roles=role_labels,
+            )
+        elif self.residual_research:
+            self.model = ResidualFlyGraphRouter(
+                vocab_size=self.vocab_size,
+                n_nodes=self.n_nodes,
+                n_classes=len(self.routes),
+                src=self.src, dst=self.dst, base_weight=self.base_weight,
+                steps=self.steps,
             )
         else:
             self.model = FlyGraphRouter(
@@ -135,6 +192,11 @@ class FlyRouterRuntime:
             "min_margin": self.min_margin,
             "role_aware_experimental": self.role_aware,
             "role_metadata": self.role_metadata,
+            "residual_research": self.residual_research,
+            "graph_share": (
+                round(float(self.model.graph_share().item()), 6)
+                if self.residual_research else None
+            ),
         }
 
     def predict(self, text: str, *, top_k: int = 3, on_frame: Callable[[dict[str, Any]], None] | None = None) -> dict[str, Any]:
@@ -209,4 +271,9 @@ class FlyRouterRuntime:
             "feature_signal": feature_signal,
             "trace": trace,
             "role_aware_experimental": self.role_aware,
+            "residual_research": self.residual_research,
+            "graph_share": (
+                round(float(self.model.graph_share().item()), 6)
+                if self.residual_research else None
+            ),
         }
