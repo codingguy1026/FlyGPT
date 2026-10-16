@@ -10,12 +10,18 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 
-import torch
-from torch.nn import functional as F
+import importlib.util
 
-from training.full_population_router import FullPopulationRouter, load_all_structural_keys
+if importlib.util.find_spec("torch") is not None:
+    import torch
+    from torch.nn import functional as F
+    from training.full_population_router import FullPopulationRouter, load_all_structural_keys
+else:
+    torch = None
+    F = None
 
 
+@unittest.skipUnless(torch is not None, "requires optional PyTorch")
 class WholePopulationTests(unittest.TestCase):
     def setUp(self):
         torch.manual_seed(9)
