@@ -1,0 +1,49 @@
+name: FlyGPT natural learning curves
+
+on:
+  pull_request:
+    paths:
+      - "training/natural_learning_curves.py"
+      - "training/test_natural_learning_curves.py"
+      - ".github/workflows/natural-learning-curves.yml"
+  workflow_dispatch:
+
+jobs:
+  controlled-training:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      OMP_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install CPU PyTorch
+        run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Check group split and reproducible train fractions
+        run: |
+          python -m py_compile training/natural_learning_curves.py
+          python -m unittest training.test_natural_learning_curves -v
+      - name: Train models on increasing amounts of existing teacher data
+        run: |
+          python training/natural_learning_curves.py \
+            --seeds 42 43 44 \
+            --fractions 0.25 0.5 1.0 \
+            --epochs 90 \
+            --patience 18 \
+            --candidate-dir /tmp/flygpt-natural-learning-checkpoints \
+            --out /tmp/flygpt-natural-learning-curves.json
+      - name: Preserve score tables, split audit and learning curves
+        uses: actions/upload-artifact@v4
+        with:
+          name: flygpt-natural-learning-curves
+          path: /tmp/flygpt-natural-learning-curves.json
+          retention-days: 30
+      - name: Archive research-only trained MaleCNS checkpoints
+        uses: actions/upload-artifact@v4
+        with:
+          name: flygpt-research-only-trained-malecns
+          path: /tmp/flygpt-natural-learning-checkpoints/*.pt
+          retention-days: 30
