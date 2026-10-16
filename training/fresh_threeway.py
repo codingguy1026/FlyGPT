@@ -176,6 +176,7 @@ def run(args):
         temp = Path(name)
         teacher_path = temp / "teacher.jsonl"
         teacher_keys, train_duplicates = prepare_teacher(teacher_path)
+        teacher_sha256 = hashlib.sha256(teacher_path.read_bytes()).hexdigest()
         cases, holdout_audit = validate_holdout(args.holdout, teacher_keys)
 
         n_nodes = int(scaffold["n_nodes"])
@@ -248,8 +249,7 @@ def run(args):
                      "nodes": scaffold["n_nodes"],
                      "edges": len(scaffold["edges"])},
         "holdout": {"path": str(args.holdout), **holdout_audit},
-        "teacher_sha256": hashlib.sha256(teacher_path.read_bytes()).hexdigest()
-            if teacher_path.exists() else None,
+        "teacher_sha256": teacher_sha256,
         "training_exact_duplicates_removed": train_duplicates,
         "seeds": args.seeds, "epochs_max": args.epochs,
         "patience": args.patience, "results": results,
