@@ -33,10 +33,17 @@ jobs:
             --fractions 0.25 0.5 1.0 \
             --epochs 90 \
             --patience 18 \
+            --candidate-dir /tmp/flygpt-natural-learning-checkpoints \
             --out /tmp/flygpt-natural-learning-curves.json
       - name: Preserve score tables, split audit and learning curves
         uses: actions/upload-artifact@v4
         with:
           name: flygpt-natural-learning-curves
           path: /tmp/flygpt-natural-learning-curves.json
+          retention-days: 30
+      - name: Archive research-only trained MaleCNS checkpoints
+        uses: actions/upload-artifact@v4
+        with:
+          name: flygpt-research-only-trained-malecns
+          path: /tmp/flygpt-natural-learning-checkpoints/*.pt
           retention-days: 30
