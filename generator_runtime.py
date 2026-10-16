@@ -912,6 +912,14 @@ class GeneratorRuntime:
                    if max_tokens_override is not None else {}),
             )
             result.attempts = attempts
+            if result.error_code == "invalid_response":
+                print(
+                    "[GEN] invalid_response "
+                    f"model={model} attempt={attempts} "
+                    f"reason={result.error or 'unknown schema error'} "
+                    f"response_bytes={result.response_bytes}",
+                    flush=True,
+                )
             if result.used and result.answer and (
                 _contains_internal_plan(result.answer)
                 or _wrong_output_language(result.answer, plan)
