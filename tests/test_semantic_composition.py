@@ -222,10 +222,11 @@ class LocalizedGenerationTests(unittest.TestCase):
         self.assertEqual(result.error, "grounded semantic fact plan is invalid")
         generate.assert_not_called()
 
-    def test_unrelated_generations_keep_the_existing_contract(self):
+    def test_greeting_language_guard_and_no_plan_leak(self):
         plan = state_for("안녕")["utterance_plan"]
         self.assertNotIn("semantic_steps", plan)
-        self.assertFalse(_wrong_output_language("Hello", plan))
+        self.assertTrue(_wrong_output_language("Hello", plan))
+        self.assertFalse(_wrong_output_language("안녕, 반가워!", plan))
         self.assertFalse(_contains_internal_plan("안녕, 반가워!"))
 
 
