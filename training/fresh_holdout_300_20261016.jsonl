@@ -1,0 +1,300 @@
+{"input":"손전등 불빛이 먼지 낀 공기에서 눈에 보이는 이유는 뭐야?","route":"general"}
+{"input":"지구의 바다가 소금기를 띠는 원리를 쉽게 설명해줘.","route":"general"}
+{"input":"메아리는 왜 몇 초 뒤에 들리는 거야?","route":"general"}
+{"input":"펭귄이 날지 못하는 까닭을 알려줘.","route":"general"}
+{"input":"머신러닝과 규칙 기반 프로그램의 개념적 차이는 뭐야?","route":"general"}
+{"input":"CPU의 캐시가 메모리 접근에 영향을 주는 이유는?","route":"general"}
+{"input":"봄철에 꽃가루가 많이 날리는 이유가 궁금해.","route":"general"}
+{"input":"사람이 소리를 들을 때 고막은 어떤 일을 하지?","route":"general"}
+{"input":"돌고래는 어떤 방식으로 주변 사물을 감지해?","route":"general"}
+{"input":"자석의 같은 극을 가까이하면 밀어내는 이유를 설명해줘.","route":"general"}
+{"input":"위성 사진은 어떻게 지구 표면을 촬영할 수 있어?","route":"general"}
+{"input":"문법에서 주어와 서술어를 구별하는 기본 원리는?","route":"general"}
+{"input":"인공위성과 우주정거장은 무슨 차이가 있어?","route":"general"}
+{"input":"별은 왜 밤하늘에서 반짝이는 것처럼 보여?","route":"general"}
+{"input":"DNA와 RNA는 구조와 역할이 어떻게 달라?","route":"general"}
+{"input":"블록체인에서 블록이라는 말이 가리키는 건 뭐야?","route":"general"}
+{"input":"교향곡과 협주곡의 차이점을 설명해줘.","route":"general"}
+{"input":"열전도와 대류가 다른 현상인 이유는?","route":"general"}
+{"input":"사막에서 낮과 밤의 기온 차가 큰 이유는?","route":"general"}
+{"input":"통계에서 상관관계가 인과관계를 의미하지 않는 이유는?","route":"general"}
+{"input":"수면 중 꿈이 생기는 이유는 어느 정도 알려져 있어?","route":"general"}
+{"input":"한글 자음의 모양에는 어떤 설계 원리가 있어?","route":"general"}
+{"input":"해수면이 높아지면 해안 생태계에는 어떤 변화가 생겨?","route":"general"}
+{"input":"유리컵이 투명해 보이는 과학적 이유는?","route":"general"}
+{"input":"오픈소스 라이선스가 필요한 이유를 설명해줘.","route":"general"}
+{"input":"왜 철과 알루미늄은 물리적 성질이 다를까?","route":"general"}
+{"input":"태풍과 토네이도의 구조적 차이를 알려줘.","route":"general"}
+{"input":"제습기와 가습기는 각각 어떤 원리로 작동하니?","route":"general"}
+{"input":"발효와 부패를 구분하는 기준은 뭔가?","route":"general"}
+{"input":"세포막은 물질을 선택적으로 통과시키는 역할을 해?","route":"general"}
+{"input":"레트로 게임의 픽셀 그래픽은 왜 계단처럼 보여?","route":"general"}
+{"input":"라우팅과 스위칭의 네트워크 개념을 비교해줘.","route":"general"}
+{"input":"양자화라는 용어는 음악과 물리학에서 어떻게 다르게 쓰여?","route":"general"}
+{"input":"지진 규모와 진도의 뜻이 다른 이유는?","route":"general"}
+{"input":"액체질소와 일반 물은 끓는점이 왜 달라?","route":"general"}
+{"input":"지구 자전축의 기울기가 계절에 미치는 영향은?","route":"general"}
+{"input":"박쥐의 날개는 새의 날개와 어떻게 달라?","route":"general"}
+{"input":"도시의 열섬 현상은 어떤 조건에서 심해져?","route":"general"}
+{"input":"가짜 상관관계 사례를 만들어 개념만 알려줘.","route":"general"}
+{"input":"냉장고가 안쪽의 열을 바깥으로 옮기는 원리를 설명해줘.","route":"general"}
+{"input":"Why do eclipses happen only under particular alignments?","route":"general"}
+{"input":"Explain how photosynthetic pigments absorb light.","route":"general"}
+{"input":"What's the difference between HTTP and WebSocket conceptually?","route":"general"}
+{"input":"How do cochlear hair cells contribute to hearing?","route":"general"}
+{"input":"Why do some metals oxidize faster than others?","route":"general"}
+{"input":"Explain a binary tree to someone new to data structures.","route":"general"}
+{"input":"What determines the pitch of a vibrating guitar string?","route":"general"}
+{"input":"Why is sound slower in air than in solid materials?","route":"general"}
+{"input":"What distinguishes deductive from inductive reasoning?","route":"general"}
+{"input":"How does a telescope magnify distant objects?","route":"general"}
+{"input":"파이썬으로 텍스트 파일의 줄 수를 세는 함수 작성해줘.","route":"code"}
+{"input":"자바스크립트에서 중복 없는 배열을 만드는 코드를 보여줘.","route":"code"}
+{"input":"리액트 버튼 클릭 횟수를 상태로 저장하는 예제를 만들어줘.","route":"code"}
+{"input":"TypeScript에서 유니온 타입을 좁히는 함수를 작성해줘.","route":"code"}
+{"input":"SQL에서 날짜별 주문 건수를 집계하는 쿼리를 짜줘.","route":"code"}
+{"input":"CSS grid로 카드 세 개를 반응형으로 배치하는 예시 코드가 필요해.","route":"code"}
+{"input":"파이썬 딕셔너리의 키와 값을 뒤집는 함수 구현해줘.","route":"code"}
+{"input":"Bash에서 빈 폴더를 찾아 목록으로 출력하는 스크립트 짜줘.","route":"code"}
+{"input":"Next.js에서 클라이언트 컴포넌트를 사용하는 간단한 예시를 줘.","route":"code"}
+{"input":"FastAPI 요청 본문을 Pydantic 모델로 검증하는 코드를 작성해줘.","route":"code"}
+{"input":"Node.js에서 JSON 파일을 비동기로 읽는 예시가 필요해.","route":"code"}
+{"input":"파이썬으로 URL 목록에서 도메인만 추출하는 코드를 짜줘.","route":"code"}
+{"input":"자바스크립트로 배열 요소를 그룹별로 묶는 함수를 만들어줘.","route":"code"}
+{"input":"Go 언어에서 HTTP 서버를 실행하는 최소 예제 보여줘.","route":"code"}
+{"input":"Rust에서 Option 값을 안전하게 처리하는 예제 코드를 보여줘.","route":"code"}
+{"input":"Kotlin에서 nullable 문자열을 다루는 함수 작성해줘.","route":"code"}
+{"input":"Java에서 컬렉션을 스트림으로 필터링하는 코드 부탁해.","route":"code"}
+{"input":"C언어에서 구조체 배열을 정렬하는 예시 코드를 짜줘.","route":"code"}
+{"input":"GitHub Actions에서 파이썬 테스트를 돌리는 YAML을 작성해줘.","route":"code"}
+{"input":"파이썬 pathlib로 확장자가 md인 파일만 순회하는 코드 줘.","route":"code"}
+{"input":"SQLite에서 중복 이메일을 막는 테이블 스키마를 작성해줘.","route":"code"}
+{"input":"리액트 입력창과 제출 버튼이 있는 폼 컴포넌트를 만들어줘.","route":"code"}
+{"input":"타입스크립트에서 제네릭 큐 클래스를 구현해줘.","route":"code"}
+{"input":"자바스크립트 Date 객체를 ISO 문자열로 바꾸는 함수 작성해줘.","route":"code"}
+{"input":"Python으로 두 CSV 파일의 공통 열을 비교하는 스크립트 짜줘.","route":"code"}
+{"input":"HTML에서 접근성 있는 네비게이션 바 마크업을 보여줘.","route":"code"}
+{"input":"Tailwind로 가운데 정렬된 로그인 카드 UI 코드를 만들어줘.","route":"code"}
+{"input":"파이썬 정규식으로 우편번호 형식을 검증하는 함수를 보여줘.","route":"code"}
+{"input":"Dockerfile에서 Python 앱을 실행하는 간단한 예시를 작성해줘.","route":"code"}
+{"input":"git hook으로 커밋 전에 테스트 실행하는 스크립트 작성해줘.","route":"code"}
+{"input":"자바스크립트로 문자열의 등장 빈도를 세는 함수를 짜줘.","route":"code"}
+{"input":"FastAPI에서 예외를 JSON으로 반환하는 핸들러 예제 줘.","route":"code"}
+{"input":"파이썬에서 async 함수 여러 개를 병렬 실행하는 코드 작성해줘.","route":"code"}
+{"input":"R에서 결측값이 있는 행을 제거하는 코드가 필요해.","route":"code"}
+{"input":"SQL 윈도 함수로 상위 매출 두 건을 고르는 쿼리 작성해줘.","route":"code"}
+{"input":"파이썬으로 사용자 이름을 정규화하는 코드 만들어줘.","route":"code"}
+{"input":"Vue 3에서 computed 속성을 사용하는 간단한 예제 보여줘.","route":"code"}
+{"input":"JavaScript에서 debounce 함수를 직접 구현해줘.","route":"code"}
+{"input":"C++ vector에 있는 숫자를 오름차순 정렬하는 함수 짜줘.","route":"code"}
+{"input":"파이썬으로 테스트용 임시 폴더를 만드는 unittest 예시 부탁해.","route":"code"}
+{"input":"Write a Python generator that yields Fibonacci numbers.","route":"code"}
+{"input":"Show a React useReducer counter with typed actions.","route":"code"}
+{"input":"Create a SQL query finding customers with no purchases.","route":"code"}
+{"input":"Write a JavaScript function that flattens nested arrays.","route":"code"}
+{"input":"Give me a minimal Express route with input validation.","route":"code"}
+{"input":"Implement a binary search function in C#.","route":"code"}
+{"input":"Write a bash script that renames jpg files by date.","route":"code"}
+{"input":"Create a Python dataclass for a library book record.","route":"code"}
+{"input":"Show CSS code for a sticky sidebar layout.","route":"code"}
+{"input":"Write TypeScript that safely parses an unknown JSON value.","route":"code"}
+{"input":"복리 없이 38만원의 7퍼센트는 몇 원이야?","route":"math"}
+{"input":"연립방정식 2x+y=11, x-y=1을 풀어줘.","route":"math"}
+{"input":"정육각형의 내각 하나는 몇 도인지 계산해줘.","route":"math"}
+{"input":"250m를 40초에 달리면 평균 속력은?","route":"math"}
+{"input":"공차가 4인 등차수열에서 첫째항 3, 12번째 항을 구해줘.","route":"math"}
+{"input":"x의 제곱이 169일 때 실수 해를 모두 구해줘.","route":"math"}
+{"input":"8명 중 3명을 고르는 조합의 수를 계산해줘.","route":"math"}
+{"input":"원가 24000원에 15% 할인하면 얼마야?","route":"math"}
+{"input":"분수 17/24와 5/18의 합을 통분해서 계산해줘.","route":"math"}
+{"input":"삼각형 세 각이 2:3:4라면 가장 큰 각의 크기는?","route":"math"}
+{"input":"숫자 15, 18, 22, 25의 산술평균 구해줘.","route":"math"}
+{"input":"밑변 13cm 높이 8cm 삼각형 넓이를 계산해줘.","route":"math"}
+{"input":"4x-3=2x+15를 만족하는 x를 찾아줘.","route":"math"}
+{"input":"0.0045를 백분율로 나타내면 얼마야?","route":"math"}
+{"input":"480개 물건 중 72개가 불량이면 불량률은?","route":"math"}
+{"input":"피보나치 수열의 열두 번째 항은? 첫 두 항은 1과 1이야.","route":"math"}
+{"input":"세 변이 5, 12, 13인 직각삼각형의 넓이는?","route":"math"}
+{"input":"24와 90의 최소공배수 계산해줘.","route":"math"}
+{"input":"144와 210의 최대공약수는?","route":"math"}
+{"input":"80km를 시속 64km로 가면 걸리는 시간은 몇 분?","route":"math"}
+{"input":"원주율을 3.14로 두고 지름 16cm인 원의 둘레 구해줘.","route":"math"}
+{"input":"두 주사위의 눈 합이 7일 확률을 분수로 표현해줘.","route":"math"}
+{"input":"x^2-9x+20=0 인수분해로 풀어줘.","route":"math"}
+{"input":"좌표 A(2,5), B(8,1) 사이 거리는 얼마야?","route":"math"}
+{"input":"표준편차 말고 숫자 2,4,9,13의 분산을 구해줘. 모분산 기준이야.","route":"math"}
+{"input":"7^3+6^2 계산 결과 알려줘.","route":"math"}
+{"input":"시속 54km는 초속 몇 미터인지 계산해줘.","route":"math"}
+{"input":"연간 2.5% 성장하면 100이 1년 후 얼마가 되니?","route":"math"}
+{"input":"가로 18cm 세로 27cm인 직사각형 대각선 길이는?","route":"math"}
+{"input":"60명 중 35%가 왼손잡이라면 몇 명이지?","route":"math"}
+{"input":"360을 소인수분해한 결과를 지수로 써줘.","route":"math"}
+{"input":"log10(100000)은 얼마야?","route":"math"}
+{"input":"-7에서 15를 뺀 값에 4를 곱하면?","route":"math"}
+{"input":"다항식 (x+4)(x-6)을 전개해줘.","route":"math"}
+{"input":"2시간 18분을 초로 환산해줘.","route":"math"}
+{"input":"다섯 수 3,8,8,10,12의 중앙값과 최빈값은?","route":"math"}
+{"input":"직선 y=-2x+9와 x축의 교점 좌표는?","route":"math"}
+{"input":"15리터를 250mL 병에 나누면 몇 병이 필요해?","route":"math"}
+{"input":"세로 길이보다 가로가 4cm 긴 직사각형, 둘레가 40cm면 가로는?","route":"math"}
+{"input":"1부터 80까지 짝수의 합을 구해줘.","route":"math"}
+{"input":"What is 19 percent of 370?","route":"math"}
+{"input":"Solve 7x + 12 = 68 for x.","route":"math"}
+{"input":"Find the mean of 4, 9, 11, 16, and 20.","route":"math"}
+{"input":"Convert 3.6 kilometers to meters.","route":"math"}
+{"input":"Compute the area of a circle with radius 9 using pi=3.14.","route":"math"}
+{"input":"How many permutations are there of 5 distinct letters?","route":"math"}
+{"input":"Simplify the fraction 84/126.","route":"math"}
+{"input":"Evaluate (13 * 17) - 41.","route":"math"}
+{"input":"Find the slope through the points (1,4) and (6,14).","route":"math"}
+{"input":"Calculate the probability of getting heads twice in two fair flips.","route":"math"}
+{"input":"내가 방금 고르겠다고 했던 테마가 뭐였더라?","route":"memory"}
+{"input":"아까 우리가 마지막으로 수정한 파일 이름 기억나?","route":"memory"}
+{"input":"지난 대화에서 내가 추천받은 책 제목 다시 알려줘.","route":"memory"}
+{"input":"전에 말했던 앱의 색상 조합 기억해서 알려줄래?","route":"memory"}
+{"input":"지난번에 네가 제안한 세 가지 중 두 번째가 뭐였지?","route":"memory"}
+{"input":"내가 조금 전에 보낸 URL을 다시 찾아줘.","route":"memory"}
+{"input":"우리 아까 합의한 프로젝트 별칭 뭐였어?","route":"memory"}
+{"input":"이전 대화에서 정해둔 알림 주기를 다시 말해봐.","route":"memory"}
+{"input":"내가 직전에 언급했던 숫자 세 개를 기억해?","route":"memory"}
+{"input":"저번 채팅에서 선택한 UI 배치안을 불러와줘.","route":"memory"}
+{"input":"아까 올린 에러 로그의 맨 마지막 줄이 뭐야?","route":"memory"}
+{"input":"지난번에 함께 만든 함수 이름이 뭐였지?","route":"memory"}
+{"input":"내가 전날에 말한 목표를 다시 정리해 줄래?","route":"memory"}
+{"input":"아까 결정한 출시 후보 날짜가 언제였더라?","route":"memory"}
+{"input":"이전에 정해둔 시험 준비 순서 기억나?","route":"memory"}
+{"input":"내가 앞에서 고른 이미지 스타일이 뭔지 알려줘.","route":"memory"}
+{"input":"아까 네가 추천한 플러그인 이름을 다시 말해줘.","route":"memory"}
+{"input":"내가 맨 처음에 이 프로젝트를 뭐라고 부르겠다고 했었지?","route":"memory"}
+{"input":"저번 작업에서 멈춘 브랜치가 뭐였더라?","route":"memory"}
+{"input":"내가 나중에 하자고 남겨둔 TODO 기억해?","route":"memory"}
+{"input":"이전 대화에서 썼던 테스트 명령을 다시 보여줘.","route":"memory"}
+{"input":"몇 메시지 전에 내가 싫다고 했던 메뉴 배치는?","route":"memory"}
+{"input":"내가 며칠 전에 공유한 가사 초안의 주제는 뭐였어?","route":"memory"}
+{"input":"전에 내가 요청한 로그인 정책을 다시 불러와줘.","route":"memory"}
+{"input":"방금 위에 올린 화면에서 내가 지적한 문제 뭐였지?","route":"memory"}
+{"input":"우리가 과거에 선택한 배포 플랫폼이 뭐였지?","route":"memory"}
+{"input":"아까 너랑 합의한 변수 이름을 다시 찾아줘.","route":"memory"}
+{"input":"지난번 대화에서 좋아한다고 말했던 글꼴 기억해?","route":"memory"}
+{"input":"예전에 내가 말한 여행 후보 도시 두 곳이 어디였지?","route":"memory"}
+{"input":"내가 조금 전에 취소한다고 했던 계획 뭐였어?","route":"memory"}
+{"input":"지난 세 번의 질문에서 내가 어떤 선택을 했는지 정리해줘.","route":"memory"}
+{"input":"이전 대화에서 너에게 보여준 표의 열 이름을 기억하니?","route":"memory"}
+{"input":"아까 말한 예산 상한선이 얼마였더라?","route":"memory"}
+{"input":"우리가 저번에 정해둔 오류 메시지 문구 알려줘.","route":"memory"}
+{"input":"내가 어제 부탁했던 첫 번째 개선 항목 뭐였지?","route":"memory"}
+{"input":"전에 만든 설정 파일의 경로를 다시 찾을 수 있어?","route":"memory"}
+{"input":"내가 이전 세션에서 언급한 캐릭터 이름을 다시 말해줘.","route":"memory"}
+{"input":"지난번에 정한 애니메이션 지속 시간 기억해?","route":"memory"}
+{"input":"조금 전에 적어준 접속 주소가 뭐였더라?","route":"memory"}
+{"input":"내가 최초로 올린 코드 예시가 어떤 언어였어?","route":"memory"}
+{"input":"What project nickname did I pick earlier in this chat?","route":"memory"}
+{"input":"Remind me which repository branch we discussed yesterday.","route":"memory"}
+{"input":"What was the first bug I reported a few messages ago?","route":"memory"}
+{"input":"Can you recall the color palette I chose last time?","route":"memory"}
+{"input":"Which of your earlier options did I select?","route":"memory"}
+{"input":"What deadline did I mention in our previous conversation?","route":"memory"}
+{"input":"What was the variable name in the snippet I sent above?","route":"memory"}
+{"input":"Do you remember the demo URL I posted before?","route":"memory"}
+{"input":"Can you bring back the checklist we agreed on earlier?","route":"memory"}
+{"input":"What was the last task I asked you to postpone?","route":"memory"}
+{"input":"다음 설명을 두 문장으로 줄여줘: 새 공원에는 산책로와 자전거 도로가 생겼다. 주민들은 나무를 더 심어 달라고 제안했다.","route":"summarize"}
+{"input":"핵심만 요약: 시스템은 요청을 받고 큐에 넣는다. 작업자는 순서대로 처리한다. 실패한 요청은 다시 시도한다.","route":"summarize"}
+{"input":"세 줄 요약 부탁: 작은 도서관이 주말 개관 시간을 늘렸다. 어린이 책 공간도 새로 만들었다. 자원봉사자를 모집한다.","route":"summarize"}
+{"input":"이 메모를 압축해줘: 오전에는 테스트 작성, 오후에는 오류 수정, 저녁에는 변경 내역 검토를 진행한다.","route":"summarize"}
+{"input":"다음 글에서 요점만 뽑아줘: 해변 정화 활동에서 플라스틱 15봉지가 수거되었다. 주민 32명이 참여했다.","route":"summarize"}
+{"input":"짧게 정리해줘: 센서가 기온을 측정해 서버로 보낸다. 서버는 평균값을 계산해 대시보드에 표시한다.","route":"summarize"}
+{"input":"이 회의록 내용을 한 문장으로: 디자인은 기존 색을 유지하고 메뉴 위치를 왼쪽으로 고정하기로 했다.","route":"summarize"}
+{"input":"아래 공지 핵심을 요약해줘: 도서관 열람실은 토요일부터 좌석 예약제를 도입한다. 현장 신청도 가능하다.","route":"summarize"}
+{"input":"TL;DR 작성해줘: 개발팀이 속도 개선을 마쳤지만 일부 모바일 화면에서는 버튼이 겹쳐 보인다.","route":"summarize"}
+{"input":"방금 적은 일정표를 짧게 정리: 월요일 기획, 화요일 구현, 수요일 검수, 목요일 배포.","route":"summarize"}
+{"input":"주어진 내용을 핵심 세 가지로: 첫 번째는 비용 절감이다. 두 번째는 응답 속도이다. 세 번째는 보안이다.","route":"summarize"}
+{"input":"이 고객 의견을 요약해줘: 화면은 예쁘지만 저장 버튼의 위치가 헷갈린다. 오류 안내는 친절했다.","route":"summarize"}
+{"input":"한 줄 요약만: 시험 일정이 변경되었고 과제 제출 기한은 그대로 유지된다.","route":"summarize"}
+{"input":"중복 표현을 빼고 축약해줘: 서비스는 빠르다. 응답은 신속하다. 대기 시간도 매우 짧다.","route":"summarize"}
+{"input":"다음 단락 요약: 태양광 패널을 설치한 학교에서 전기 사용 패턴을 분석해 절약 방법을 찾았다.","route":"summarize"}
+{"input":"요약문 부탁: 축제에 12개 동아리가 참가했고 공연과 전시를 동시에 진행했다.","route":"summarize"}
+{"input":"길게 적힌 운영 지침을 정리해줘: 로그인은 필수다. 비밀번호는 평문으로 저장하지 않는다. 세션은 만료된다.","route":"summarize"}
+{"input":"내용만 두 문장으로 줄여줘: 버그는 재현된다. 원인은 확인되지 않았다. 임시 우회 방법이 제공되었다.","route":"summarize"}
+{"input":"핵심 주장만 남겨줘: 도시는 그늘을 늘릴 필요가 있다. 여름 보행 환경이 너무 덥기 때문이다.","route":"summarize"}
+{"input":"이 사례를 간결하게 정리: 기차가 늦게 도착했으나 안내 방송이 빨라 승객들이 대체 교통을 이용했다.","route":"summarize"}
+{"input":"아래 발표의 결론을 요약해줘: 새 인터페이스는 익숙하다. 다만 초보자를 위한 설명을 추가해야 한다.","route":"summarize"}
+{"input":"세 문장 이하로 축약해줘: 연구팀은 현미경으로 표본을 관찰했다. 기록을 비교했다. 결과를 재확인했다.","route":"summarize"}
+{"input":"요점만 남겨줘: 가게는 포장재 사용량을 줄이고 다회용 용기를 할인 가격에 제공한다.","route":"summarize"}
+{"input":"두 줄 요약: 참가 신청이 하루 만에 마감되었다. 주최 측은 추가 회차를 검토 중이다.","route":"summarize"}
+{"input":"지금 주는 글을 줄여줘: 3D 프린터는 설계한 도면을 층층이 쌓아서 물체를 제작한다.","route":"summarize"}
+{"input":"아래 사용 설명서를 간단히 정리: 버튼을 누른 뒤 파일을 선택하고 업로드가 끝날 때까지 화면을 유지한다.","route":"summarize"}
+{"input":"압축 요약 부탁: 새 버전은 기능을 추가하지 않았고 오류 수정과 안정화에 집중했다.","route":"summarize"}
+{"input":"다음 글의 핵심만 정리해줘: 바람이 강해져 야외 행사는 실내로 이동하고 일정은 변하지 않았다.","route":"summarize"}
+{"input":"문서 내용을 요약해줘: 학생회는 점심시간 건의함을 마련하고 익명 제안도 받을 계획이다.","route":"summarize"}
+{"input":"설명을 다섯 단어 수준으로 요약해줘: 기상 관측소가 여러 지역의 강수량을 실시간으로 수집한다.","route":"summarize"}
+{"input":"한 문장으로 요약: 코드 검토에서 보안 오류가 발견되어 수정한 뒤 다시 검사했다.","route":"summarize"}
+{"input":"핵심 내용만 추려줘: 문화센터에서는 무료 수업을 열고 신청 인원에 따라 분반할 예정이다.","route":"summarize"}
+{"input":"이 메모에서 결론만 요약: 성능 향상 폭이 작아 새 버전 대신 이전 안정 버전을 유지한다.","route":"summarize"}
+{"input":"간략하게 정리: 택배는 물류센터에 도착했고 분류를 마치면 배송 차량으로 이동한다.","route":"summarize"}
+{"input":"길이를 절반으로 줄여줘: 새로운 공공 자전거 거치대는 접근성이 높고 고장 신고가 쉬운 위치에 설치된다.","route":"summarize"}
+{"input":"이 기술 소개 글의 요점만: 데이터는 암호화해 저장하고 권한에 따라 접근을 제한한다.","route":"summarize"}
+{"input":"세 줄로 정리해줘: 팀은 기존 모델을 재학습했다. 정확도는 비슷했다. 메모리 사용량은 감소했다.","route":"summarize"}
+{"input":"이 대화의 결정 사항을 요약: 다음 발표는 온라인으로 진행하고 자료는 미리 공유하기로 했다.","route":"summarize"}
+{"input":"짧은 요약을 만들어줘: 간이 센서는 습도 변화에는 민감했지만 극저온 환경에서는 오차가 커졌다.","route":"summarize"}
+{"input":"앞의 세 문장 요약: 도로가 정비되었다. 보도가 넓어졌다. 횡단보도 신호 시간이 길어졌다.","route":"summarize"}
+{"input":"Summarize this note: The museum opens earlier on weekends. Entry fees remain unchanged.","route":"summarize"}
+{"input":"Give a brief summary: The prototype passed unit tests but failed a slow network simulation.","route":"summarize"}
+{"input":"Condense this paragraph: Our team updated the logo, simplified navigation, and fixed keyboard focus.","route":"summarize"}
+{"input":"Write a one-sentence TLDR: The seed library collected samples, labeled them, and published a catalog.","route":"summarize"}
+{"input":"Reduce this report: The river cleanup involved volunteers from five neighborhoods.","route":"summarize"}
+{"input":"Summarize the supplied facts: The experiment used two models; both had equal validation data.","route":"summarize"}
+{"input":"Make this shorter: The cafeteria introduced more vegetables and reduced disposable packaging.","route":"summarize"}
+{"input":"Summarize this incident: A server restarted unexpectedly, but no saved files were lost.","route":"summarize"}
+{"input":"Provide a concise recap: The workshop starts at nine, includes two sessions, and ends at noon.","route":"summarize"}
+{"input":"Extract the key point: Participants liked the feature but requested clearer instructions.","route":"summarize"}
+{"input":"현재 파이썬 공식 최신 안정 버전은 무엇인지 찾아봐 줘.","route":"research"}
+{"input":"이번 주에 발표된 AI 관련 공식 연구 뉴스를 출처와 함께 찾아줘.","route":"research"}
+{"input":"지금 우리나라 교육부가 공개한 최신 보도자료 제목을 확인해줘.","route":"research"}
+{"input":"오늘 대구의 미세먼지 예보를 공식 자료로 검색해줘.","route":"research"}
+{"input":"최근 발표된 우주 탐사 일정의 변경 사항을 조사해줘.","route":"research"}
+{"input":"현재 GitHub Actions의 공식 runner 이미지 목록을 찾아줘.","route":"research"}
+{"input":"이번 달에 공개된 React 보안 공지 내용 확인해줘.","route":"research"}
+{"input":"지금 서울 지하철 최신 운행 공지 찾아줘.","route":"research"}
+{"input":"가장 최근에 발표된 Janelia MaleCNS 관련 논문이 뭔지 검색해줘.","route":"research"}
+{"input":"올해 발표된 해양 온도 관측 결과 최신 출처를 찾아줘.","route":"research"}
+{"input":"지금 유럽우주국 홈페이지의 최신 뉴스 제목을 알려줘.","route":"research"}
+{"input":"오늘 발표된 환율 데이터를 한국은행에서 확인해줘.","route":"research"}
+{"input":"현재 WHO 홈페이지에서 최신 감염병 공지의 제목을 찾아줘.","route":"research"}
+{"input":"지금 판매 중인 크롬북 모델들의 공식 사양을 비교해줘.","route":"research"}
+{"input":"최근 공개된 PyTorch 릴리스 노트를 찾아봐 줘.","route":"research"}
+{"input":"올해 발표된 태양광 발전량 통계를 공식 기관에서 찾아줘.","route":"research"}
+{"input":"지금 시점의 JupyterLab 안정 버전을 공식 사이트에서 확인해줘.","route":"research"}
+{"input":"이번 주 BBC 과학 코너의 새로운 기사 목록을 찾아줘.","route":"research"}
+{"input":"현재 NASA 발사 일정 공식 페이지가 어떻게 업데이트됐어?","route":"research"}
+{"input":"최신 대구시 청소년 프로그램 모집 공고를 검색해줘.","route":"research"}
+{"input":"오늘 대구 시내버스 노선 변경 공지 올라온 게 있는지 확인해줘.","route":"research"}
+{"input":"현재 Next.js 문서에서 권장 Node 버전이 뭔지 찾아줘.","route":"research"}
+{"input":"이번 달 논문 중 초파리 시각 뉴런 관련 신작을 찾아줘.","route":"research"}
+{"input":"지금 국내 박물관 특별전 일정 공식 홈페이지로 확인해줘.","route":"research"}
+{"input":"최신 한국 기상청 태풍 발표를 검색해서 링크를 줘.","route":"research"}
+{"input":"최근 공개된 데이터 보안 가이드라인의 변경점을 조사해줘.","route":"research"}
+{"input":"지금 웹에서 확인 가능한 KBO 공식 일정 변경 공지를 찾아줘.","route":"research"}
+{"input":"올해 공개된 대학 입시 주요 변경 사항을 교육부 공고로 찾아줘.","route":"research"}
+{"input":"현재 Docker Engine 최신 릴리스 버전이 뭔지 확인해줘.","route":"research"}
+{"input":"오늘 현재 달러 대비 엔화 환율을 확인해줘.","route":"research"}
+{"input":"가장 최근 Hugging Face Transformers 공식 업데이트 내용이 뭐야?","route":"research"}
+{"input":"현재 국립중앙도서관 전시 일정 최신 자료를 검색해줘.","route":"research"}
+{"input":"이번 달 공개된 기후 변화 관련 정부 보고서가 있는지 찾아줘.","route":"research"}
+{"input":"오늘 날짜로 공개된 신기술 특허 뉴스 자료를 확인해줘.","route":"research"}
+{"input":"지금 공식 홈페이지에 게시된 대구 행사 참가 신청 링크를 찾아줘.","route":"research"}
+{"input":"최근 업데이트된 TypeScript 공식 로드맵 정보를 가져와줘.","route":"research"}
+{"input":"현재 사용 가능한 FlyWire 데이터셋 버전 공지를 확인해줘.","route":"research"}
+{"input":"오늘 발표된 국내 IT 기업 실적 발표 자료가 있는지 검색해줘.","route":"research"}
+{"input":"최근 올라온 Google Chrome 보안 패치 공지 목록을 찾아줘.","route":"research"}
+{"input":"지금 공개된 최신 공공데이터포털 데이터셋 중 교통 관련 것을 검색해줘.","route":"research"}
+{"input":"Find the newest official release notes for FastAPI.","route":"research"}
+{"input":"Check the current stable version of PostgreSQL on its website.","route":"research"}
+{"input":"Search for this week's peer-reviewed connectomics articles.","route":"research"}
+{"input":"Find the latest public notice about upcoming meteor showers.","route":"research"}
+{"input":"What is the newest official Linux kernel release?","route":"research"}
+{"input":"Look up the current opening date of the next science exhibition.","route":"research"}
+{"input":"Find today's official weather alert for Busan.","route":"research"}
+{"input":"Search for the most recent Rust compiler security advisory.","route":"research"}
+{"input":"Check the current JAX package release on the project site.","route":"research"}
+{"input":"Find the latest published ESA research announcement.","route":"research"}
