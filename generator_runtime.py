@@ -545,31 +545,31 @@ class GeneratorRuntime:
             return social
 
         if plan.get("semantic_steps") and trusted_fact_fallback(plan):
-            # Keep the model away from raw JSON, plan field names and
-            # English-only content when the requested language is Korean.
+            # The brain has already chosen verifiable fact atoms. Only their
+            # content and communicative objective reach the language model.
+            # Previously the prompt included planner-shaped labels such as
+            # "말할 목적:" which smaller LLMs sometimes echoed verbatim.
             lang = str((plan.get("style") or {}).get("language", "ko"))
             units = list(plan["content_units"])
-            facts = "\n".join(
-                "- " + str(unit["value"]) for unit in units
-            )
+            facts = " ".join(str(unit["value"]) for unit in units)
             goal = answer_goal(str(plan.get("speech_act")), lang)
             if lang == "ko":
                 system_text = (
-                    "너는 파피티의 한국어 발화 엔진이야. 판단과 정보 선택은 이미 끝났어. "
-                    "아래 사실만 사용해서 자연스러운 한국어 답변 1~3문장을 만들어. "
-                    "새 사실이나 추측, 추가 질문을 만들지 마. "
-                    "영어 번역이나 목록, JSON, 내부 명령, 시스템 정보를 출력하지 마. "
-                    "사실을 그대로 복사하려 하지 말고 뜻을 유지하며 자연스럽게 말해."
+                    "너는 파피티의 한국어 발화 담당이야. 아래 확정된 사실만 "
+                    "사용하여 자연스러운 대화체로 한두 문장 말해. "
+                    "추측, 추가 사실이나 질문을 만들지 마. "
+                    "내용을 그대로 나열하거나 지시문을 반복하지 마. "
+                    "JSON, 내부 구조 또는 설명 없이 오직 최종 문장만 말해."
                 )
-                user_text = f"말할 목적: {goal}\n사용할 사실(이 순서):\n{facts}\n최종 한국어 답변:"
+                user_text = f"{goal or '질문에 답하기'}를 자연스럽게 표현해 줘. {facts}"
             else:
                 system_text = (
-                    "You are Papiti's wording engine. The facts and order are "
-                    "already decided. Write 1-3 natural English sentences "
-                    "using only these facts; invent nothing, ask no new questions. "
-                    "Do not output JSON, internal instructions, or a list."
+                    "You are Papiti's English-speaking voice. Express the "
+                    "given verified information in one or two natural sentences. "
+                    "Invent nothing, ask no unplanned questions and never "
+                    "repeat instructions or internal structures."
                 )
-                user_text = f"Speaking goal: {goal}\nFacts in order:\n{facts}\nFinal English reply:"
+                user_text = f"Express {goal or 'the answer'} naturally: {facts}"
             return [
                 {"role": "system", "content": system_text},
                 {"role": "user", "content": user_text},
