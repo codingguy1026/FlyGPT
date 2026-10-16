@@ -158,10 +158,10 @@ export default function BrainPanel({ open, onClose, router, phase, requestId }: 
       <div className="brainStats">
         <span>{graph ? graph.n_nodes + " nodes" : "— nodes"}</span>
         <span>{graph ? graph.n_edges + " edges" : "— edges"}</span>
-        <span>{activeFrame ? "mean relative activity " + (meanActivity * 100).toFixed(1) + "%" : graph ? graph.steps + " steps" : "— steps"}</span>
+        <span>{graph?.full_population_summary ? "ALL-NEURON STRUCTURAL SUMMARY" : activeFrame ? "mean relative activity " + (meanActivity * 100).toFixed(1) + "%" : graph ? graph.steps + " steps" : "— steps"}</span>
       </div>
 
-      <section className="neuronTypeToolbar" aria-label="뉴런 시각화 모드">
+      {!graph?.full_population_summary && <section className="neuronTypeToolbar" aria-label="뉴런 시각화 모드">
         <div className="neuronTypeMode">
           <button type="button" className={mapMode === "activity" ? "selected" : ""} onClick={() => setMapMode("activity")}>활성도</button>
           <button type="button" className={mapMode === "types" ? "selected" : ""} onClick={() => setMapMode("types")}>뉴런 종류</button>
@@ -198,10 +198,12 @@ export default function BrainPanel({ open, onClose, router, phase, requestId }: 
             </div>
           </>
         )}
-      </section>
+      </section>}
 
       <div className="traceEvidence" role="status">
-        {phase === "tool"
+        {graph?.full_population_summary
+          ? "전체 주석 등록 뉴런의 구조적 표현으로 분류했어. 이는 모든 뉴런을 실제로 발화시킨 기록이나 칼슘 측정값이 아니므로 개별 활성도를 그리지 않아."
+          : phase === "tool"
           ? "이 요청은 계산기 등의 확정 도구로 처리됐어. 라우터를 통과하지 않아 뉴런 활동을 표시하지 않아."
           : frames.length
             ? "모델이 실제 계산한 상대 활성도. 형광 칼슘 측정값이나 뇌 속 해부학적 위치는 아니야."
@@ -218,6 +220,12 @@ export default function BrainPanel({ open, onClose, router, phase, requestId }: 
           </div>
         ) : !graph ? (
           <div className="brainEmpty" role="status">MaleCNS 그래프 로딩 중...</div>
+        ) : graph.full_population_summary ? (
+          <div className="brainEmpty" role="status">
+            <strong>🪰 전체 MaleCNS 구조 표현</strong>
+            <p>{graph.n_nodes.toLocaleString()}개의 주석 등록 뉴런을 구조적 요약에 모두 반영했어.</p>
+            <p>학습은 전체 연결 파일을 활용했으며, 실시간 메시지 처리에서는 전체 뉴런의 압축된 표현을 사용해. 개별 뉴런의 실제 발화·연결 이동을 측정한 것은 아니야.</p>
+          </div>
         ) : (
           <svg
             viewBox="0 0 100 100"

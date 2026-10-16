@@ -310,6 +310,41 @@ class FlyGraphRouter(nn.Module):
         return self.output(self._readout(self.propagate(x)))
 
 
+class ResidualFlyGraphRouter(FlyGraphRouter):
+    """Inference-compatible mirror of the isolated residual learning experiment.
+
+    The graph is still traversed for three steps on the real MaleCNS topology.
+    The final readout blends the unpropagated encoded representation with the
+    propagated one. The scalar mixing value was *learned*, not hard-coded.
+    """
+
+    def __init__(
+        self, vocab_size: int, n_nodes: int, n_classes: int,
+        src: torch.Tensor, dst: torch.Tensor, base_weight: torch.Tensor,
+        steps: int = 3, initial_graph_share: float = 0.20,
+    ) -> None:
+        super().__init__(vocab_size, n_nodes, n_classes, src, dst, base_weight, steps)
+        if not 0 < initial_graph_share < 1:
+            raise ValueError("initial_graph_share must be in (0, 1)")
+        self.graph_logit = nn.Parameter(torch.tensor(
+            math.log(initial_graph_share / (1.0 - initial_graph_share)),
+            dtype=torch.float32,
+        ))
+
+    def graph_share(self) -> torch.Tensor:
+        return torch.sigmoid(self.graph_logit)
+
+    def propagate(self, x: torch.Tensor, on_stage=None) -> torch.Tensor:
+        # Match the exact training forward pass, including two uses of encoder.
+        h_text = self.norm(self._encode(x))
+        h_graph = super().propagate(x, on_stage=on_stage)
+        share = self.graph_share()
+        blended = (1.0 - share) * h_text + share * h_graph
+        if on_stage is not None:
+            on_stage(blended, "residual_blend")
+        return blended
+
+
 class RoleAwareFlyGraphRouter(FlyGraphRouter):
     """Scaffold-identical model with nonzero per-role encoder/relay/readout priors.
 

@@ -1,0 +1,50 @@
+name: verify full-neuron routing architecture
+
+on:
+  pull_request:
+    paths:
+      - 'training/full_population_router.py'
+      - 'full_population_runtime.py'
+      - 'app.py'
+      - 'frontend/components/BrainPanel.tsx'
+      - 'frontend/lib/api.ts'
+      - 'tests/test_full_population_router.py'
+      - 'scripts/*full*neuron*.sh'
+      - '.github/workflows/full-neuron-architecture.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  safety-and-math:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install CPU-only torch for synthetic math checks
+        run: python -m pip install 'torch>=2.4,<3' --index-url https://download.pytorch.org/whl/cpu
+      - name: Check code and offline tool syntax
+        run: |
+          python -m py_compile training/full_population_router.py full_population_runtime.py app.py
+          bash -n scripts/download_all_malecns_data.sh scripts/train_full_population_router.sh scripts/enable_full_neuron_router.sh scripts/disable_full_neuron_router.sh
+      - name: Verify exact all-neuron moment identity and non-sampling invariant
+        run: python -m unittest tests.test_full_population_router -v
+      - name: Check install script syntax
+        run: bash -n scripts/install_trained_full_neuron_router.sh
+      - name: Fetch real whole-neuron trained model from completed research run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/full-trained
+          gh run download 38915242351 -R codingguy1026/FlyGPT -n real-full-MaleCNS-3-seed-models -D /tmp/full-trained
+          echo '0a410dd31fc6cf682af2de1f79b2f7f981d218d4154290e282b9c28957318901  /tmp/full-trained/malecns_all_neurons_seed44.pt' | sha256sum -c -
+          echo 'FLYGPT_TEST_FULL_POPULATION_CKPT=/tmp/full-trained/malecns_all_neurons_seed44.pt' >> "$GITHUB_ENV"
+      - name: Verify full 166700-neuron website runtime (real trained checkpoint)
+        run: python -m unittest tests.test_full_neuron_site_integration -v
+      - name: Confirm that test did not deploy the model
+        run: echo 'Real trained checkpoint loads safely, authentic population math verified; no website deployment occurred.'
