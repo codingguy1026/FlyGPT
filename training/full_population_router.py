@@ -30,13 +30,45 @@ if str(ROOT) not in sys.path:
 import torch
 from torch import nn
 from torch.nn import functional as F
-from training.topology_ablation import prepare_teacher
 from training.train_router import (
     load_examples, stratified_split, batchify, vectorize,
     _accuracy_from_logits, _balanced_accuracy_from_logits, _fit_temperature,
     _recommend_gate,
 )
 
+
+TRAIN_FILES = (
+    "teacher_seed.jsonl",
+    "curriculum_v0_3_4.jsonl",
+    "curriculum_v0_3_5_short.jsonl",
+    "curriculum_v0_3_6_context.jsonl",
+    "curriculum_v0_3_7_yugeok.jsonl",
+    "curriculum_v0_3_8_hard_negatives.jsonl",
+    "curriculum_v0_3_9.jsonl",
+    "curriculum_v0_5_realworld.jsonl",
+)
+
+
+def prepare_teacher(output: Path):
+    """Build labeled training-only examples without importing unmerged PRs."""
+    observed = {}
+    total = 0
+    for file in TRAIN_FILES:
+        path = ROOT / "training" / file
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            key = " ".join(row["input"].casefold().split())
+            total += 1
+            if key in observed and observed[key]["route"] != row["route"]:
+                raise ValueError("Conflicting training labels for a normalized prompt")
+            observed.setdefault(key, {"input": row["input"], "route": row["route"]})
+    output.write_text(
+        "".join(json.dumps(x, ensure_ascii=False)+"\n" for x in observed.values()),
+        encoding="utf-8",
+    )
+    return set(observed), total - len(observed)
 
 def load_all_structural_keys(path: Path, minimum_neurons: int = 100000):
     """Reject subset/synthetic sources for real website use."""
