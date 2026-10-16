@@ -1,4 +1,5 @@
 """No credentials or real 1GB Feather file needed for these unit tests."""
+import importlib.util
 import tempfile
 from pathlib import Path
 import unittest
@@ -24,6 +25,7 @@ class IndexTests(unittest.TestCase):
 
 
 class FullStructuralTrainingTests(unittest.TestCase):
+    @unittest.skipUnless(importlib.util.find_spec("torch") is not None, "PyTorch is an optional offline-training dependency")
     def test_streamed_training_scans_every_batch_and_counts_isolated_neurons(self):
         import torch
 
