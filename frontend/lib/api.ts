@@ -142,6 +142,10 @@ export type GraphEdge = {
 };
 
 export type GraphResponse = {
+  full_population_summary?: boolean;
+  visualized_neurons?: number;
+  visualization_status?: string;
+  representation?: string;
   n_nodes: number;
   n_edges: number;
   steps: number;
