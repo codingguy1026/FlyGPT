@@ -181,7 +181,8 @@ def metrics(logits: torch.Tensor, targets: torch.Tensor, routes: list[str]) -> d
 
 
 def train_and_score(train, val, test, src, dst, weights,
-                    condition: str, seed: int, epochs: int, patience: int):
+                    condition: str, seed: int, epochs: int, patience: int,
+                    candidate_path: Path | None = None):
     """All models have the same text representation and training hyperparams.
 
     Checkpoint selection uses validation only; *test* is evaluated once
@@ -245,6 +246,24 @@ def train_and_score(train, val, test, src, dst, weights,
         seen_logits = model(train_x)
         validation_logits = model(val_x)
         test_logits = model(test_x)
+    if candidate_path is not None:
+        if condition != "male_cns":
+            raise ValueError("Only authentic MaleCNS candidates are retained")
+        candidate_path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save({
+            "format": "flygpt-research-residual-v1",
+            "architecture": "ResidualFlyGraphRouter",
+            "model_state": {key: value.detach().cpu().clone()
+                            for key, value in model.state_dict().items()},
+            "routes": classes, "vocab_size": vocab, "n_nodes": nodes,
+            "vectorizer_version": "v6", "steps": 3,
+            "src": src.cpu(), "dst": dst.cpu(), "base_weight": weights.cpu(),
+            "seed": seed, "training_examples": len(train),
+            "validation_examples": len(val),
+            "selected_epoch": best_epoch,
+            "research_only": True, "production_compatible": False,
+            "notice": "Not approved for deployment; test data never used for training",
+        }, candidate_path)
     return {
         "train_size": len(train),
         "selected_epoch": best_epoch,
@@ -297,7 +316,11 @@ def run(args):
                                  else (shuffled_src, shuffled_dst, shuffled_weights))
                     result = train_and_score(
                         subset, val, test, *edge_data, condition, seed,
-                        args.epochs, args.patience)
+                        args.epochs, args.patience,
+                        candidate_path=(args.candidate_dir / f"male_cns_seed{seed}.pt")
+                            if (args.candidate_dir is not None
+                                and condition == "male_cns" and frac == 1.0)
+                            else None)
                     scores[condition] = result
                     print(
                         f"RESULT seed={seed} fraction={frac:.2f} "
@@ -360,6 +383,8 @@ def main():
     parser.add_argument("--patience", type=int, default=18)
     parser.add_argument("--out", type=Path,
                         default=Path("/tmp/flygpt-learning-curves.json"))
+    parser.add_argument("--candidate-dir", type=Path, default=None,
+                        help="Optional research-only storage for full-data MaleCNS seed checkpoints")
     args = parser.parse_args()
     result = run(args)
     args.out.parent.mkdir(parents=True, exist_ok=True)
