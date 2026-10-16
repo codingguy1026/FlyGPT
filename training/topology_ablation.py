@@ -172,6 +172,7 @@ def run(args):
                 load_jsonl(ROOT / "training" / file), keys
             )
             overlap[file] = {"usable": len(filtered), "exact_overlap_removed": removed}
+            print(f"OVERLAP {file}: usable={len(filtered)} removed={removed}", flush=True)
             if len(filtered) >= 3:
                 eval_sets[file] = filtered
         if not eval_sets:
@@ -195,7 +196,7 @@ def run(args):
                 }
                 print(training_summary, flush=True)
                 for label, data in scores.items():
-                    print(f"EVAL {label}: accuracy={data['accuracy']:.3f} macro_recall={data['macro_recall']:.3f}", flush=True)
+                    print(f"EVAL {label}: n={data['n']} accuracy={data['accuracy']:.3f} macro_recall={data['macro_recall']:.3f}", flush=True)
             results.append({"seed": seed, "changed_pairs": control["ablation"]["changed_pairs"],
                             "conditions": by_condition})
         diffs = {}
