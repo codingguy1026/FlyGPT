@@ -1,0 +1,41 @@
+name: FlyGPT residual connectome routing study
+
+on:
+  pull_request:
+    paths:
+      - "training/residual_connectome_study.py"
+      - "training/test_residual_connectome_study.py"
+      - ".github/workflows/residual-connectome-study.yml"
+  workflow_dispatch:
+
+jobs:
+  residual-study:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OMP_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install CPU PyTorch
+        run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Verify source syntax and scientific invariants
+        run: |
+          python -m py_compile training/residual_connectome_study.py
+          python -m unittest training.test_residual_connectome_study -v
+      - name: Run three-seed candidate, rewired and plain controls
+        run: |
+          python training/residual_connectome_study.py \
+            --seeds 42 43 44 \
+            --epochs 90 \
+            --patience 18 \
+            --out /tmp/flygpt-residual-study.json
+      - name: Preserve metrics (do not deploy checkpoints)
+        uses: actions/upload-artifact@v4
+        with:
+          name: residual-connectome-study
+          path: /tmp/flygpt-residual-study.json
+          retention-days: 30
