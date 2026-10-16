@@ -1,4 +1,4 @@
-.PHONY: run local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural help stop
+.PHONY: run local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural enable-trained-router disable-trained-router help stop
 
 run:
 	@bash scripts/run_all.sh
@@ -30,6 +30,14 @@ train-role-experiment:
 
 compare-role-experiment:
 	@.venv-train/bin/python training/compare_role_aware.py --baseline artifacts/fly_router_malecns_v0_5.pt --candidate artifacts/fly_router_malecns_role_experiment.pt
+
+# Download archived, checksum-pinned MaleCNS residual checkpoint and opt in locally.
+# No deployment is triggered; restart the backend after either command.
+enable-trained-router:
+	@bash scripts/enable_trained_router.sh
+
+disable-trained-router:
+	@bash scripts/disable_trained_router.sh
 
 # Explicit offline command. Never run the full ~1 GB source scan on app startup.
 train-full-structural:
@@ -63,6 +71,8 @@ help:
 	@echo "  make train-v0.5  Train calibrated v0.5 router on the frozen MaleCNS scaffold"
 	@echo "  make train-role-experiment  Train isolated neuron-role-aware candidate (needs neuPrint)"
 	@echo "  make compare-role-experiment  Compare candidate and baseline on held-out regression sets"
+	@echo "  make enable-trained-router  Verify/download 473-example-trained residual MaleCNS checkpoint"
+	@echo "  make disable-trained-router Restore previous local router settings"
 	@echo "  make train-full-structural  Run one full offline MaleCNS structural training epoch"
 	@echo "  make reclaim     Clear safe rebuildable caches and obsolete FlyWire data"
 	@echo "  make disk        Show disk usage for common large FlyGPT paths"
