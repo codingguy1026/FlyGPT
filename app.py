@@ -1311,6 +1311,14 @@ def chat_endpoint(req: ChatRequest, request: Request):
                         "짧게 답하도록 요청하거나 출력 토큰 제한을 조정해 줘."
                     )
                     mode_label = f"{result.route} · generator_truncated"
+                elif failure == "unsafe_generated_content":
+                    answer = (
+                        "🛡️ 생성 모델의 문장이 내부 출력 검사에 걸렸어. "
+                        "자연스러운 문장으로 다시 생성했지만 아직 통과하지 못했어. "
+                        "서버의 [GEN] semantic_output_rejected 로그에서 "
+                        "internal_plan_echo 또는 wrong_language를 확인해 줘."
+                    )
+                    mode_label = f"{result.route} · generator_output_rejected"
                 elif failure == "http_429":
                     answer = (
                         "⏳ 생성 모델의 요청 제한에 걸렸어. "
