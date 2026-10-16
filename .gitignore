@@ -27,3 +27,7 @@ artifacts/role_aware_comparison.json
 artifacts/fly_router_malecns_residual_seed44.pt
 data/trained_router_previous_env.json
 .env.tmp
+
+# Whole-population experiment: source graph & trained full-neuron model
+artifacts/fly_router_malecns_all_neurons.pt
+data/full_neuron_previous_env.json

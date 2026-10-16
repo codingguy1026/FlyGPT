@@ -1,4 +1,4 @@
-.PHONY: run local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural enable-trained-router disable-trained-router help stop
+.PHONY: run local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural enable-trained-router disable-trained-router download-full-neuron-data train-full-neuron-router enable-full-neuron-router disable-full-neuron-router install-full-neuron-router help stop
 
 run:
 	@bash scripts/run_all.sh
@@ -39,6 +39,23 @@ enable-trained-router:
 disable-trained-router:
 	@bash scripts/disable_trained_router.sh
 
+# All-neuron mode is offline and opt-in. The official graph is >1GB;
+# never download or train it during /api/chat requests or server boot.
+download-full-neuron-data:
+	@bash scripts/download_all_malecns_data.sh
+
+train-full-neuron-router:
+	@bash scripts/train_full_population_router.sh
+
+install-full-neuron-router:
+	@bash scripts/install_trained_full_neuron_router.sh
+
+enable-full-neuron-router:
+	@bash scripts/enable_full_neuron_router.sh
+
+disable-full-neuron-router:
+	@bash scripts/disable_full_neuron_router.sh
+
 # Explicit offline command. Never run the full ~1 GB source scan on app startup.
 train-full-structural:
 	@.venv-train/bin/python training/train_full_connectome.py --epochs 1
@@ -73,6 +90,11 @@ help:
 	@echo "  make compare-role-experiment  Compare candidate and baseline on held-out regression sets"
 	@echo "  make enable-trained-router  Verify/download 473-example-trained residual MaleCNS checkpoint"
 	@echo "  make disable-trained-router Restore previous local router settings"
+	@echo "  make download-full-neuron-data Download official 1.1GB full MaleCNS graph (explicit only)"
+	@echo "  make train-full-neuron-router Train exact whole-population structural routing model offline"
+	@echo "  make install-full-neuron-router Download validated 166700-neuron trained checkpoint and opt in locally"
+	@echo "  make enable-full-neuron-router Verify+select the all-neuron model for next site startup"
+	@echo "  make disable-full-neuron-router Return to the previous router model"
 	@echo "  make train-full-structural  Run one full offline MaleCNS structural training epoch"
 	@echo "  make reclaim     Clear safe rebuildable caches and obsolete FlyWire data"
 	@echo "  make disk        Show disk usage for common large FlyGPT paths"

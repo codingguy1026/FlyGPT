@@ -214,9 +214,14 @@ def get_router() -> Any | None:
             return _router
 
         try:
-            from router_runtime import FlyRouterRuntime
-
-            _router = FlyRouterRuntime(model_path)
+            if os.environ.get("FLYGPT_ENABLE_FULL_POPULATION_ROUTER") == "1":
+                # Never silently label the 256-neuron router as a full model.
+                # Without a real trained whole-population checkpoint, loading fails closed.
+                from full_population_runtime import FullPopulationRouterRuntime
+                _router = FullPopulationRouterRuntime(model_path)
+            else:
+                from router_runtime import FlyRouterRuntime
+                _router = FlyRouterRuntime(model_path)
             _router_error = None
         except Exception as exc:
             _router_error = f"{type(exc).__name__}: {exc}"
@@ -577,6 +582,16 @@ def health():
         "model_available": model_path.is_file(),
         "router_initialized": _router is not None,
         "router_error": _router_error,
+        "full_population_router": {
+            "enabled": os.environ.get("FLYGPT_ENABLE_FULL_POPULATION_ROUTER") == "1",
+            "active": bool(_router is not None and
+                           getattr(_router, "full_neuron_population", False)),
+            "all_annotated_neurons": (
+                getattr(_router, "n_nodes", 0)
+                if getattr(_router, "full_neuron_population", False) else 0
+            ),
+            "live_neuron_firing_traces": False,
+        },
         "app_version": APP_VERSION,
         "chat_request_budget_seconds": CHAT_REQUEST_BUDGET_SECONDS,
         "dispatcher_enabled": True,
