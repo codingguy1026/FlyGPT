@@ -435,16 +435,18 @@ class GeneratorRuntimeTests(unittest.TestCase):
             )
 
         joined = "\n".join(item["content"] for item in messages)
-        self.assertIn("mouth", messages[0]["content"].lower())
-        self.assertIn("return_greeting", joined)
+        # The model receives the brain's communicative purpose, NOT private
+        # structured JSON, internal plan labels, or earlier chat content.
+        self.assertEqual(len(messages), 2)
+        self.assertIn("Return greeting", joined)
+        self.assertNotIn("return_greeting", joined)
+        self.assertNotIn("utterance_plan", joined)
+        self.assertNotIn("semantic_authority", joined)
         self.assertNotIn("왜 하늘은 파래", joined)
         self.assertNotIn("비밀 대화", joined)
         self.assertNotIn("tool secret", joined)
         self.assertNotIn("knowledge secret", joined)
-        self.assertEqual(
-            messages[-1]["content"],
-            "Render the supplied utterance plan as the final reply. Add no semantic content of your own.",
-        )
+        self.assertNotIn("{", joined)
 
     def test_prompt_forbids_reasoning_and_new_questions(self):
         with patch.dict(os.environ, {}, clear=True):
