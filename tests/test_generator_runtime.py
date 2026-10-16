@@ -304,7 +304,7 @@ class GeneratorRuntimeTests(unittest.TestCase):
                 {
                     "choices": [
                         {
-                            "message": {"content": "fallback ok"},
+                            "message": {"content": "대체 모델이 정상적으로 인사했어."},
                             "finish_reason": "stop",
                         }
                     ]
