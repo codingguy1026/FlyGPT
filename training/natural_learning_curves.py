@@ -272,7 +272,8 @@ def run(args):
 
     with tempfile.TemporaryDirectory(prefix="flygpt-learning-") as work:
         teacher = Path(work) / "training.jsonl"
-        train_keys, dropped = prepare_teacher(teacher)
+        _, dropped = prepare_teacher(teacher)
+        corpus_sha = hashlib.sha256(teacher.read_bytes()).hexdigest()
         data = [Example(item["input"], item["route"]) for item in load_jsonl(teacher)]
         results = []
         original_nodes, src, dst, weights, meta = load_scaffold(args.scaffold, 256, 42)
@@ -325,7 +326,8 @@ def run(args):
     return {
         "study": "Group-aware training-only learning curves",
         "hypothesis": "Does additional supervised data improve true holdout routing performance?",
-        "dataset_sha256": hashlib.sha256(args.scaffold.read_bytes()).hexdigest(),
+        "training_corpus_sha256": corpus_sha,
+        "scaffold_sha256": hashlib.sha256(args.scaffold.read_bytes()).hexdigest(),
         "scaffold": {"node_count": original_nodes, "edge_count": len(source["edges"]),
                      "dataset": source["dataset"]},
         "corpus": {"examples": len(data), "duplicate_training_inputs_removed": dropped,
