@@ -174,14 +174,25 @@ class FullPopulationRouter(nn.Module):
 
 
 def train_one(teacher: Path, ids, keys, seed: int, epochs: int,
-              patience: int, batch_size: int):
+              patience: int, batch_size: int, explicit_split=None):
     torch.manual_seed(seed)
     random.seed(seed)
     torch.set_num_threads(2)
     examples = load_examples(teacher)
     classes = sorted({x.route for x in examples})
     mapping = {label: i for i, label in enumerate(classes)}
-    train, val = stratified_split(examples, .22, seed)
+    if explicit_split is None:
+        train, val = stratified_split(examples, .22, seed)
+        test = None
+    else:
+        train, val, test = explicit_split
+        if {x.text for x in train} & {x.text for x in val} or (
+            test is not None and (
+                {x.text for x in train} & {x.text for x in test}
+                or {x.text for x in val} & {x.text for x in test}
+            )
+        ):
+            raise ValueError("Training/validation/test sets overlap")
     x_train, y_train = batchify(train, mapping, 8192, "v6")
     x_val, y_val = batchify(val, mapping, 8192, "v6")
 
@@ -238,7 +249,37 @@ def train_one(teacher: Path, ids, keys, seed: int, epochs: int,
         torch.softmax(val_logits / temperature, dim=1), y_val,
         target_precision=.97, min_coverage=.55,
     )
+    test_metrics = None
+    if test is not None:
+        # Test data is untouched until AFTER checkpoint/temperature selection.
+        x_test, y_test = batchify(test, mapping, 8192, "v6")
+        with torch.no_grad():
+            logits_test = model(x_test)
+        predicted = logits_test.argmax(dim=1)
+        confusion = {}
+        recall = {}
+        for route, index in mapping.items():
+            mask = y_test == index
+            count = int(mask.sum().item())
+            recall[route] = (
+                round(float((predicted[mask] == y_test[mask]).float().mean().item()), 6)
+                if count else None
+            )
+            confusion[route] = {
+                label: int(((predicted == other_index) & mask).sum().item())
+                for label, other_index in mapping.items()
+            }
+        test_metrics = {
+            "n": len(test),
+            "accuracy": round(_accuracy_from_logits(logits_test, y_test), 6),
+            "macro_recall": round(
+                _balanced_accuracy_from_logits(logits_test, y_test, len(classes)), 6
+            ),
+            "per_route_recall": recall,
+            "confusion": confusion,
+        }
     return model, {
+        "test_metrics": test_metrics,
         "seed": seed, "training_examples": len(train),
         "validation_examples": len(val),
         "best_epoch": best_epoch,
