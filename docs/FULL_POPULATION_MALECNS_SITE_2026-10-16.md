@@ -2,9 +2,9 @@
 
 ## Status
 
-**Code prepared; no full-neuron model has yet been trained or deployed from this branch.**
+**Actual full-neuron models trained and verified in GitHub Actions; code is merged into `main`, but no live Codespaces or external website has been switched automatically.**
 
-The previous 93.2% figure refers to an internal test of a **256-neuron** model, not a full-brain score. The full-neuron model is a DIFFERENT model and must be trained and evaluated anew. Neither model accuracy nor production activation can be inferred from a PR being opened.
+The previous 93.16% internal group-heldout score was achieved by a **256-neuron** model. We have now trained **three separate full-population models** on genuine official MaleCNS data and obtained **93.2349% average macro recall**, versus **93.1649%** for the archived 256-neuron references on the same group-heldout folds. **This is a 3-seed mean, not the accuracy of a single deployed model or an end-to-end chatbot score.** The difference is only +0.0700 percentage points and is not evidence that all-neuron connectivity is more effective.
 
 ## What 'all neurons' means here
 
@@ -19,13 +19,12 @@ Official data and provenance: https://male-cns.janelia.org/download/
 
 ## Offline procedure (Codespaces / machine with adequate disk)
 
-1. Merge/review the stacked work: research PRs #60-63 and optional 256-site checkpoint compatibility PR #64, then this PR. Nothing here runs automatically on site startup.
-2. Use `make download-full-neuron-data`. This explicitly downloads official ~1.1 GB weights and ~13 MB annotations. The download script checks for at least 4GB free disk.
-3. `make train-setup` then `.venv-train/bin/python -m pip install -r requirements-full-connectome.txt` to install PyArrow; confirm PyTorch is available.
-4. Run `make train-full-neuron-router`. It first learns 16-dimensional pre/post structural embeddings over *all* official eligible directed connection rows, then supervises a six-route classifier using the complete neuron population. The new result is written to `artifacts/fly_router_malecns_all_neurons.pt`.
-5. Perform an independent evaluation and verify performance before opting in. Its internal validation score is NOT a reliable estimate of general-user chat quality.
-6. Make sure `.venv/bin/python` has CPU PyTorch, then `make enable-full-neuron-router` and restart `make stable` (or `make run`). Health reports `full_population_router.enabled`, `.active`, and `.all_annotated_neurons` separately.
-7. If problems arise, `make disable-full-neuron-router` and restart. The earlier site model and trained artifact remain intact.
+1. On the FlyGPT Codespace: `git checkout main && git pull --ff-only` after dealing with any local work normally.
+2. Run **`make install-full-neuron-router`**. This fetches the already-trained full-neuron model from [successful GitHub Actions run #38915242351](https://github.com/codingguy1026/FlyGPT/actions/runs/38915242351), verifies the SHA-256 checksum for seed 44, ensures local PyTorch is available, verifies actual full-neuron inference, and opts in through local `.env`. GitHub Actions retains the model artifact for 30 days.
+3. Restart the FlyGPT backend (`make stable` or `make run`). Health reports `full_population_router.enabled`, `.active`, and `.all_annotated_neurons`.
+4. If problems arise, `make disable-full-neuron-router` then restart to use the previous checkpoint.
+
+To **retrain independently from the official full dataset** instead of installing the archive: `make download-full-neuron-data`, `make train-setup`, `.venv-train/bin/python -m pip install -r requirements-full-connectome.txt`, and `make train-full-neuron-router`.
 
 ## Architecture
 
@@ -35,10 +34,10 @@ Official data and provenance: https://male-cns.janelia.org/download/
 
 ## Scope and limitations
 
-- The full graph has **not been downloaded/trained/benchmarked in this PR**. The available GitHub CI tests mathematical properties on small synthetic keys only; it cannot prove true Janelia data accuracy or operation speed.
+- The real official full dataset was downloaded and processed in [GitHub Actions run #38915242351](https://github.com/codingguy1026/FlyGPT/actions/runs/38915242351); the entire source table was streamed. **166,700 annotated neurons** were retained; **166,483** had eligible positive connections and **217** were included without a positive structural-training edge. **25,582,938** eligible directed edge rows were trained on. A separately [successful real-checkpoint site integration test](https://github.com/codingguy1026/FlyGPT/actions/runs/38916038675) loaded the actual 166,700-neuron model and verified exact all-neuron attention.
 - Training requires substantial CPU, storage and time. If the current Codespaces cannot fit the data, a separate machine/CI job is necessary; do not silently sample fewer neurons and label the run as full.
 - The full population summary mixes structural embeddings, not the real fly's behavior or spike dynamics.
-- Even after obtaining a valid trained full checkpoint, the previously seen 93.2% is NOT its expected accuracy. Evaluate this new architecture on *new* independent questions and compare with an ordinary text classifier and randomized-connectome control.
+- Full-neuron macro recall was **92.3961%, 94.6347%, 92.6739%** over three independently trained seeds, giving mean **93.2349%** on grouped internal teacher-corpus heldout questions (102 questions per seed). The actual site-installable seed-44 checkpoint was selected using *validation accuracy*, not its test results. **Its own held-out macro recall was 92.6739%, not 93.2349%.** Further independent external testing and a randomized-connectome control are required before stronger claims.
 - The default deployed site stays on its existing model unless explicitly switched. A private local `.env` marker permits rollback without writing credentials to the repository.
 
 ## Unit tests
@@ -47,4 +46,4 @@ Official data and provenance: https://male-cns.janelia.org/download/
 
 ## Next scientific milestone
 
-Actually run the full official-data two-stage training, audit counts and repeatability, and **independently evaluate** route classification before putting it on the public domain. Distinguish full-population *structural use* from live all-neuron *electrophysiology* in marketing/UI.
+Conduct new external blind route-classification evaluations, compare with an equally trained all-neuron rewired connectivity control, and separately test real chat quality before a public performance claim. Distinguish full-population *structural use* from live all-neuron *electrophysiology* in the UI. The original real-model training and tests have already succeeded; **live website activation still requires a running application environment**.
