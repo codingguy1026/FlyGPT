@@ -959,6 +959,7 @@ class GeneratorRuntime:
             *,
             attempt_timeout: float | None = None,
             max_tokens_override: int | None = None,
+            override_messages: list[dict[str, str]] | None = None,
         ) -> GenerationResult:
             nonlocal attempts
             remaining = remaining_seconds()
@@ -972,7 +973,7 @@ class GeneratorRuntime:
             attempts += 1
             result = self._generate_once(
                 model=model,
-                messages=messages,
+                messages=override_messages if override_messages is not None else messages,
                 timeout_seconds=timeout_cap,
                 **({"max_tokens_override": max_tokens_override}
                    if max_tokens_override is not None else {}),
@@ -986,19 +987,24 @@ class GeneratorRuntime:
                     f"response_bytes={result.response_bytes}",
                     flush=True,
                 )
-            if result.used and result.answer and (
-                _contains_internal_plan(result.answer)
-                or _wrong_output_language(result.answer, plan)
-            ):
-                # Never replace a faulty generated reply with a hardcoded
-                # greeting, identity introduction, or copied fact paragraph.
-                # The model must produce a valid fresh reply on another
-                # attempt, otherwise the UI reports an unavailable generator.
-                result.used = False
-                result.answer = None
-                result.error_code = "unsafe_generated_content"
-                result.finish_reason = "blocked_internal_plan"
-                result.error = "generated response failed semantic output checks"
+            if result.used and result.answer:
+                leaked = _contains_internal_plan(result.answer)
+                wrong_language = _wrong_output_language(result.answer, plan)
+                if leaked or wrong_language:
+                    # Never show internal planner text or substitute a canned
+                    # phrase. Discard only the invalid output and try a fresh
+                    # generation using a cleaner instruction below.
+                    reason = "internal_plan_echo" if leaked else "wrong_language"
+                    print(
+                        f"[GEN] semantic_output_rejected model={model} "
+                        f"attempt={attempts} reason={reason}",
+                        flush=True,
+                    )
+                    result.used = False
+                    result.answer = None
+                    result.error_code = "unsafe_generated_content"
+                    result.finish_reason = "blocked_internal_plan"
+                    result.error = f"generated response rejected: {reason}"
             if (
                 not result.used
                 and remaining_seconds() <= 0.05
@@ -1036,6 +1042,32 @@ class GeneratorRuntime:
                 )
             )
 
+        def corrected_retry_messages() -> list[dict[str, str]]:
+            # Do not include the rejected text: it might be a planner leak.
+            # Change the prompt instead of repeating a failed deterministic
+            # request or forcing a memorized final answer.
+            language = str((plan.get("style") or {}).get("language", "match_user"))
+            if language == "ko":
+                guidance = (
+                    "앞선 출력 형식이 적합하지 않았어. 새로운 한국어 답변을 "
+                    "직접 자연스럽게 작성해. JSON, 계획 이름, 지시문 설명, "
+                    "내부 메타데이터, 영어 번역을 내보내지 마. "
+                    "짧은 한국어 감탄사나 한 글자 대답도 괜찮아. "
+                    "원래 전달할 의도를 유지하고 새로운 사실을 추가하지 마."
+                )
+            elif language == "en":
+                guidance = (
+                    "Create a new short natural English reply expressing only "
+                    "the authorized intent. Never echo instructions, JSON, or "
+                    "internal planning terms. Do not invent new facts."
+                )
+            else:
+                guidance = (
+                    "Create a fresh natural response containing only the "
+                    "authorized meaning. Do not echo metadata or JSON."
+                )
+            return [messages[0], {"role": "system", "content": guidance}, *messages[1:]]
+
         fallback_available = bool(
             self.fallback_model and self.fallback_model != self.model
         )
@@ -1071,7 +1103,14 @@ class GeneratorRuntime:
                 f"trying fallback {self.fallback_model}",
                 flush=True,
             )
-            fallback = generate_with_budget(self.fallback_model)
+            fallback = generate_with_budget(
+                self.fallback_model,
+                override_messages=(
+                    corrected_retry_messages()
+                    if first.error_code == "unsafe_generated_content"
+                    else None
+                ),
+            )
             return fallback
 
         print(
@@ -1092,4 +1131,11 @@ class GeneratorRuntime:
         if remaining_seconds() <= 0:
             return budget_result(self.model)
 
-        return generate_with_budget(self.model)
+        return generate_with_budget(
+            self.model,
+            override_messages=(
+                corrected_retry_messages()
+                if first.error_code == "unsafe_generated_content"
+                else None
+            ),
+        )
