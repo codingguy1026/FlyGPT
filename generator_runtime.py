@@ -217,8 +217,10 @@ def _extract_chat_completion(payload: Any) -> tuple[str, str | None]:
     else:
         answer = ""
     if not answer:
-        # It is common for some reasoning models to spend their whole output
-        # budget on non-user-visible reasoning. Never display that reasoning.
+        if (finish_reason or "").lower() in {
+            "length", "max_tokens", "max_output_tokens",
+        }:
+            return "", finish_reason
         raise ValueError("provider response missing visible assistant text")
     return answer, finish_reason
 
