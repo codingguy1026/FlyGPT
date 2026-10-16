@@ -438,7 +438,7 @@ class GeneratorRuntimeTests(unittest.TestCase):
         # The model receives the brain's communicative purpose, NOT private
         # structured JSON, internal plan labels, or earlier chat content.
         self.assertEqual(len(messages), 2)
-        self.assertIn("Return greeting", joined)
+        self.assertIn("Return the user\'s greeting", joined)
         self.assertNotIn("return_greeting", joined)
         self.assertNotIn("utterance_plan", joined)
         self.assertNotIn("semantic_authority", joined)
