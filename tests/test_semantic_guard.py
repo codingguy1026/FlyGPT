@@ -175,7 +175,7 @@ class PlanDisclosureGuardTests(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertFalse(_contains_internal_plan(text))
 
-    def test_unsafe_greeting_is_replaced_with_fixed_prose(self):
+    def test_unsafe_greeting_is_blocked_not_replaced_with_fixed_prose(self):
         runtime = self.make_runtime()
         with patch.object(
             runtime, "_generate_once",
@@ -188,10 +188,11 @@ class PlanDisclosureGuardTests(unittest.TestCase):
                 "general",
                 brain_state=planned("안녕"),
             )
-        self.assertTrue(result.used)
-        self.assertEqual(result.answer, "안녕! 🪰")
-        self.assertEqual(result.finish_reason, "safe_surface_fallback")
-        gen.assert_called_once()
+        self.assertFalse(result.used)
+        self.assertIsNone(result.answer)
+        self.assertEqual(result.finish_reason, "blocked_internal_plan")
+        self.assertEqual(result.error_code, "unsafe_generated_content")
+        self.assertEqual(gen.call_count, 2)
 
     def test_internal_metadata_blocked_for_exact_math_result(self):
         runtime = self.make_runtime()
@@ -253,15 +254,30 @@ class PlanDisclosureGuardTests(unittest.TestCase):
         self.assertFalse(result.used)
         self.assertIsNone(result.answer)
 
-    def test_wrong_language_for_korean_greeting_falls_back(self):
+    def test_wrong_language_for_korean_greeting_is_not_faked(self):
         runtime = self.make_runtime()
         with patch.object(
             runtime, "_generate_once",
             return_value=fake_generated("You're welcome."),
         ):
             result = runtime.generate("안녕", "general", brain_state=planned("안녕"))
+        self.assertFalse(result.used)
+        self.assertIsNone(result.answer)
+        self.assertEqual(result.error_code, "unsafe_generated_content")
+
+    def test_invalid_first_output_can_regenerate_without_canned_prose(self):
+        runtime = self.make_runtime()
+        with patch.object(
+            runtime, "_generate_once",
+            side_effect=[
+                fake_generated('{"speech_act":"return_greeting"}'),
+                fake_generated("안녕! 오늘은 어떤 이야기를 나눌까?"),
+            ],
+        ) as generate:
+            result = runtime.generate("안녕", "general", brain_state=planned("안녕"))
         self.assertTrue(result.used)
-        self.assertEqual(result.answer, "안녕! 🪰")
+        self.assertEqual(result.answer, "안녕! 오늘은 어떤 이야기를 나눌까?")
+        self.assertEqual(generate.call_count, 2)
 
     def test_clean_prose_still_passes_unchanged(self):
         runtime = self.make_runtime()
