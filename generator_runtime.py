@@ -943,6 +943,10 @@ class GeneratorRuntime:
             return result
 
         def is_transient_failure(result: GenerationResult) -> bool:
+            # A successful HTTP 200 can still contain an invalid generated
+            # reply. Retry the model rather than supplying a memorized script.
+            if result.error_code == "unsafe_generated_content":
+                return True
             if result.http_status in RETRYABLE_HTTP_CODES:
                 return True
             if result.http_status is not None:
