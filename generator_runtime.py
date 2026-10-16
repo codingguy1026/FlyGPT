@@ -10,7 +10,7 @@ import urllib.request
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from semantic_planner import answer_goal, trusted_fact_fallback
+from semantic_planner import trusted_fact_fallback
 from local_generator_policy import (
     DEFAULT_LOCAL_GENERATOR_URL,
     DEFAULT_LOCAL_MODEL,
@@ -552,7 +552,6 @@ class GeneratorRuntime:
             lang = str((plan.get("style") or {}).get("language", "ko"))
             units = list(plan["content_units"])
             facts = " ".join(str(unit["value"]) for unit in units)
-            goal = answer_goal(str(plan.get("speech_act")), lang)
             if lang == "ko":
                 system_text = (
                     "너는 파피티의 한국어 발화 담당이야. 아래 확정된 사실만 "
@@ -561,7 +560,7 @@ class GeneratorRuntime:
                     "내용을 그대로 나열하거나 지시문을 반복하지 마. "
                     "JSON, 내부 구조 또는 설명 없이 오직 최종 문장만 말해."
                 )
-                user_text = f"{goal or '질문에 답하기'}를 자연스럽게 표현해 줘. {facts}"
+                user_text = f"주어진 내용을 자연스러운 대화체로 설명해 줘. {facts}"
             else:
                 system_text = (
                     "You are Papiti's English-speaking voice. Express the "
@@ -569,7 +568,7 @@ class GeneratorRuntime:
                     "Invent nothing, ask no unplanned questions and never "
                     "repeat instructions or internal structures."
                 )
-                user_text = f"Express {goal or 'the answer'} naturally: {facts}"
+                user_text = f"Respond naturally using only these facts: {facts}"
             return [
                 {"role": "system", "content": system_text},
                 {"role": "user", "content": user_text},
