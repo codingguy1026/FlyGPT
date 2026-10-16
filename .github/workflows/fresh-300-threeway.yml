@@ -1,0 +1,42 @@
+name: FlyGPT fresh 300 three-way study
+
+on:
+  pull_request:
+    paths:
+      - "training/fresh_threeway.py"
+      - "training/test_fresh_threeway.py"
+      - "training/fresh_holdout_300_20261016.jsonl"
+      - ".github/workflows/fresh-300-threeway.yml"
+  workflow_dispatch:
+
+jobs:
+  three-way-benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OMP_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install CPU PyTorch
+        run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Validate frozen holdout and experiment code
+        run: |
+          python -m py_compile training/fresh_threeway.py training/topology_ablation.py
+          python -m unittest training.test_fresh_threeway tests.test_topology_ablation -v
+      - name: Evaluate MaleCNS, rewired, and text-only models
+        run: |
+          python training/fresh_threeway.py \
+            --seeds 42 43 44 \
+            --epochs 90 \
+            --patience 18 \
+            --out /tmp/flygpt-fresh-300-results.json
+      - name: Attach full reproducible metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: flygpt-threeway-fresh300
+          path: /tmp/flygpt-fresh-300-results.json
+          retention-days: 30
