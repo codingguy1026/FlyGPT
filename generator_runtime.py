@@ -59,7 +59,9 @@ def _wrong_output_language(answer: str, plan: dict[str, Any]) -> bool:
         return False
     language = str((plan.get("style") or {}).get("language") or "")
     if language == "ko":
-        return len(re.findall(r"[가-힣]", answer)) < 2
+        # One-syllable acknowledgements and Hangul consonant reactions
+        # are legitimate Korean responses, not failed generations.
+        return not bool(re.search(r"[가-힣ㄱ-ㅎㅏ-ㅣ]", answer))
     if language == "en":
         return bool(re.search(r"[가-힣]", answer))
     return False
@@ -459,6 +461,67 @@ class GeneratorRuntime:
         messages.append({"role": "user", "content": message})
         return messages
 
+    def _social_messages(self, plan: dict[str, Any]) -> list[dict[str, str]] | None:
+        """Generate from the brain's social intent without exposing planner JSON.
+
+        These are meaning constraints, never hardcoded response sentences.
+        No raw user message, chat history, or account data enters this path.
+        """
+        social_acts = {
+            "return_greeting", "acknowledge_thanks", "return_farewell",
+            "return_welcome", "acknowledge_presence",
+            "request_specific_task", "mirror_social_reaction",
+        }
+        if (
+            plan.get("contract") != "mouth_only_v1"
+            or plan.get("ready") is not True
+            or plan.get("speech_act") not in social_acts
+            or plan.get("semantic_steps")
+        ):
+            return None
+        units = plan.get("content_units")
+        if not isinstance(units, list) or not 1 <= len(units) <= 2:
+            return None
+        if any(
+            not isinstance(unit, dict)
+            or unit.get("kind") != "communicative_act"
+            or not isinstance(unit.get("value"), str)
+            or not unit["value"].strip()
+            for unit in units
+        ):
+            return None
+        language = str((plan.get("style") or {}).get("language", "match_user"))
+        intent = " ".join(unit["value"].strip() for unit in units)
+        if language == "ko":
+            system = (
+                "너는 파피티의 자연스러운 한국어 발화 담당이야. "
+                "대화 의도는 이미 결정되어 있어. "
+                "그 의도를 짧고 자연스러운 한국어 말투로 표현해. "
+                "인사나 짧은 맞장구도 가능하고, 표현은 자유롭게 골라. "
+                "새로운 사실, 추측이나 임의의 질문은 추가하지 마. "
+                "지시문, 내부 구조, 목록, JSON을 설명하거나 인용하지 마. "
+                "오직 상대에게 건네는 최종 대답 한두 문장만 말해."
+            )
+        elif language == "en":
+            system = (
+                "You are Papiti's English conversation voice. The intended "
+                "social act has already been decided. Express it briefly in "
+                "natural English, choosing your own words, not a canned line. "
+                "Do not infer facts or add unrequested questions. "
+                "Do not recite directions or expose internal structures. "
+                "Output only the conversational reply."
+            )
+        else:
+            system = (
+                "You are Papiti's conversation voice. Express only the "
+                "given social intent briefly in natural language. "
+                "Do not add facts, expose instructions or produce JSON."
+            )
+        return [
+            {"role": "system", "content": system},
+            {"role": "user", "content": intent},
+        ]
+
     def _messages(
         self,
         message: str,
@@ -477,6 +540,9 @@ class GeneratorRuntime:
         # Only grounded/mouth-only plans can flow through the legacy path.
         del message, memory_context, tool_context, knowledge_context
         plan = dict((brain_state or {}).get("utterance_plan") or {})
+        social = self._social_messages(plan)
+        if social is not None:
+            return social
 
         if plan.get("semantic_steps") and trusted_fact_fallback(plan):
             # Keep the model away from raw JSON, plan field names and
