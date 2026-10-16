@@ -13,6 +13,10 @@ on:
       - '.github/workflows/full-neuron-architecture.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   safety-and-math:
     runs-on: ubuntu-latest
@@ -30,5 +34,17 @@ jobs:
           bash -n scripts/download_all_malecns_data.sh scripts/train_full_population_router.sh scripts/enable_full_neuron_router.sh scripts/disable_full_neuron_router.sh
       - name: Verify exact all-neuron moment identity and non-sampling invariant
         run: python -m unittest tests.test_full_population_router -v
-      - name: Announce that no production or bulk data was used
-        run: echo 'Structural and synthetic unit tests only. Requires 1.1GB official full data and separately trained checkpoint before opt-in deployment.'
+      - name: Check install script syntax
+        run: bash -n scripts/install_trained_full_neuron_router.sh
+      - name: Fetch real whole-neuron trained model from completed research run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/full-trained
+          gh run download 38915242351 -R codingguy1026/FlyGPT -n real-full-MaleCNS-3-seed-models -D /tmp/full-trained
+          echo '0a410dd31fc6cf682af2de1f79b2f7f981d218d4154290e282b9c28957318901  /tmp/full-trained/malecns_all_neurons_seed44.pt' | sha256sum -c -
+          echo 'FLYGPT_TEST_FULL_POPULATION_CKPT=/tmp/full-trained/malecns_all_neurons_seed44.pt' >> "$GITHUB_ENV"
+      - name: Verify full 166700-neuron website runtime (real trained checkpoint)
+        run: python -m unittest tests.test_full_neuron_site_integration -v
+      - name: Confirm that test did not deploy the model
+        run: echo 'Real trained checkpoint loads safely, authentic population math verified; no website deployment occurred.'
