@@ -148,7 +148,7 @@ class LocalizedGenerationTests(unittest.TestCase):
             brain_state=plan,
         )
         joined = "\n".join(item["content"] for item in messages)
-        self.assertIn("자연스럽게 표현해 줘", joined)
+        self.assertIn("자연스러운 대화체로 설명해 줘", joined)
         self.assertIn("파피티", joined)
         self.assertNotIn("mouth_only_v1", joined)
         self.assertNotIn("말할 목적:", joined)
@@ -166,7 +166,7 @@ class LocalizedGenerationTests(unittest.TestCase):
             "Who are you?", "general", None,
             brain_state=state_for("Who are you?"),
         )
-        self.assertIn("Express", messages[-1]["content"])
+        self.assertIn("Respond naturally", messages[-1]["content"])
         self.assertIn("The project is named FlyGPT", messages[-1]["content"])
 
     def test_wrong_language_is_rejected_not_replaced_by_fixed_facts(self):
