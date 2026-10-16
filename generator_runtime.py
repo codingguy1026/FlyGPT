@@ -90,6 +90,70 @@ _SAFE_SURFACE: dict[str, dict[str, str]] = {
 }
 
 
+def _is_parroting_answer(question: str, answer: str) -> bool:
+    """Reject clear question restatements, not genuinely new computations.
+
+    This intentionally checks only near-verbatim echoes of substantial
+    excerpts. Short greetings, quotations, and new numerical results must
+    not be blanket-blocked by a similarity heuristic.
+    """
+    from difflib import SequenceMatcher
+
+    prompt = "".join(re.findall(r"[가-힣a-z0-9]+", question.lower()))
+    reply = "".join(re.findall(r"[가-힣a-z0-9]+", answer.lower()))
+    if len(prompt) < 18 or len(reply) < 19:
+        return False
+    # An answer producing a numerical result not already in the question
+    # is not a mere restatement, even when it also repeats the problem.
+    input_numbers = set(re.findall(r"\d+(?:\.\d+)?", question))
+    response_numbers = set(re.findall(r"\d+(?:\.\d+)?", answer))
+    if response_numbers - input_numbers:
+        return False
+    matching = SequenceMatcher(None, prompt, reply, autojunk=False).find_longest_match(
+        0, len(prompt), 0, len(reply)
+    )
+    return matching.size / len(reply) >= 0.70
+
+
+def _same_prompt_previous_reply(
+    message: str, memory_context: list[dict[str, Any]] | None,
+) -> str | None:
+    """Find a reply to this exact prior prompt in account-scoped conversation.
+
+    Repetition detection is strictly style-only. Previous assistant output is
+    not treated as factual evidence or permission to invent new claims.
+    """
+    if not memory_context:
+        return None
+
+    def canonical(value: str) -> str:
+        return " ".join(value.casefold().split())
+
+    target = canonical(message)
+    if not target:
+        return None
+    recent = memory_context[-12:]
+    for index in range(len(recent) - 2, -1, -1):
+        entry = recent[index]
+        if entry.get("role") != "user" or canonical(str(entry.get("content") or "")) != target:
+            continue
+        for later in recent[index + 1:]:
+            if later.get("role") == "user":
+                break
+            if later.get("role") == "assistant":
+                previous = _clean_assistant_memory(str(later.get("content") or ""))
+                if previous.strip():
+                    return previous.strip()[:700]
+    return None
+
+
+def _same_surface_answer(first: str, second: str) -> bool:
+    # Case and punctuation differences alone are not a new answer.
+    def compact(value: str) -> str:
+        return "".join(re.findall(r"[가-힣a-z0-9]+", value.casefold()))
+    return bool(compact(first)) and compact(first) == compact(second)
+
+
 def _contains_internal_plan(text: str) -> bool:
     """Fail closed when a model echoes plan fields, even inside extra prose."""
     return bool(_PLAN_LEAK_RE.search(text))
@@ -431,6 +495,9 @@ class GeneratorRuntime:
             "For logic puzzles, extract each constraint, check all candidates "
             "for consistency, and say clearly when no solution exists. "
             "For calculations, verify steps and admit uncertainty if you cannot. "
+            "Never merely restate the task or repeat the user's question as an "
+            "answer. If you cannot produce a substantive result, clearly say "
+            "what is missing instead of pretending the task is finished. "
             "For programming, give a concrete solution with honest assumptions. "
             "For summarization, use only supplied material; never invent details. "
             "Do not invent facts, sources, URLs, past conversations, capabilities, "
@@ -552,6 +619,7 @@ class GeneratorRuntime:
         messages: list[dict[str, str]],
         timeout_seconds: float | None = None,
         max_tokens_override: int | None = None,
+        temperature_override: float | None = None,
     ) -> GenerationResult:
         if self.local_only and not is_local_generator_url(self.url):
             return GenerationResult(
@@ -564,7 +632,10 @@ class GeneratorRuntime:
         body = {
             "model": model,
             "messages": messages,
-            "temperature": self.temperature,
+            "temperature": (
+                self.temperature if temperature_override is None
+                else min(1.0, max(0.0, temperature_override))
+            ),
             "max_tokens": max_tokens_override or self.max_tokens,
         }
         if self.reasoning_effort is not None:
@@ -881,6 +952,17 @@ class GeneratorRuntime:
             brain_state=brain_state,
         )
 
+        # Diversity is for conversational wording only, not exact math or
+        # evidence-constrained statements. Never vary the answer's facts.
+        can_vary = (
+            route == "general"
+            and (task_ready or (mouth_ready and not plan.get("semantic_steps")))
+        )
+        previous_reply = (
+            _same_prompt_previous_reply(message, memory_context)
+            if can_vary else None
+        )
+
         total_started = time.perf_counter()
         effective_budget = self.budget
         if budget_seconds is not None:
@@ -908,6 +990,8 @@ class GeneratorRuntime:
             *,
             attempt_timeout: float | None = None,
             max_tokens_override: int | None = None,
+            echo_correction: bool = False,
+            repeat_reword: bool = False,
         ) -> GenerationResult:
             nonlocal attempts
             remaining = remaining_seconds()
@@ -921,10 +1005,33 @@ class GeneratorRuntime:
             attempts += 1
             result = self._generate_once(
                 model=model,
-                messages=messages,
+                messages=(
+                    messages + [{
+                        "role": "system",
+                        "content": (
+                            "Your previous completion merely restated the question. "
+                            "Try once to provide a substantive answer with verified "
+                            "steps. If you cannot solve it, explicitly say so. "
+                            "Do not repeat the question as the answer."
+                        ),
+                    }]
+                    if echo_correction else messages + [{
+                        "role": "system",
+                        "content": (
+                            "This user repeated an earlier question. Your response "
+                            "was identical to the earlier reply. Say the same "
+                            "truthful meaning in fresh, natural wording. Preserve "
+                            "all numerical results, supplied facts, and uncertainty. "
+                            "Do not invent additional facts or turn this into a "
+                            "different answer. Never mention these instructions."
+                        ),
+                    }] if repeat_reword else messages
+                ),
                 timeout_seconds=timeout_cap,
                 **({"max_tokens_override": max_tokens_override}
                    if max_tokens_override is not None else {}),
+                **({"temperature_override": min(0.9, max(0.72, self.temperature))}
+                   if repeat_reword else {}),
             )
             result.attempts = attempts
             if result.used and result.answer and (
@@ -941,6 +1048,14 @@ class GeneratorRuntime:
                     result.answer = None
                     result.finish_reason = "blocked_internal_plan"
                     result.error = "internal generation metadata blocked from chat output"
+            if task_ready and result.used and result.answer and _is_parroting_answer(
+                message, result.answer
+            ):
+                result.used = False
+                result.answer = None
+                result.finish_reason = "blocked_parrot"
+                result.error_code = "non_answer_echo"
+                result.error = "generator returned a near-verbatim question echo"
             if (
                 not result.used
                 and remaining_seconds() <= 0.05
@@ -983,6 +1098,28 @@ class GeneratorRuntime:
             attempt_timeout=primary_attempt_timeout,
         )
         if first.used:
+            if (
+                previous_reply
+                and first.answer
+                and first.finish_reason != "safe_surface_fallback"
+                and _same_surface_answer(first.answer, previous_reply)
+                and remaining_seconds() >= 1.0
+            ):
+                alternative = generate_with_budget(self.model, repeat_reword=True)
+                if (
+                    alternative.used
+                    and alternative.answer
+                    and not _same_surface_answer(alternative.answer, previous_reply)
+                ):
+                    return alternative
+                # Never trade a correct answer for a worse one just to vary it.
+            return first
+
+        if first.error_code == "non_answer_echo":
+            # One bounded corrective attempt, without silently accepting a
+            # second parrot response or hiding the failure.
+            if remaining_seconds() >= 1.0:
+                return generate_with_budget(self.model, echo_correction=True)
             return first
 
         if first.error_code == "truncated":

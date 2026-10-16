@@ -22,6 +22,8 @@ from connectome import MaleCNSConnectome
 from brain_runtime import FlyBrainRuntime
 from semantic_route_guard import apply_semantic_route_override
 from seating_solver import solve_linear_seating
+from novel_rule_solver import solve_defined_operations
+from low_confidence_general import eligible_basic_general
 from dispatcher import dispatch, dispatch_math_fast_path, is_math_fast_path
 from generator_runtime import GENERATIVE_ROUTES, GeneratorRuntime
 from memory_store import MemoryStore, format_recall
@@ -822,6 +824,28 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 session_id=session_id,
             )
 
+        # Explicitly-defined named arithmetic operations need real execution,
+        # even when an older router mislabels the question as "general".
+        # Keep unsupported/ambiguous language on the normal inference path.
+        defined_rule = solve_defined_operations(msg, memory_context)
+        if defined_rule is not None:
+            elapsed_ms = round((time.perf_counter() - request_started) * 1000)
+            return response_with_router(
+                answer=defined_rule.answer,
+                response_type="logic_verified",
+                data={
+                    "solver": "user_defined_arithmetic_v1",
+                    "start": defined_rule.start,
+                    "result": defined_rule.result,
+                    "steps": list(defined_rule.steps),
+                    "ui_meta": {"mode": "rule_verified", "app_version": APP_VERSION},
+                    "timings": {"total_ms": elapsed_ms},
+                },
+                route=None,
+                session_id=session_id,
+                timings={"total_ms": elapsed_ms},
+            )
+
         # Verify supported linear-position constraints with exhaustive
         # enumeration, *before* asking a small LLM to invent an arrangement.
         # The parser opts out on unknown participant constraints rather than
@@ -1118,6 +1142,73 @@ def chat_endpoint(req: ChatRequest, request: Request):
             )
 
             if result.status == "uncertain":
+                # A low-confidence classification is still rejected as a route.
+                # For a narrow set of evergreen WHAT/WHY questions, attempt a
+                # separate, clearly marked general explanation instead of
+                # returning identical confidence-gate prose for every question.
+                # No memory, fresh research, code or math request is promoted.
+                if eligible_basic_general(msg, route):
+                    cautious_state = dict(brain_state)
+                    cautious_state["task_plan"] = {
+                        "contract": "bounded_task_v1",
+                        "ready": True,
+                        "route": "general",
+                        "language": str(
+                            (brain_state.get("utterance_plan") or {})
+                            .get("style", {}).get("language", "match_user")
+                        ),
+                        "grounding": "user_request",
+                    }
+                    cautious_state["low_confidence_fallback"] = True
+                    elapsed = time.perf_counter() - request_started
+                    budget = max(
+                        0.0,
+                        CHAT_REQUEST_BUDGET_SECONDS
+                        - elapsed
+                        - CHAT_RESPONSE_RESERVE_SECONDS,
+                    )
+                    _emit_live_trace({"type": "status", "phase": "generation"})
+                    fallback = _generator.generate(
+                        msg,
+                        "general",
+                        memory_context=None,
+                        tool_context=None,
+                        knowledge_context=None,
+                        brain_state=cautious_state,
+                        budget_seconds=budget,
+                    )
+                    fallback_answer = (
+                        fallback.answer if fallback.used and fallback.answer
+                        else (
+                            "이 질문은 아직 확실하게 답하지 못했어. "
+                            "부정확한 답을 만들기보다 다른 표현으로 질문해 줘."
+                        )
+                    )
+                    return response_with_router(
+                        answer=fallback_answer,
+                        response_type="dispatch",
+                        data={
+                            "dispatch": result.to_dict(),
+                            "brain_state": cautious_state,
+                            "generation": fallback.to_dict(),
+                            "low_confidence_fallback": True,
+                            "ui_meta": {
+                                "mode": "general · cautious_low_confidence",
+                                "router_model": model_label,
+                                "app_version": APP_VERSION,
+                            },
+                            "timings": {
+                                "router_ms": router_ms,
+                                "dispatch_ms": dispatch_ms,
+                                "generation_ms": fallback.latency_ms,
+                                "total_ms": round(
+                                    (time.perf_counter() - request_started) * 1000
+                                ),
+                            },
+                        },
+                        route=route,  # Keep accepted=False and real router scores.
+                        session_id=session_id,
+                    )
                 return response_with_router(
                     answer=result.answer,
                     response_type="dispatch",
@@ -1290,6 +1381,13 @@ def chat_endpoint(req: ChatRequest, request: Request):
                         "질문을 조금 나누거나 응답 시간 설정을 확인해 줘."
                     )
                     mode_label = f"{result.route} · generator_timeout"
+                elif failure == "non_answer_echo":
+                    answer = (
+                        "⚠️ 답변 생성기가 질문을 되풀이했어. "
+                        "검증된 답을 만들지 못해서 추측하지 않았어. "
+                        "질문을 조금 더 구체적으로 알려주면 다시 시도할게."
+                    )
+                    mode_label = f"{result.route} · non_answer_blocked"
                 elif failure == "truncated":
                     answer = (
                         "📏 답변이 길이 제한에 걸려 끝까지 생성되지 않았어. "
