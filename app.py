@@ -1317,7 +1317,15 @@ def chat_endpoint(req: ChatRequest, request: Request):
                         "잠시 후 다시 시도해 줘."
                     )
                     mode_label = f"{result.route} · generator_rate_limited"
-                elif failure in {"connection_lost", "invalid_response", "http_500",
+                elif failure == "invalid_response":
+                    answer = (
+                        "🧩 생성 서버가 예상한 채팅 응답 형식으로 답하지 않았어. "
+                        "재시도했지만 완성된 문장을 받지 못했어. "
+                        "서버 터미널의 [GEN] invalid_response 로그에서 "
+                        "어떤 응답 필드가 잘못됐는지 확인해 줘."
+                    )
+                    mode_label = f"{result.route} · generator_invalid_response"
+                elif failure in {"connection_lost", "http_500",
                                  "http_502", "http_503", "http_504"}:
                     answer = (
                         "🔌 생성 모델과 통신하다가 일시적인 오류가 발생했어. "
