@@ -1,4 +1,4 @@
-name: MaleCNS topology ablation pilot
+name: MaleCNS topology ablation study
 
 on:
   pull_request:
@@ -29,13 +29,13 @@ jobs:
       - name: Train paired models on original and rewired graphs
         run: |
           python training/topology_ablation.py \
-            --seeds 42 \
-            --epochs 45 \
-            --patience 12 \
-            --out /tmp/topology-ablation-pilot.json
+            --seeds 42 43 44 \
+            --epochs 90 \
+            --patience 18 \
+            --out /tmp/topology-ablation-replicated.json
       - name: Save report (never deploy experimental checkpoints)
         uses: actions/upload-artifact@v4
         with:
-          name: topology-ablation-pilot
-          path: /tmp/topology-ablation-pilot.json
+          name: topology-ablation-replicated
+          path: /tmp/topology-ablation-replicated.json
           retention-days: 30
