@@ -19,7 +19,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body>{children}  <Script src="/liquid-refraction.js" strategy="afterInteractive" />
+      <body>
+        {children}
+        <Script src="/liquid-refraction.js" strategy="afterInteractive" />
       </body>
     </html>
   );
