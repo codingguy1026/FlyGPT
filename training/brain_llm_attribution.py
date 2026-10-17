@@ -158,8 +158,17 @@ def evaluate_case(question: dict, router, brain, generator, args):
 
     marker = question.get("expected_exact")
     def observed_marker(value):
+        # Token-boundary check. "784" is NOT correct in "7848".
+        # This is still only an output-string check, not a general correctness judge.
+        import re
         answer = str((value or {}).get("answer") or "")
-        return bool(marker and str(marker) in answer)
+        if not marker:
+            return False
+        if str(marker).startswith("x = "):
+            pattern = r"(?<!\\w)x\\s*=\\s*" + re.escape(str(marker)[4:]) + r"(?!\\d)"
+        else:
+            pattern = r"(?<!\\d)" + re.escape(str(marker)) + r"(?!\\d)"
+        return bool(re.search(pattern, answer))
 
     return {
         "case": question["id"], "family": question["category"],
