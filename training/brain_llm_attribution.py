@@ -23,6 +23,7 @@ from pathlib import Path
 import random
 import sys
 import time
+from unittest.mock import patch
 from typing import Any
 from urllib.request import Request, urlopen
 
@@ -244,7 +245,7 @@ def main():
     if any(q["category"] not in {"general", "code", "summarize", "math"}
            for q in questions):
         raise ValueError("This no-external-evidence study only supports four route families")
-    with __import__("unittest").mock.patch.dict(
+    with patch.dict(
         os.environ, {"FLYGPT_ENABLE_FULL_POPULATION_ROUTER": "1"}
     ):
         router = FullPopulationRouterRuntime(args.checkpoint)
