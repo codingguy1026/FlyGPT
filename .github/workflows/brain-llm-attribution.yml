@@ -1,0 +1,81 @@
+name: real brain versus language model attribution
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/brain-llm-attribution.yml'
+      - 'training/brain_llm_attribution.py'
+      - 'training/brain_llm_ablation_questions.json'
+      - 'tests/test_brain_llm_attribution.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  real-ablation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install CPU-only torch and test attribution logic
+        run: |
+          python -m pip install 'torch>=2.4,<3' --index-url https://download.pytorch.org/whl/cpu
+          python -m py_compile training/brain_llm_attribution.py
+          python -m unittest tests.test_brain_llm_attribution -v
+      - name: Download SHA-pinned REAL 166700-neuron site model
+        run: |
+          mkdir -p /tmp/fly-model
+          gh run download 38915242351 -R codingguy1026/FlyGPT -n real-full-MaleCNS-3-seed-models -D /tmp/fly-model
+          echo '0a410dd31fc6cf682af2de1f79b2f7f981d218d4154290e282b9c28957318901  /tmp/fly-model/malecns_all_neurons_seed44.pt' | sha256sum -c -
+      - name: Audit brain-only semantic reasoning without any LLM
+        run: |
+          python training/brain_llm_attribution.py \
+            --checkpoint /tmp/fly-model/malecns_all_neurons_seed44.pt \
+            --skip-llm --report /tmp/fly-ablation-brain-only.json
+      - name: Archive LLM-free baseline even if subsequent model install fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flygpt-brain-only-provenance-audit
+          path: /tmp/fly-ablation-brain-only.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Install local Ollama 0.5B comparison model
+        run: |
+          curl --fail --show-error --location https://ollama.com/install.sh --output /tmp/install-ollama.sh
+          bash /tmp/install-ollama.sh
+          (nohup ollama serve >/tmp/ollama.log 2>&1 </dev/null &)
+          for i in $(seq 1 45); do
+            if curl --fail --silent http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 2
+          done
+          ollama pull qwen2.5:0.5b-instruct
+          ollama list
+      - name: Run three genuinely distinct arms on identical evaluation-only prompts
+        run: |
+          python training/brain_llm_attribution.py \
+            --checkpoint /tmp/fly-model/malecns_all_neurons_seed44.pt \
+            --model qwen2.5:0.5b-instruct \
+            --timeout 120 \
+            --report /tmp/fly-ablation-three-arm.json
+      - name: Archive FULL side-by-side answers, route decisions and measured latency
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flygpt-brain-vs-llm-18-question-results
+          path: /tmp/fly-ablation-three-arm.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Print runtime provenance
+        if: always()
+        run: echo 'Experiments did not retrain weights, change production, contact private Gemini provider or pretend 93.23% is natural-language reasoning accuracy.'
