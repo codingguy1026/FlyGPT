@@ -1,6 +1,8 @@
+import Script from "next/script";
 import type { Metadata } from "next";
 import "./globals.css";
 import "./refinements.css";
+import "./liquid-refraction.css";
 
 export const metadata: Metadata = {
   title: "FlyGPT v0.7.1",
@@ -17,7 +19,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body>{children}  <Script src="/liquid-refraction.js" strategy="afterInteractive" />
+      </body>
     </html>
   );
 }
