@@ -79,3 +79,36 @@
   .flightApp .historyItem,
   .brainPanel .brainStage { border-width: 2px; }
 }
+
+
+/* Liquid Glass v1: transparent instrument panels, unchanged connectome UI logic. */
+.flightApp {
+  --liquid-edge: rgba(255, 255, 255, .78);
+  --liquid-shine: rgba(255, 255, 255, .90);
+  --liquid-depth: rgba(75, 89, 141, .11);
+}
+.flightApp :is(.flightRail, .flightHeader, .telemetryDock, .launchComposer, .messageBubble, .settingsModal, .historyItem) {
+  border-color: var(--liquid-edge);
+  box-shadow: inset 0 1px 0 var(--liquid-shine), 0 12px 34px var(--liquid-depth);
+  -webkit-backdrop-filter: saturate(160%) blur(18px);
+  backdrop-filter: saturate(160%) blur(18px);
+}
+.flightApp :is(.flightRail, .flightHeader, .telemetryDock) {
+  background-color: rgba(249, 250, 255, .67);
+}
+.flightApp :is(.railButton, .connectionChip, .metaChip) {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8);
+}
+@media (max-width: 640px) {
+  .flightApp :is(.flightRail, .flightHeader, .telemetryDock, .launchComposer, .messageBubble, .settingsModal, .historyItem) {
+    -webkit-backdrop-filter: saturate(125%) blur(10px);
+    backdrop-filter: saturate(125%) blur(10px);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .flightApp :is(.flightRail, .flightHeader, .telemetryDock, .launchComposer, .messageBubble, .settingsModal, .historyItem) {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .flightApp :is(.flightRail, .flightHeader, .telemetryDock) { background-color: #f7f9fd; }
+}
