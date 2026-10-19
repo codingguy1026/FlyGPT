@@ -116,7 +116,7 @@ class NaturalSocialGenerationTests(unittest.TestCase):
         state = planned("Hello!")
         gen = runtime()
         messages = gen._messages("Hello!", "general", None, brain_state=state)
-        self.assertIn("English conversation voice", messages[0]["content"])
+        self.assertIn("Speak to the user as Papiti in English", messages[0]["content"])
         self.assertNotIn("utterance_plan", str(messages))
         with patch.object(gen, "_generate_once", return_value=model_says("Hi there!")):
             answer = gen.generate("Hello!", "general", brain_state=state)
