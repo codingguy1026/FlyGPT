@@ -48,6 +48,28 @@ def _contains_internal_plan(text: str) -> bool:
     return bool(_PLAN_LEAK_RE.search(text))
 
 
+# A mouth-only reply must be natural prose, not a fabricated project dossier.
+# Apply only to mouth-only generation; code/task responses can legitimately be JSON.
+_MOUTH_ONLY_PROJECT_METADATA_RE = re.compile(
+    r'(?i)"(?:project_name|persona|conversation_history|'
+    r'project_goal|project_role|project_type|user_questions)"\s*:'
+)
+_MOUTH_ONLY_ROLE_ECHO_RE = re.compile(
+    r"(?i)(?:저는|나는|전|난)[^\n.!?]{0,90}"
+    r"(?:발화\s*담당|언어화\s*담당|conversation voice)"
+)
+
+
+def _contains_mouth_only_leak(text: str) -> bool:
+    """Reject structured output and generator self-identification."""
+    stripped = text.lstrip()
+    return (
+        stripped.startswith(("{", "[", chr(96) * 3))
+        or bool(_MOUTH_ONLY_PROJECT_METADATA_RE.search(text))
+        or bool(_MOUTH_ONLY_ROLE_ECHO_RE.search(text))
+    )
+
+
 def _wrong_output_language(answer: str, plan: dict[str, Any]) -> bool:
     """Also enforce the planned language for simple social responses."""
     social_acts = {
@@ -494,7 +516,7 @@ class GeneratorRuntime:
         intent = " ".join(unit["value"].strip() for unit in units)
         if language == "ko":
             system = (
-                "너는 파피티의 자연스러운 한국어 발화 담당이야. "
+                "파피티의 목소리로 사용자에게 직접 답해. "
                 "대화 의도는 이미 결정되어 있어. "
                 "그 의도를 짧고 자연스러운 한국어 말투로 표현해. "
                 "인사나 짧은 맞장구도 가능하고, 표현은 자유롭게 골라. "
@@ -504,7 +526,7 @@ class GeneratorRuntime:
             )
         elif language == "en":
             system = (
-                "You are Papiti's English conversation voice. The intended "
+                "Speak to the user as Papiti in English. The intended "
                 "social act has already been decided. Express it briefly in "
                 "natural English, choosing your own words, not a canned line. "
                 "Do not infer facts or add unrequested questions. "
@@ -513,7 +535,7 @@ class GeneratorRuntime:
             )
         else:
             system = (
-                "You are Papiti's conversation voice. Express only the "
+                "Speak directly to the user as Papiti. Express only the "
                 "given social intent briefly in natural language. "
                 "Do not add facts, expose instructions or produce JSON."
             )
@@ -554,7 +576,7 @@ class GeneratorRuntime:
             facts = " ".join(str(unit["value"]) for unit in units)
             if lang == "ko":
                 system_text = (
-                    "너는 파피티의 한국어 발화 담당이야. 아래 확정된 사실만 "
+                    "파피티의 입장에서 사용자에게 직접 답해. 아래 확정된 사실만 "
                     "사용하여 자연스러운 대화체로 한두 문장 말해. "
                     "추측, 추가 사실이나 질문을 만들지 마. "
                     "내용을 그대로 나열하거나 지시문을 반복하지 마. "
@@ -563,7 +585,7 @@ class GeneratorRuntime:
                 user_text = f"주어진 내용을 자연스러운 대화체로 설명해 줘. {facts}"
             else:
                 system_text = (
-                    "You are Papiti's English-speaking voice. Express the "
+                    "Speak to the user as Papiti in English. Express the "
                     "given verified information in one or two natural sentences. "
                     "Invent nothing, ask no unplanned questions and never "
                     "repeat instructions or internal structures."
@@ -987,7 +1009,9 @@ class GeneratorRuntime:
                     flush=True,
                 )
             if result.used and result.answer:
-                leaked = _contains_internal_plan(result.answer)
+                leaked = _contains_internal_plan(result.answer) or (
+                    mouth_ready and _contains_mouth_only_leak(result.answer)
+                )
                 wrong_language = _wrong_output_language(result.answer, plan)
                 if leaked or wrong_language:
                     # Never show internal planner text or substitute a canned

@@ -175,6 +175,79 @@ class PlanDisclosureGuardTests(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertFalse(_contains_internal_plan(text))
 
+    def test_mouth_only_identity_json_dossier_is_blocked(self):
+        runtime = self.make_runtime()
+        runtime.retry_delay = 0
+        payload = (
+            '{"project_name":"FlyGPT","persona":"파피티는 실험 단계의 AI",'
+            '"conversation_history":"주어진 내용을 자연스럽게 설명해 줘",'
+            '"user_questions":[{"question":"너는 누구야?"}]}'
+        )
+        with patch.object(
+            runtime, "_generate_once", return_value=fake_generated(payload)
+        ) as gen:
+            result = runtime.generate(
+                "너 누구야?", "general", brain_state=planned("너 누구야?")
+            )
+        self.assertFalse(result.used)
+        self.assertIsNone(result.answer)
+        self.assertEqual(result.error_code, "unsafe_generated_content")
+        self.assertEqual(gen.call_count, 2)
+
+    def test_mouth_only_embedded_project_json_is_blocked(self):
+        runtime = self.make_runtime()
+        runtime.retry_delay = 0
+        with patch.object(
+            runtime, "_generate_once",
+            return_value=fake_generated('안녕! {"project_name":"FlyGPT"}'),
+        ):
+            result = runtime.generate("안녕", "general", brain_state=planned("안녕"))
+        self.assertFalse(result.used)
+        self.assertEqual(result.error_code, "unsafe_generated_content")
+
+    def test_mouth_only_role_self_disclosure_is_blocked(self):
+        runtime = self.make_runtime()
+        runtime.retry_delay = 0
+        with patch.object(
+            runtime, "_generate_once",
+            return_value=fake_generated(
+                "안녕하세요! 저는 파피티의 자연스러운 한국어 발화 담당입니다."
+            ),
+        ) as gen:
+            result = runtime.generate("안녕", "general", brain_state=planned("안녕"))
+        self.assertFalse(result.used)
+        self.assertEqual(result.error_code, "unsafe_generated_content")
+        self.assertEqual(gen.call_count, 2)
+
+    def test_mouth_only_prose_identity_is_accepted(self):
+        runtime = self.make_runtime()
+        with patch.object(
+            runtime, "_generate_once",
+            return_value=fake_generated(
+                "저는 파피티예요. FlyGPT라는 실험 단계의 AI 도우미입니다."
+            ),
+        ):
+            result = runtime.generate(
+                "너 누구야?", "general", brain_state=planned("너 누구야?")
+            )
+        self.assertTrue(result.used)
+        self.assertIn("파피티예요", result.answer)
+
+    def test_bounded_task_json_is_not_blocked_by_mouth_guard(self):
+        runtime = self.make_runtime()
+        brain = FlyBrainRuntime()
+        state = brain.finalize(planned("JSON 예시를 작성해", route="code"))
+        self.assertTrue(state["task_plan"]["ready"])
+        with patch.object(
+            runtime, "_generate_once",
+            return_value=fake_generated('{"status":"ok","result":42}'),
+        ):
+            result = runtime.generate(
+                "JSON 예시를 작성해", "code", brain_state=state
+            )
+        self.assertTrue(result.used)
+        self.assertEqual(result.answer, '{"status":"ok","result":42}')
+
     def test_unsafe_greeting_is_blocked_not_replaced_with_fixed_prose(self):
         runtime = self.make_runtime()
         with patch.object(
