@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODEL="${FLYGPT_LOCAL_MODEL:-qwen2.5:0.5b-instruct}"
+MODEL="${FLYGPT_LOCAL_MODEL:-qwen3:4b-instruct}"
 export OLLAMA_KEEP_ALIVE="${OLLAMA_KEEP_ALIVE:-30m}"
 
 if ! command -v ollama >/dev/null 2>&1; then

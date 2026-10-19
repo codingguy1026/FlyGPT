@@ -362,7 +362,7 @@ python -m unittest tests.test_semantic_composition -v
 ### Strictly local LLM generation (first independence milestone)
 
 FlyGPT can run its language realization layer **without a hosted LLM API**.
-Install Ollama and its small starter model once (initial downloads need network):
+Install Ollama and the local Qwen3 4B Instruct model once (initial downloads need network):
 
 ```bash
 bash scripts/setup_ollama_generator.sh
@@ -371,7 +371,7 @@ make local
 
 Or set `FLYGPT_LOCAL_ONLY=1` in `.env`, then run `make run`.
 The mode defaults to `http://127.0.0.1:11434/v1/chat/completions`
-and model `qwen2.5:0.5b-instruct` (override with `FLYGPT_LOCAL_MODEL`
+and model `qwen3:4b-instruct` (override with `FLYGPT_LOCAL_MODEL`
 or `FLYGPT_GENERATOR_MODEL`). The generator refuses non-loopback URLs,
 ignores hosted API keys, disables HTTP proxies and redirects, and never
 falls back to a hosted language model. A broken local model returns an error
@@ -382,9 +382,24 @@ rather than using a cloud service. Check `/api/generator/status` for
 neuPrint, and optional Brave Search still uses its online API. This is **not**
 a fully offline app. The current fly-brain `mouth_only_v1` semantic gate also
 rejects open-ended conversations it cannot plan; installing a local LLM does
-not, by itself, make the fly router ChatGPT-equivalent. The default 0.5B
-model is an inexpensive starting point, not a ChatGPT-quality model. Memory,
-planning, and local-model quality need separate evaluation.
+not, by itself, make the fly router ChatGPT-equivalent. The default Qwen3
+4B Instruct model is a local language-generation experiment, not a guarantee
+of better answers. Its Ollama download is about 2.5 GB, with additional RAM
+needed at runtime. CPU-only Codespaces instances may exceed the existing
+chat-generation timeout. Memory, planning, latency and local-model quality
+need separate evaluation.
+
+To try the new model directly, run `make local` and check the generator model
+reported on startup or at `/api/generator/status`. For a live check, ask
+`안녕` and `너 누구야?` in the chat, then inspect response time and any
+`[GEN] semantic_output_rejected` log entries. `make stability` only checks
+HTTP health and cannot establish language quality. Hosted LLM settings remain
+unchanged; `make local` never calls a hosted LLM generator.
+
+**Rollback:** stop the server and set `FLYGPT_LOCAL_MODEL=qwen2.5:0.5b-instruct`
+(or `FLYGPT_GENERATOR_MODEL=qwen2.5:0.5b-instruct` when that variable is
+explicitly set) in your local `.env`, then run `make local` again. Remove the
+override to return to Qwen3 4B. Do not commit local API keys.
 
 FlyGPT can forward generative routes to an OpenAI-compatible
 chat-completions endpoint.

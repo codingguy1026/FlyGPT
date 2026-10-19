@@ -82,7 +82,7 @@ class LocalGenerationPolicyTests(unittest.TestCase):
         self.assertTrue(status["local_only"])
         self.assertTrue(status["local_endpoint_allowed"])
         self.assertEqual(runtime.provider_name, "ollama-local")
-        self.assertEqual(runtime.model, "qwen2.5:0.5b-instruct")
+        self.assertEqual(runtime.model, "qwen3:4b-instruct")
         self.assertEqual(runtime.url, "http://127.0.0.1:11434/v1/chat/completions")
         self.assertIsNone(runtime.reasoning_effort)
         self.assertEqual(runtime.api_key, "")

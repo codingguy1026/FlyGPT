@@ -37,7 +37,7 @@ case "${FLYGPT_LOCAL_ONLY:-0}" in
   1|true|TRUE|yes|YES|on|ON)
     export FLYGPT_LOCAL_ONLY=1
     export FLYGPT_GENERATOR_URL="${FLYGPT_GENERATOR_URL:-http://127.0.0.1:11434/v1/chat/completions}"
-    export FLYGPT_GENERATOR_MODEL="${FLYGPT_GENERATOR_MODEL:-${FLYGPT_LOCAL_MODEL:-qwen2.5:0.5b-instruct}}"
+    export FLYGPT_GENERATOR_MODEL="${FLYGPT_GENERATOR_MODEL:-${FLYGPT_LOCAL_MODEL:-qwen3:4b-instruct}}"
     export FLYGPT_GENERATOR_PROVIDER=ollama-local
     if ! python3 -c 'import sys; from local_generator_policy import is_local_generator_url; sys.exit(0 if is_local_generator_url(sys.argv[1]) else 1)' "$FLYGPT_GENERATOR_URL"; then
       echo "❌ FLYGPT_LOCAL_ONLY forbids hosted generator URLs: $FLYGPT_GENERATOR_URL" >&2
@@ -60,7 +60,7 @@ if [[ -n "${GEMINI_API_KEY:-}" && -z "${FLYGPT_GENERATOR_URL:-}" ]]; then
   export FLYGPT_GENERATOR_RETRY_DELAY="${FLYGPT_GENERATOR_RETRY_DELAY:-0.6}"
 fi
 
-MODEL="${FLYGPT_GENERATOR_MODEL:-${FLYGPT_LOCAL_MODEL:-qwen2.5:0.5b-instruct}}"
+MODEL="${FLYGPT_GENERATOR_MODEL:-${FLYGPT_LOCAL_MODEL:-qwen3:4b-instruct}}"
 export OLLAMA_KEEP_ALIVE="${OLLAMA_KEEP_ALIVE:-30m}"
 
 if [[ -z "${NEUPRINT_TOKEN:-}" && -z "${NEUPRINT_APPLICATION_CREDENTIALS:-}" ]]; then
