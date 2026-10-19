@@ -169,20 +169,21 @@ class LocalizedGenerationTests(unittest.TestCase):
         self.assertIn("Respond naturally", messages[-1]["content"])
         self.assertIn("The project is named FlyGPT", messages[-1]["content"])
 
-    def test_wrong_language_is_rejected_not_replaced_by_fixed_facts(self):
+    def test_wrong_language_recovers_verified_project_facts(self):
         runtime = self.runtime()
         plan = state_for("너 누구야?")
         with patch.object(runtime, "_generate_once", return_value=model_answer(
             "FlyGPT, also called Papiti, is an experimental AI assistant."
         )) as generate:
             result = runtime.generate("너 누구야?", "general", brain_state=plan)
-        self.assertFalse(result.used)
-        self.assertIsNone(result.answer)
-        self.assertEqual(result.finish_reason, "blocked_internal_plan")
-        self.assertEqual(result.error_code, "unsafe_generated_content")
+        self.assertTrue(result.used)
+        self.assertEqual(result.finish_reason, "verified_fact_fallback")
+        self.assertEqual(result.provider, "verified_plan")
+        self.assertEqual(result.answer, trusted_fact_fallback(plan["utterance_plan"]))
+        self.assertNotIn("experimental AI assistant.", result.answer)
         self.assertEqual(generate.call_count, 2)
 
-    def test_structural_leaks_are_detected_and_blocked(self):
+    def test_structural_leaks_are_detected_and_recovered(self):
         runtime = self.runtime()
         plan = state_for("너 누구야?")
         for leaked in (
@@ -194,9 +195,11 @@ class LocalizedGenerationTests(unittest.TestCase):
                 runtime, "_generate_once", return_value=model_answer(leaked)
             ):
                 result = runtime.generate("너 누구야?", "general", brain_state=plan)
-                self.assertFalse(result.used)
-                self.assertIsNone(result.answer)
-                self.assertEqual(result.error_code, "unsafe_generated_content")
+                self.assertTrue(result.used)
+                self.assertEqual(result.finish_reason, "verified_fact_fallback")
+                self.assertEqual(result.answer, trusted_fact_fallback(plan["utterance_plan"]))
+                self.assertNotIn("semantic_steps", result.answer)
+                self.assertNotIn("speech_act", result.answer)
 
     def test_valid_korean_model_output_passes_unchanged(self):
         runtime = self.runtime()
