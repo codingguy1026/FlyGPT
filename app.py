@@ -1249,7 +1249,11 @@ def chat_endpoint(req: ChatRequest, request: Request):
 
             if generation.used and generation.answer:
                 answer = generation.answer
-                mode_label = f"{result.route} · generated"
+                mode_label = (
+                    f"{result.route} · verified_fact_fallback"
+                    if generation.finish_reason == "verified_fact_fallback"
+                    else f"{result.route} · generated"
+                )
 
                 if result.route == "research" and research_result is not None and research_result.used:
                     verification_started = time.perf_counter()

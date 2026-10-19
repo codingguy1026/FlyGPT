@@ -1091,6 +1091,33 @@ class GeneratorRuntime:
                 )
             return [messages[0], {"role": "system", "content": guidance}, *messages[1:]]
 
+        def recover_verified_project_facts(result: GenerationResult) -> GenerationResult:
+            """Recover only validated, preplanned FlyGPT facts after output rejection.
+
+            Never transform rejected model content into a response. Unlike
+            conversational templates, this recovery contains only fact atoms
+            already selected and integrity-checked by the upstream planner.
+            """
+            if result.error_code != "unsafe_generated_content" or not mouth_ready:
+                return result
+            safe_facts = trusted_fact_fallback(plan)
+            if not safe_facts:
+                return result
+            print(
+                "[GEN] verified_project_fact_recovery "
+                f"attempts={attempts} route={route}",
+                flush=True,
+            )
+            return GenerationResult(
+                used=True,
+                provider="verified_plan",
+                model=None,
+                answer=safe_facts,
+                finish_reason="verified_fact_fallback",
+                attempts=attempts,
+                latency_ms=round((time.perf_counter() - total_started) * 1000),
+            )
+
         fallback_available = bool(
             self.fallback_model and self.fallback_model != self.model
         )
@@ -1134,7 +1161,7 @@ class GeneratorRuntime:
                     else None
                 ),
             )
-            return fallback
+            return recover_verified_project_facts(fallback)
 
         print(
             f"[GEN] {self.model} transient failure "
@@ -1154,7 +1181,7 @@ class GeneratorRuntime:
         if remaining_seconds() <= 0:
             return budget_result(self.model)
 
-        return generate_with_budget(
+        retry = generate_with_budget(
             self.model,
             override_messages=(
                 corrected_retry_messages()
@@ -1162,3 +1189,4 @@ class GeneratorRuntime:
                 else None
             ),
         )
+        return recover_verified_project_facts(retry)

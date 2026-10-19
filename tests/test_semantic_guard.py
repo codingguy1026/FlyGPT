@@ -175,7 +175,7 @@ class PlanDisclosureGuardTests(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertFalse(_contains_internal_plan(text))
 
-    def test_mouth_only_identity_json_dossier_is_blocked(self):
+    def test_mouth_only_identity_json_dossier_recovers_verified_facts(self):
         runtime = self.make_runtime()
         runtime.retry_delay = 0
         payload = (
@@ -189,10 +189,49 @@ class PlanDisclosureGuardTests(unittest.TestCase):
             result = runtime.generate(
                 "너 누구야?", "general", brain_state=planned("너 누구야?")
             )
-        self.assertFalse(result.used)
-        self.assertIsNone(result.answer)
-        self.assertEqual(result.error_code, "unsafe_generated_content")
+        self.assertTrue(result.used)
+        self.assertEqual(result.provider, "verified_plan")
+        self.assertIsNone(result.model)
+        self.assertEqual(result.finish_reason, "verified_fact_fallback")
+        self.assertEqual(result.attempts, 2)
+        self.assertIn("FlyGPT", result.answer)
+        self.assertIn("파피티", result.answer)
+        self.assertNotIn("project_name", result.answer)
+        self.assertNotIn("user_questions", result.answer)
         self.assertEqual(gen.call_count, 2)
+
+    def test_english_identity_recovers_only_verified_facts(self):
+        runtime = self.make_runtime()
+        runtime.retry_delay = 0
+        with patch.object(
+            runtime, "_generate_once",
+            return_value=fake_generated('{"project_name":"FlyGPT"}'),
+        ) as gen:
+            result = runtime.generate(
+                "Who are you?", "general", brain_state=planned("Who are you?")
+            )
+        self.assertTrue(result.used)
+        self.assertEqual(result.finish_reason, "verified_fact_fallback")
+        self.assertIn("FlyGPT", result.answer)
+        self.assertNotIn("project_name", result.answer)
+        self.assertEqual(gen.call_count, 2)
+
+    def test_successful_identity_retry_keeps_model_output(self):
+        runtime = self.make_runtime()
+        runtime.retry_delay = 0
+        with patch.object(
+            runtime, "_generate_once",
+            side_effect=[
+                fake_generated('{"project_name":"FlyGPT"}'),
+                fake_generated("저는 파피티예요. 반가워요."),
+            ],
+        ):
+            result = runtime.generate(
+                "너 누구야?", "general", brain_state=planned("너 누구야?")
+            )
+        self.assertTrue(result.used)
+        self.assertEqual(result.answer, "저는 파피티예요. 반가워요.")
+        self.assertNotEqual(result.finish_reason, "verified_fact_fallback")
 
     def test_mouth_only_embedded_project_json_is_blocked(self):
         runtime = self.make_runtime()
