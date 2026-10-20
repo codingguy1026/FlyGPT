@@ -7,6 +7,7 @@ import re
 import time
 import urllib.error
 import urllib.request
+from urllib.parse import urlsplit, urlunsplit
 from dataclasses import asdict, dataclass
 from typing import Any
 
@@ -247,6 +248,34 @@ def _extract_chat_completion(payload: Any) -> tuple[str, str | None]:
             return "", finish_reason
         raise ValueError("provider response missing visible assistant text")
     return answer, finish_reason
+
+
+def _ollama_native_url(url: str) -> str | None:
+    """Route only the standard loopback Ollama listener to its native API."""
+    if not is_local_generator_url(url):
+        return None
+    parsed = urlsplit(url)
+    if parsed.port != 11434 or parsed.query:
+        return None
+    if parsed.path not in {"/v1/chat/completions", "/api/chat"}:
+        return None
+    return urlunsplit((parsed.scheme, parsed.netloc, "/api/chat", "", ""))
+
+
+def _extract_ollama_chat(payload: Any) -> tuple[str, str | None]:
+    """Read Ollama final assistant content, never its private thinking."""
+    if not isinstance(payload, dict) or payload.get("done") is not True:
+        raise ValueError("native chat response incomplete or malformed")
+    message = payload.get("message")
+    if not isinstance(message, dict) or message.get("role") != "assistant":
+        raise ValueError("native chat response missing assistant message")
+    content = message.get("content")
+    if not isinstance(content, str) or not content.strip():
+        raise ValueError("native chat response missing visible assistant text")
+    reason = payload.get("done_reason")
+    if reason is not None and not isinstance(reason, str):
+        raise ValueError("native chat response had invalid finish reason")
+    return content.strip(), reason
 
 
 def _env_int(name: str, default: int, *, minimum: int, maximum: int) -> int:
@@ -635,14 +664,32 @@ class GeneratorRuntime:
                 answer=None,
                 error="local-only mode blocked a non-loopback generator endpoint",
             )
-        body = {
-            "model": model,
-            "messages": messages,
-            "temperature": self.temperature,
-            "max_tokens": max_tokens_override or self.max_tokens,
-        }
-        if self.reasoning_effort is not None:
-            body["reasoning_effort"] = self.reasoning_effort
+        native_url = _ollama_native_url(self.url)
+        if native_url is not None:
+            # Apply the CPU configuration that loaded Qwen3 4B on Codespaces.
+            # Raw Ollama /api/chat accepts these runtime model options.
+            body = {
+                "model": model,
+                "messages": messages,
+                "stream": False,
+                "keep_alive": os.environ.get("OLLAMA_KEEP_ALIVE", "30m"),
+                "options": {
+                    "use_mmap": True,
+                    "num_ctx": 1024,
+                    "num_batch": 32,
+                    "num_predict": max_tokens_override or self.max_tokens,
+                    "temperature": self.temperature,
+                },
+            }
+        else:
+            body = {
+                "model": model,
+                "messages": messages,
+                "temperature": self.temperature,
+                "max_tokens": max_tokens_override or self.max_tokens,
+            }
+            if self.reasoning_effort is not None:
+                body["reasoning_effort"] = self.reasoning_effort
 
         headers = {
             "Content-Type": "application/json",
@@ -653,7 +700,7 @@ class GeneratorRuntime:
 
         request_bytes = json.dumps(body, ensure_ascii=False).encode("utf-8")
         request = urllib.request.Request(
-            self.url,
+            native_url or self.url,
             data=request_bytes,
             headers=headers,
             method="POST",
@@ -697,7 +744,11 @@ class GeneratorRuntime:
             # Providers may return either string content or typed text parts.
             # Still require a valid chat-completion envelope; never interpret
             # hidden reasoning/tool call fields as a final chat answer.
-            answer, finish_reason = _extract_chat_completion(payload)
+            answer, finish_reason = (
+                _extract_ollama_chat(payload)
+                if native_url is not None
+                else _extract_chat_completion(payload)
+            )
             if isinstance(finish_reason, str) and finish_reason.lower() in {
                 "length", "max_tokens", "max_output_tokens",
             }:

@@ -5,7 +5,10 @@ import os
 import unittest
 from unittest.mock import Mock, patch
 
-from generator_runtime import GeneratorRuntime, _NoGeneratorRedirects
+from generator_runtime import (
+    GeneratorRuntime, _NoGeneratorRedirects, _extract_ollama_chat,
+    _ollama_native_url,
+)
 from local_generator_policy import enabled, is_local_generator_url
 
 
@@ -18,7 +21,9 @@ class _Response:
 
     def read(self):
         return json.dumps({
-            "choices": [{"message": {"content": "안녕!"}, "finish_reason": "stop"}],
+            "message": {"role": "assistant", "content": "안녕!"},
+            "done": True,
+            "done_reason": "stop",
         }).encode("utf-8")
 
 
@@ -124,11 +129,52 @@ class LocalGenerationPolicyTests(unittest.TestCase):
             result = runtime.generate("안녕", "general", brain_state=_ready_plan())
         self.assertTrue(result.used)
         self.assertEqual(result.answer, "안녕!")
+        request = opener.open.call_args.args[0]
+        self.assertEqual(request.full_url, "http://127.0.0.1:11434/api/chat")
+        payload = json.loads(request.data)
+        self.assertFalse(payload["stream"])
+        self.assertEqual(payload["messages"][0]["role"], "system")
+        self.assertTrue(payload["options"]["use_mmap"])
+        self.assertEqual(payload["options"]["num_ctx"], 1024)
+        self.assertEqual(payload["options"]["num_batch"], 32)
+        self.assertEqual(payload["options"]["num_predict"], runtime.max_tokens)
+        self.assertEqual(payload["keep_alive"], "30m")
         urlopen.assert_not_called()
         args = build_opener.call_args.args
         self.assertEqual(args[0].proxies, {})
         self.assertIsInstance(args[1], _NoGeneratorRedirects)
         self.assertIsNone(args[1].redirect_request(None, None, 302, "", {}, "https://evil.example"))
+
+    def test_only_standard_local_ollama_uses_native_api(self):
+        self.assertEqual(
+            _ollama_native_url("http://localhost:11434/v1/chat/completions"),
+            "http://localhost:11434/api/chat",
+        )
+        for url in (
+            "http://127.0.0.1:9999/v1/chat/completions",
+            "http://127.0.0.1:11434/custom",
+            "http://127.0.0.1:11434/v1/chat/completions?secret=1",
+            "http://localhost.evil.test:11434/v1/chat/completions",
+            "https://ollama.com/v1/chat/completions",
+        ):
+            with self.subTest(url=url):
+                self.assertIsNone(_ollama_native_url(url))
+
+    def test_native_response_rejects_private_thinking_or_unfinished_reply(self):
+        self.assertEqual(
+            _extract_ollama_chat({
+                "message": {"role": "assistant", "content": "안녕하세요!"},
+                "done": True, "done_reason": "stop",
+            }),
+            ("안녕하세요!", "stop"),
+        )
+        for bad in (
+            {"message": {"role": "assistant", "thinking": "private"}, "done": True},
+            {"message": {"role": "assistant", "content": "incomplete"}, "done": False},
+            {"message": {"role": "tool", "content": "tool output"}, "done": True},
+        ):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                _extract_ollama_chat(bad)
 
     def test_local_mode_preserves_semantic_gate(self):
         with patch.dict(os.environ, {"FLYGPT_LOCAL_ONLY": "1"}, clear=True), patch(
