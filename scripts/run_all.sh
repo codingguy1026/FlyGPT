@@ -141,11 +141,13 @@ if [[ "$USE_OLLAMA" -eq 1 ]]; then
     ollama pull "$MODEL"
   fi
 
-  echo "🔥 Preloading $MODEL so the first chat does not pay the cold-start cost..."
-  curl -fsS http://127.0.0.1:11434/api/generate \
+  echo "🔥 Preloading $MODEL with low-memory mmap / ctx=1024 / batch=32..."
+  # These are the exact loading controls used by the native chat adapter.
+  # A genuine tiny prompt warms the model before FlyGPT starts serving requests.
+  curl -fsS --max-time 180 http://127.0.0.1:11434/api/generate \
     -H "Content-Type: application/json" \
-    -d "{\"model\":\"${MODEL}\",\"prompt\":\"\",\"keep_alive\":\"${OLLAMA_KEEP_ALIVE}\"}" \
-    >/dev/null || echo "⚠️  Model preload failed; FlyGPT can still start, but the first response may be slow."
+    -d "{\"model\":\"${MODEL}\",\"prompt\":\"안녕\",\"stream\":false,\"keep_alive\":\"${OLLAMA_KEEP_ALIVE}\",\"options\":{\"use_mmap\":true,\"num_ctx\":1024,\"num_batch\":32,\"num_predict\":8}}" \
+    >/dev/null || echo "⚠️  Low-memory model preload failed; inspect Ollama logs before testing chat."
 else
   echo "☁️  Hosted generator: ${FLYGPT_GENERATOR_PROVIDER:-compatible-http} / ${FLYGPT_GENERATOR_MODEL:-unset}"
   if [[ -n "${FLYGPT_GENERATOR_FALLBACK_MODEL:-}" ]]; then
