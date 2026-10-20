@@ -60,6 +60,28 @@ class ChatTraceStreamTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(events[-1]["type"], "result")
         self.assertEqual(events[-1]["response"]["answer"], "안녕!")
 
+    async def test_slow_generation_emits_only_comment_heartbeats(self):
+        def slow_chat(req, request):
+            import time
+            time.sleep(0.04)
+            return {"answer": "안녕!", "type": "dispatch"}
+
+        real_wait_for = asyncio.wait_for
+
+        async def short_heartbeat(awaitable, timeout):
+            return await real_wait_for(awaitable, timeout=min(timeout, 0.01))
+
+        with patch.object(api, "_require_user", return_value={"id": "test-user"}), \
+             patch.object(api, "chat_endpoint", side_effect=slow_chat), \
+             patch.object(api.asyncio, "wait_for", side_effect=short_heartbeat):
+            response = await api.chat_stream_endpoint(api.ChatRequest(message="안녕"), object())
+            raw = []
+            async for item in response.body_iterator:
+                raw.append(item)
+            output = "".join(raw)
+            self.assertIn(": flygpt keep-alive", output)
+            self.assertEqual(output.count('"type":"result"'), 1)
+
     async def test_deterministic_tool_does_not_fabricate_trace(self):
         def exact_tool(req, request):
             return {"answer": "🧮 3888784", "type": "math_fast_path"}

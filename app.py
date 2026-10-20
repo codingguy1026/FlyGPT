@@ -24,6 +24,7 @@ from semantic_route_guard import apply_semantic_route_override
 from seating_solver import solve_linear_seating
 from dispatcher import dispatch, dispatch_math_fast_path, is_math_fast_path
 from generator_runtime import GENERATIVE_ROUTES, GeneratorRuntime
+from local_generator_policy import enabled as local_generation_enabled
 from memory_store import MemoryStore, format_recall
 from route_learning import RouteLearningStore
 from knowledge_store import KnowledgeStore
@@ -45,12 +46,19 @@ def _env_seconds(name: str, default: float, minimum: float, maximum: float) -> f
     return min(max(value, minimum), maximum)
 
 
-CHAT_REQUEST_BUDGET_SECONDS = _env_seconds(
-    "FLYGPT_CHAT_BUDGET",
-    22.0,
-    5.0,
-    28.0,
-)
+def _chat_request_budget_seconds() -> float:
+    # Small hosted models need a bounded request; Qwen3 4B on a CPU Codespace
+    # needs time to load and generate without silently failing at 22 seconds.
+    local = local_generation_enabled(os.environ.get("FLYGPT_LOCAL_ONLY"))
+    return _env_seconds(
+        "FLYGPT_CHAT_BUDGET",
+        150.0 if local else 22.0,
+        5.0,
+        240.0 if local else 28.0,
+    )
+
+
+CHAT_REQUEST_BUDGET_SECONDS = _chat_request_budget_seconds()
 CHAT_RESPONSE_RESERVE_SECONDS = 0.75
 
 _model_override = os.environ.get("FLYGPT_MODEL_PATH")
@@ -770,7 +778,13 @@ async def chat_stream_endpoint(req: ChatRequest, request: Request):
         try:
             yield 'data: {"type":"status","phase":"processing"}\n\n'
             while True:
-                event = await queue.get()
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=10.0)
+                except asyncio.TimeoutError:
+                    # Keep intermediaries from treating a long CPU inference
+                    # as an idle, abandoned SSE connection.
+                    yield ": flygpt keep-alive\n\n"
+                    continue
                 yield "data: " + json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n\n"
                 if event["type"] in {"result", "error"}:
                     break

@@ -352,9 +352,9 @@ class GeneratorRuntime:
         )
         self.timeout = _env_float(
             "FLYGPT_GENERATOR_TIMEOUT",
-            45.0,
+            150.0 if self.local_only else 45.0,
             minimum=1.0,
-            maximum=180.0,
+            maximum=240.0 if self.local_only else 180.0,
         )
         self.primary_attempt_timeout = _env_float(
             "FLYGPT_GENERATOR_PRIMARY_TIMEOUT",
@@ -364,9 +364,9 @@ class GeneratorRuntime:
         )
         self.budget = _env_float(
             "FLYGPT_GENERATOR_BUDGET",
-            25.0,
+            145.0 if self.local_only else 25.0,
             minimum=1.0,
-            maximum=60.0,
+            maximum=240.0 if self.local_only else 60.0,
         )
         self.temperature = _env_float(
             "FLYGPT_GENERATOR_TEMPERATURE",

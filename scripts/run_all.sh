@@ -39,6 +39,12 @@ case "${FLYGPT_LOCAL_ONLY:-0}" in
     export FLYGPT_GENERATOR_URL="${FLYGPT_GENERATOR_URL:-http://127.0.0.1:11434/v1/chat/completions}"
     export FLYGPT_GENERATOR_MODEL="${FLYGPT_GENERATOR_MODEL:-${FLYGPT_LOCAL_MODEL:-qwen3:4b-instruct}}"
     export FLYGPT_GENERATOR_PROVIDER=ollama-local
+    # Local CPU models need longer than the hosted defaults already present
+    # in older .env files. Dedicated opt-in overrides avoid accidental 22s
+    # timeouts while preserving hosted model behavior.
+    export FLYGPT_CHAT_BUDGET="${FLYGPT_LOCAL_CHAT_BUDGET:-150}"
+    export FLYGPT_GENERATOR_BUDGET="${FLYGPT_LOCAL_GENERATOR_BUDGET:-145}"
+    export FLYGPT_GENERATOR_TIMEOUT="${FLYGPT_LOCAL_GENERATOR_TIMEOUT:-150}"
     if ! python3 -c 'import sys; from local_generator_policy import is_local_generator_url; sys.exit(0 if is_local_generator_url(sys.argv[1]) else 1)' "$FLYGPT_GENERATOR_URL"; then
       echo "❌ FLYGPT_LOCAL_ONLY forbids hosted generator URLs: $FLYGPT_GENERATOR_URL" >&2
       exit 1

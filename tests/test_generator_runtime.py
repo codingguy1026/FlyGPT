@@ -182,6 +182,20 @@ class GeneratorRuntimeTests(unittest.TestCase):
         self.assertEqual(runtime.temperature, 2.0)
         self.assertEqual(runtime.max_tokens, 32)
 
+    def test_local_cpu_generator_has_long_but_bounded_time_budget(self):
+        with patch.dict(os.environ, {"FLYGPT_LOCAL_ONLY": "1"}, clear=True):
+            runtime = GeneratorRuntime()
+            self.assertEqual(runtime.timeout, 150.0)
+            self.assertEqual(runtime.budget, 145.0)
+        with patch.dict(os.environ, {
+            "FLYGPT_LOCAL_ONLY": "1",
+            "FLYGPT_GENERATOR_TIMEOUT": "999",
+            "FLYGPT_GENERATOR_BUDGET": "999",
+        }, clear=True):
+            runtime = GeneratorRuntime()
+            self.assertEqual(runtime.timeout, 240.0)
+            self.assertEqual(runtime.budget, 240.0)
+
     def test_generation_budget_caps_effective_http_timeout(self):
         observed_timeouts: list[float] = []
 

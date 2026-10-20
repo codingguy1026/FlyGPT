@@ -8,6 +8,24 @@ import app as flygpt_app
 
 
 class HealthEndpointTests(unittest.TestCase):
+    def test_local_cpu_budget_is_distinct_from_hosted_budget(self) -> None:
+        with patch.dict(os.environ, {"FLYGPT_LOCAL_ONLY": "1"}, clear=True):
+            self.assertEqual(flygpt_app._chat_request_budget_seconds(), 150.0)
+        with patch.dict(os.environ, {
+            "FLYGPT_LOCAL_ONLY": "1", "FLYGPT_CHAT_BUDGET": "200",
+        }, clear=True):
+            self.assertEqual(flygpt_app._chat_request_budget_seconds(), 200.0)
+        with patch.dict(os.environ, {
+            "FLYGPT_LOCAL_ONLY": "1", "FLYGPT_CHAT_BUDGET": "999",
+        }, clear=True):
+            self.assertEqual(flygpt_app._chat_request_budget_seconds(), 240.0)
+        with patch.dict(os.environ, {"FLYGPT_LOCAL_ONLY": "0"}, clear=True):
+            self.assertEqual(flygpt_app._chat_request_budget_seconds(), 22.0)
+        with patch.dict(os.environ, {
+            "FLYGPT_LOCAL_ONLY": "0", "FLYGPT_CHAT_BUDGET": "999",
+        }, clear=True):
+            self.assertEqual(flygpt_app._chat_request_budget_seconds(), 28.0)
+
     def test_health_reports_malecns_without_local_parquet(self) -> None:
         with patch.dict(
             os.environ,
