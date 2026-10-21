@@ -31,7 +31,7 @@ def solve_integer_constraints(message: str) -> ConstraintResult | None:
     if left == right or hi < lo or hi - lo > 60 or lo < -100 or hi > 100:
         return None
     names = (left, right)
-    domain = f"{left}와 {right}는 {lo}부터 {hi}까지의 정수"
+    domain = match.group(0)
     fragments = [part.strip() for part in re.split(r"[.。]\s*", text) if part.strip()]
     if not fragments or fragments[0] != domain:
         return None
