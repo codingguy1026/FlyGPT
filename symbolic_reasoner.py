@@ -1,7 +1,8 @@
-"""Bounded symbolic reasoning for explicit truth/lie speaker puzzles.
+"""Bounded, auditable three-speaker truth-table reasoning.
 
-This is a deterministic reasoner, NOT biological neural inference. Only
-unambiguous three-speaker Korean/English patterns are accepted. No LLM guesses.
+Extracts explicit role premises and simple first-person propositions from Korean
+text. This is deterministic symbolic inference, not learned MaleCNS reasoning.
+Unsupported language is intentionally left unanswered.
 """
 from __future__ import annotations
 
@@ -18,58 +19,86 @@ class LogicResult:
     proof_steps: tuple[str, ...]
 
 
+def _roles(text: str) -> dict[str, str] | None:
+    result: dict[str, str] = {}
+    for name in "ABC":
+        start = re.search(rf"(?<![A-Za-z]){name}[는은]\s*", text)
+        if start is None:
+            return None
+        # Look only at this speaker's own clause, not other speakers' roles.
+        rest = text[start.end():]
+        bound = re.search(r"(?:[.!?]|[ABC][는은]|(?:이고|이며|하며)\s*[ABC][는은])", rest)
+        clause = rest[:bound.start()] if bound else rest[:70]
+        if re.search(r"(?:항상\s*)?(?:진실|참)(?:만)?\s*(?:을\s*)?말", clause):
+            role = "truth"
+        elif re.search(r"(?:항상\s*)?거짓말(?:만)?\s*(?:을\s*)?(?:하|말)|(?:항상\s*)?거짓(?:만)?\s*(?:을\s*)?말", clause):
+            role = "lie"
+        elif re.search(r"(?:진실과\s*거짓|참과\s*거짓).{0,12}자유롭게\s*말|자유롭게\s*(?:말|참과\s*거짓)", clause):
+            role = "free"
+        else:
+            return None
+        result[name] = role
+    return result if sorted(result.values()) == ["free", "lie", "truth"] else None
+
+
+def _clauses(utterance: str) -> tuple[tuple[str, bool], ...] | None:
+    compact = re.sub(r"\s+", "", utterance.strip()).strip(".!?")
+    compact = compact.replace("그리고", "|").replace("또한", "|")
+    parts = [p.strip(".,") for p in compact.split("|")]
+    if not 1 <= len(parts) <= 3:
+        return None
+    claims: list[tuple[str, bool]] = []
+    for part in parts:
+        m = re.fullmatch(r"(?:나는|난)([ABC])(?:가|이)(아니다|아니야|아니에요|맞다|맞아|이다|야)", part)
+        if not m:
+            # 'B도 아니다' is a natural continuation of '나는 A가 아니다'.
+            m2 = re.fullmatch(r"([ABC])도(아니다|아니야|아니에요)", part)
+            if not m2 or not claims:
+                return None
+            claims.append((m2.group(1), False))
+        else:
+            claims.append((m.group(1), m.group(2) in ("맞다", "맞아", "이다", "야")))
+    return tuple(claims)
+
+
 def solve_truth_teller_puzzle(message: str) -> LogicResult | None:
     text = " ".join(message.strip().split())
     if not text or len(text) > 2000:
         return None
-
-    # Only solve the explicitly grounded A/B/C assignment. If names or
-    # logical clauses differ, abstain rather than silently reusing a solution.
-    role_checks = (
-        re.search(r"A(?:는|은)\s*항상\s*진실만\s*말", text),
-        re.search(r"B(?:는|은)\s*항상\s*거짓말만\s*(?:한다|해|말)", text),
-        re.search(r"C(?:는|은)\s*진실과\s*거짓을\s*자유롭게\s*말", text),
-    )
-    if not all(role_checks):
+    roles = _roles(text)
+    if roles is None:
         return None
-    if not re.search(r"(?:한\s*명|누군가).{0,20}(?:이렇게\s*말|말했다|말했)", text):
+    if not re.search(r"(?:누군가|한\s*명|세\s*사람\s*중\s*한\s*명).{0,25}(?:말했|말했다|이렇게\s*말|라고\s*말)", text):
         return None
-
-    quoted = re.findall(r'["“](.*?)["”]', text)
+    quoted = re.findall(r'["“‘\']([^"”’\']+)["”’\']', text)
     if len(quoted) != 1:
         return None
-    utterance = re.sub(r"\s+", "", quoted[0]).rstrip(".!?")
-    # A single, unambiguous conjunction: ¬A ∧ ¬B.
-    if utterance not in {
-        "나는A가아니다.그리고B도아니다",
-        "나는A가아니야.그리고B도아니야",
-        "나는A가아니다,그리고B도아니다",
-        "나는A가아니다그리고B도아니다",
-    }:
+    claims = _clauses(quoted[0])
+    if claims is None:
         return None
-
-    if not re.search(r"(?:누구|알아낼\s*수\s*있|확정|identify|determine)", text):
+    if not re.search(r"(?:누구|발언자|알아낼\s*수\s*있|확정|가능|identify|determine)", text):
         return None
-
-    # Evaluate claimed proposition under every speaker identity.
-    truth = {candidate: (candidate != "A" and candidate != "B") for candidate in "ABC"}
-    roles = {"A": "always_truthful", "B": "always_false", "C": "unrestricted"}
+    truth_values = {
+        candidate: all((candidate == name) == positive for name, positive in claims)
+        for candidate in "ABC"
+    }
     possible = tuple(
-        name for name, value in truth.items()
-        if roles[name] == "unrestricted"
-        or (roles[name] == "always_truthful" and value)
-        or (roles[name] == "always_false" and not value)
+        name for name in "ABC"
+        if roles[name] == "free"
+        or (roles[name] == "truth" and truth_values[name])
+        or (roles[name] == "lie" and not truth_values[name])
     )
-    steps = (
-        f"A가 말했다면 명제는 {'참' if truth['A'] else '거짓'}이므로, 항상 참만 말하는 A는 {'가능' if 'A' in possible else '불가능'}하다.",
-        f"B가 말했다면 명제는 {'참' if truth['B'] else '거짓'}이므로, 항상 거짓만 말하는 B는 {'가능' if 'B' in possible else '불가능'}하다.",
-        f"C가 말했다면 명제는 {'참' if truth['C'] else '거짓'}이고, C는 참과 거짓을 자유롭게 말하므로 {'가능' if 'C' in possible else '불가능'}하다.",
+    labels = {"truth": "항상 참을 말하는", "lie": "항상 거짓을 말하는", "free": "참과 거짓을 자유롭게 말하는"}
+    steps = tuple(
+        f"{name}가 발언했다면 문장은 {'참' if truth_values[name] else '거짓'}이다. "
+        f"{labels[roles[name]]} {name}는 {'가능' if name in possible else '불가능'}하다."
+        for name in "ABC"
     )
-    answer = (
-        "발언자를 한 명으로 확정할 수 없어. 가능한 사람은 "
-        + ", ".join(possible)
-        + "야.\n\n"
-        + "\n".join(f"{i}. {step}" for i, step in enumerate(steps, 1))
-        + "\n\n따라서 주어진 발언만으로 B와 C를 구별할 수 없어."
-    )
-    return LogicResult(possible, truth, {name: name in possible for name in "ABC"}, answer, steps)
+    if len(possible) == 1:
+        intro = f"발언자는 {possible[0]}로 확정할 수 있어."
+    elif possible:
+        intro = f"발언자를 한 명으로 확정할 수 없어. 가능한 사람은 {', '.join(possible)}야."
+    else:
+        intro = "모든 조건을 만족하는 발언자는 없어. 주어진 조건들이 모순돼."
+    explanation = intro + "\n\n" + "\n".join(f"{i}. {step}" for i, step in enumerate(steps, 1))
+    return LogicResult(possible, truth_values, {name: name in possible for name in "ABC"}, explanation, steps)

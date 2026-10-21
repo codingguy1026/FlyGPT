@@ -1149,7 +1149,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
                     response_type="logic_verified",
                     data={
                         "reasoning": {
-                            "engine": "symbolic_truth_table_v1",
+                            "engine": "symbolic_truth_table_v2",
                             "origin": "deterministic_symbolic_solver",
                             "is_connectome_inference": False,
                             "possible_speakers": list(proof.possible_speakers),
