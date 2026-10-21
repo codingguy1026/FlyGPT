@@ -57,10 +57,12 @@ def solve_chain(message: str, *, neural_route: dict | None = None) -> ChainResul
     # Capture first derivation, from a strictly smaller set of previous facts.
     steps = [{"fact": fact, "source": "given"} for fact in sorted(facts)]
     rounds = 0
+    rule_checks = 0
     while True:
         rounds += 1
         changed = False
         for rule_index, (src, dest) in indexed_rules:
+            rule_checks += 1
             if all(value in known for value in src) and dest not in known:
                 known.add(dest)
                 steps.append({"fact": dest, "source": "modus_ponens", "rule_index": rule_index, "because": "와 ".join(src), "rule": f"{'∧'.join(src)}→{dest}"})
@@ -94,5 +96,6 @@ def solve_chain(message: str, *, neural_route: dict | None = None) -> ChainResul
         "entailed": proven,
         "proof_steps": steps,
         "rounds": rounds,
+        "rule_checks": rule_checks,
         "is_connectome_inference": False,
     })
