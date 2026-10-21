@@ -26,6 +26,7 @@ from symbolic_reasoner import solve_truth_teller_puzzle
 from constraint_reasoner import solve_integer_constraints
 from reasoning_v4 import reason_v4
 from chain_reasoner import solve_chain
+from verified_realizer import realize_verified
 from dispatcher import dispatch, dispatch_math_fast_path, is_math_fast_path
 from generator_runtime import GENERATIVE_ROUTES, GeneratorRuntime
 from local_generator_policy import enabled as local_generation_enabled
@@ -1109,10 +1110,11 @@ def chat_endpoint(req: ChatRequest, request: Request):
             if is_math_fast_path(msg):
                 result = dispatch_math_fast_path(msg)
                 answer = result.answer
+                answer, realization = realize_verified(answer, _generator)
                 return response_with_router(
                     answer=answer,
                     response_type="math_fast_path",
-                    data=result.to_dict(),
+                    data={**result.to_dict(), "realization": realization},
                     route=route,
                     session_id=session_id,
                 )
@@ -1123,11 +1125,13 @@ def chat_endpoint(req: ChatRequest, request: Request):
             # silently claiming a partial solution is proved.
             seating = solve_linear_seating(msg)
             if seating is not None:
+                realized_answer, realization = realize_verified(seating.answer, _generator)
                 elapsed_ms = round((time.perf_counter() - request_started) * 1000)
                 return response_with_router(
-                    answer=seating.answer,
+                    answer=realized_answer,
                     response_type="logic_verified",
                     data={
+                        "realization": realization,
                         "solver": "deterministic_seating_v1",
                         "possible_count": seating.possible_count,
                         "checked_count": seating.checked_count,
@@ -1151,11 +1155,13 @@ def chat_endpoint(req: ChatRequest, request: Request):
             chain_started = time.perf_counter()
             chain = solve_chain(msg)
             if chain is not None:
+                realized_answer, realization = realize_verified(chain.answer, _generator)
                 elapsed_ms = round((time.perf_counter() - request_started) * 1000)
                 return response_with_router(
-                    answer=chain.answer,
+                    answer=realized_answer,
                     response_type="logic_verified",
                     data={
+                        "realization": realization,
                         "reasoning": {"engine": "forward_chain_v1",
                                       "origin": "deterministic_symbolic_solver",
                                       "is_connectome_inference": False,
@@ -1174,11 +1180,13 @@ def chat_endpoint(req: ChatRequest, request: Request):
             v4_started = time.perf_counter()
             v4_result = reason_v4(msg)
             if v4_result is not None:
+                realized_answer, realization = realize_verified(v4_result.answer, _generator)
                 elapsed_ms = round((time.perf_counter() - request_started) * 1000)
                 return response_with_router(
-                    answer=v4_result.answer,
+                    answer=realized_answer,
                     response_type="logic_verified",
                     data={
+                        "realization": realization,
                         "reasoning": {
                             "engine": v4_result.engine,
                             "origin": "deterministic_symbolic_solver",
@@ -1198,11 +1206,13 @@ def chat_endpoint(req: ChatRequest, request: Request):
 
             constraint_proof = solve_integer_constraints(msg)
             if constraint_proof is not None:
+                realized_answer, realization = realize_verified(constraint_proof.answer, _generator)
                 elapsed_ms = round((time.perf_counter() - request_started) * 1000)
                 return response_with_router(
-                    answer=constraint_proof.answer,
+                    answer=realized_answer,
                     response_type="logic_verified",
                     data={
+                        "realization": realization,
                         "reasoning": {
                             "engine": "integer_constraints_v1",
                             "origin": "deterministic_symbolic_solver",
@@ -1225,11 +1235,13 @@ def chat_endpoint(req: ChatRequest, request: Request):
             reasoning_started = time.perf_counter()
             proof = solve_truth_teller_puzzle(msg)
             if proof is not None:
+                realized_answer, realization = realize_verified(proof.explanation, _generator)
                 total_ms = round((time.perf_counter() - request_started) * 1000)
                 return response_with_router(
-                    answer=proof.explanation,
+                    answer=realized_answer,
                     response_type="logic_verified",
                     data={
+                        "realization": realization,
                         "reasoning": {
                             "engine": "symbolic_truth_table_v2",
                             "origin": "deterministic_symbolic_solver",
