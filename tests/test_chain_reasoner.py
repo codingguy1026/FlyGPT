@@ -39,6 +39,24 @@ class ChainReasonerTests(unittest.TestCase):
         result = solve_chain("A와 B가 모두 참이면 C가 참이다. A는 참이다. B는 참이다. C는 참인가?")
         self.assertTrue(result.evidence["entailed"])
 
+    def test_neural_ablation_changes_rule_order_not_truth(self):
+        q = "A와 B가 모두 참이면 C가 참이다. A이면 B이다. A는 참이다. C는 참인가?"
+        baseline = solve_chain(q)
+        neural = solve_chain(q, neural_route={
+            "accepted": True, "model": "synthetic",
+            "top_routes": [{"route": "math", "confidence": .8}, {"route": "general", "confidence": .2}],
+        })
+        self.assertEqual(neural.evidence["entailed"], baseline.evidence["entailed"])
+        self.assertTrue(neural.evidence["entailed"])
+        self.assertNotEqual(neural.evidence["neural_selection"]["rule_order"],
+                            baseline.evidence["neural_selection"]["rule_order"])
+
+    def test_rejected_signal_falls_back(self):
+        q = "A와 B가 모두 참이면 C가 참이다. A이면 B이다. A는 참이다. C는 참인가?"
+        result = solve_chain(q, neural_route={"accepted": False,
+            "top_routes": [{"route": "math", "confidence": .99}]})
+        self.assertEqual(result.evidence["neural_selection"]["mode"], "baseline")
+
     def test_fail_closed(self):
         for q in [
             "A이면 B이다. B이면 C이다. A는 거짓이다. C는 참인가?",

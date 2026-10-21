@@ -1153,7 +1153,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
             # Proof-carrying forward chaining. Only precisely parsed clauses are
             # accepted; unresolved questions fall back to existing dispatch.
             chain_started = time.perf_counter()
-            chain = solve_chain(msg)
+            chain = solve_chain(msg, neural_route=route)
             if chain is not None:
                 realized_answer, realization = realize_verified(chain.answer, _generator)
                 elapsed_ms = round((time.perf_counter() - request_started) * 1000)
@@ -1162,10 +1162,10 @@ def chat_endpoint(req: ChatRequest, request: Request):
                     response_type="logic_verified",
                     data={
                         "realization": realization,
-                        "reasoning": {"engine": "forward_chain_v1",
+                        "reasoning": {"engine": "forward_chain_v2_neural_scheduler",
                                       "origin": "deterministic_symbolic_solver",
                                       "is_connectome_inference": False,
-                                      "evidence": chain.evidence},
+                                      "evidence": chain.evidence, "neural_selection": chain.evidence["neural_selection"]},
                         "ui_meta": {"mode": "logic_verified", "app_version": APP_VERSION},
                         "timings": {"reasoning_ms": round((time.perf_counter() - chain_started) * 1000),
                                     "total_ms": elapsed_ms},

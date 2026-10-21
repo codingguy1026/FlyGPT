@@ -15,7 +15,7 @@ class ChainResult:
     evidence: dict
 
 
-def solve_chain(message: str) -> ChainResult | None:
+def solve_chain(message: str, *, neural_route: dict | None = None) -> ChainResult | None:
     text = " ".join(message.strip().split())
     if not text or len(text) > 2000:
         return None
@@ -46,6 +46,13 @@ def solve_chain(message: str) -> ChainResult | None:
             return None
     if not rules or not facts or (unknown & facts) or len(rules) > 12:
         return None
+    ranked = (neural_route or {}).get("top_routes") or []
+    scores = {r.get("route"): r.get("confidence", 0.0) for r in ranked if isinstance(r, dict)}
+    neural_ready = bool(neural_route and neural_route.get("accepted") is True and scores)
+    conjunction_first = neural_ready and scores.get("math", 0.0) > scores.get("general", 0.0)
+    indexed_rules = list(enumerate(rules))
+    indexed_rules.sort(key=lambda item: ((-1 if conjunction_first else 1) * len(item[1][0]), item[0]))
+    selection = "neural_conjunction_first" if conjunction_first else ("neural_single_first" if neural_ready else "baseline")
     known = set(facts)
     # Capture first derivation, from a strictly smaller set of previous facts.
     steps = [{"fact": fact, "source": "given"} for fact in sorted(facts)]
@@ -53,10 +60,10 @@ def solve_chain(message: str) -> ChainResult | None:
     while True:
         rounds += 1
         changed = False
-        for src, dest in rules:
+        for rule_index, (src, dest) in indexed_rules:
             if all(value in known for value in src) and dest not in known:
                 known.add(dest)
-                steps.append({"fact": dest, "source": "modus_ponens", "because": "와 ".join(src), "rule": f"{'∧'.join(src)}→{dest}"})
+                steps.append({"fact": dest, "source": "modus_ponens", "rule_index": rule_index, "because": "와 ".join(src), "rule": f"{'∧'.join(src)}→{dest}"})
                 changed = True
         if not changed:
             break
@@ -71,7 +78,14 @@ def solve_chain(message: str) -> ChainResult | None:
     else:
         answer = f"주어진 조건만으로 {target}가 참이라고 결론 내릴 수 없어. 참이 아니라는 뜻은 아니야."
     return ChainResult(answer, {
-        "engine": "forward_chain_v1",
+        "engine": "forward_chain_v2_neural_scheduler",
+        "neural_selection": {
+            "mode": selection,
+            "accepted": neural_ready,
+            "model": (neural_route or {}).get("model") if neural_ready else None,
+            "rule_order": [i for i, _ in indexed_rules],
+            "scope": "schedule_only_not_learned_logic",
+        },
         "initial_facts": sorted(facts),
         "rules": [{"if":list(a),"then":b} for a,b in rules],
         "unknown_facts": sorted(unknown),
