@@ -64,9 +64,7 @@ def solve_chain(message: str) -> ChainResult | None:
             return None
     proven = target in known
     if proven:
-        answer = f"{target}는 참이라고 도출할 수 있어.
-" + "
-".join(
+        answer = f"{target}는 참이라고 도출할 수 있어.\n" + "\n".join(
             f"{step['because']}가 참이고 {step['rule']}이므로 {step['fact']}가 참이다."
             for step in steps if step["source"] == "modus_ponens"
         )
