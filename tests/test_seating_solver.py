@@ -75,7 +75,7 @@ class SeatingSolverTests(unittest.TestCase):
         )
         self.assertIsNone(solve_linear_seating(text))
 
-    def test_api_uses_verified_result_without_loading_model(self) -> None:
+    def test_api_routes_through_malecns_before_verified_solver(self) -> None:
         request = Request({"type": "http"})
         with (
             patch.object(flygpt_app, "_require_user", return_value={"id": "test-user"}),
@@ -91,7 +91,7 @@ class SeatingSolverTests(unittest.TestCase):
         self.assertEqual(result["type"], "logic_verified")
         self.assertIn("가능한 배치는 없습니다", result["answer"])
         self.assertEqual(result["data"]["possible_count"], 0)
-        router.assert_not_called()
+        router.assert_called_once_with(PUZZLE, "test-user")
         generator.assert_not_called()
 
 
