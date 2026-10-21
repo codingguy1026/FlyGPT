@@ -22,6 +22,7 @@ from connectome import MaleCNSConnectome
 from brain_runtime import FlyBrainRuntime
 from semantic_route_guard import apply_semantic_route_override
 from seating_solver import solve_linear_seating
+from symbolic_reasoner import solve_truth_teller_puzzle
 from dispatcher import dispatch, dispatch_math_fast_path, is_math_fast_path
 from generator_runtime import GENERATIVE_ROUTES, GeneratorRuntime
 from local_generator_policy import enabled as local_generation_enabled
@@ -1136,6 +1137,42 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 "accepted": route.get("accepted", False),
                 "semantic_override": bool(route.get("semantic_override")),
             })
+            # Experimental bounded symbolic reasoner: check literal premises
+            # and enumerate every speaker case. Never relabel the classifier
+            # prediction or claim that the connectome inferred this proof.
+            reasoning_started = time.perf_counter()
+            proof = solve_truth_teller_puzzle(msg)
+            if proof is not None:
+                total_ms = round((time.perf_counter() - request_started) * 1000)
+                return response_with_router(
+                    answer=proof.explanation,
+                    response_type="logic_verified",
+                    data={
+                        "reasoning": {
+                            "engine": "symbolic_truth_table_v1",
+                            "origin": "deterministic_symbolic_solver",
+                            "is_connectome_inference": False,
+                            "possible_speakers": list(proof.possible_speakers),
+                            "truth_values": proof.truth_values,
+                            "speaker_cases": proof.speaker_cases,
+                            "proof_steps": list(proof.proof_steps),
+                        },
+                        "generation": None,
+                        "timings": {
+                            "router_ms": router_ms,
+                            "reasoning_ms": round((time.perf_counter() - reasoning_started) * 1000),
+                            "total_ms": total_ms,
+                        },
+                        "ui_meta": {
+                            "mode": "logic_verified",
+                            "router_model": route.get("model", Path(MODEL_PATH).name),
+                            "app_version": APP_VERSION,
+                        },
+                    },
+                    route=route,
+                    session_id=session_id,
+                    timings={"router_ms": router_ms, "total_ms": total_ms},
+                )
             dispatch_started = time.perf_counter()
             result = dispatch(msg, route)
             dispatch_ms = round((time.perf_counter() - dispatch_started) * 1000)
