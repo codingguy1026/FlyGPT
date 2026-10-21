@@ -57,6 +57,13 @@ class ChainReasonerTests(unittest.TestCase):
             "top_routes": [{"route": "math", "confidence": .99}]})
         self.assertEqual(result.evidence["neural_selection"]["mode"], "baseline")
 
+    def test_goal_prunes_irrelevant_rules(self):
+        q = "A이면 B이다. B이면 C이다. X이면 Y이다. X는 참이다. A는 참이다. C는 참인가?"
+        result = solve_chain(q)
+        self.assertTrue(result.evidence["entailed"])
+        self.assertEqual(result.evidence["pruned_rules"], 1)
+        self.assertNotIn("Y", result.evidence["derived_facts"])
+
     def test_fail_closed(self):
         for q in [
             "A이면 B이다. B이면 C이다. A는 거짓이다. C는 참인가?",

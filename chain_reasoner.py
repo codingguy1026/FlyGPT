@@ -53,6 +53,19 @@ def solve_chain(message: str, *, neural_route: dict | None = None) -> ChainResul
     indexed_rules = list(enumerate(rules))
     indexed_rules.sort(key=lambda item: ((-1 if conjunction_first else 1) * len(item[1][0]), item[0]))
     selection = "neural_conjunction_first" if conjunction_first else ("neural_single_first" if neural_ready else "baseline")
+    # Goal-directed dependency closure: rules unrelated to the queried atom
+    # cannot help prove it. This is a deterministic optimization, independent
+    # of the neural router, and applies equally to both ablation arms.
+    needed = {target}
+    while True:
+        before = len(needed)
+        for _, (premises, conclusion) in indexed_rules:
+            if conclusion in needed:
+                needed.update(premises)
+        if len(needed) == before:
+            break
+    relevant_rules = [(i, rule) for i, rule in indexed_rules if rule[1] in needed]
+    pruned_count = len(indexed_rules) - len(relevant_rules)
     known = set(facts)
     # Capture first derivation, from a strictly smaller set of previous facts.
     steps = [{"fact": fact, "source": "given"} for fact in sorted(facts)]
@@ -61,7 +74,7 @@ def solve_chain(message: str, *, neural_route: dict | None = None) -> ChainResul
     while True:
         rounds += 1
         changed = False
-        for rule_index, (src, dest) in indexed_rules:
+        for rule_index, (src, dest) in relevant_rules:
             rule_checks += 1
             if all(value in known for value in src) and dest not in known:
                 known.add(dest)
@@ -97,5 +110,7 @@ def solve_chain(message: str, *, neural_route: dict | None = None) -> ChainResul
         "proof_steps": steps,
         "rounds": rounds,
         "rule_checks": rule_checks,
+        "pruned_rules": pruned_count,
+        "relevant_rules": len(relevant_rules),
         "is_connectome_inference": False,
     })
