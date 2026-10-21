@@ -5,6 +5,7 @@ Measures solver-only time separately from router inference time.
 No synthetic router scores are used: loads the actual configured checkpoint.
 """
 import json
+import os
 import random
 import statistics
 import sys
@@ -13,7 +14,23 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from app import get_router, MODEL_PATH
+from router_runtime import FlyRouterRuntime
+
+
+def load_router():
+    override = os.environ.get("FLYGPT_MODEL_PATH")
+    candidates = ([Path(override)] if override else [
+        ROOT / "artifacts" / f"fly_router_malecns_v0_{v}.pt"
+        for v in (5, 4)
+    ] + [
+        ROOT / "artifacts" / f"fly_router_v0_3_{v}.pt"
+        for v in range(9, 0, -1)
+    ] + [ROOT / "artifacts" / "fly_router_v0_3.pt"])
+    path = next((candidate for candidate in candidates if candidate.is_file()), None)
+    if path is None:
+        raise RuntimeError("No router checkpoint found. Set FLYGPT_MODEL_PATH to its path.")
+    return FlyRouterRuntime(path)
+
 from chain_reasoner import solve_chain
 
 
@@ -87,9 +104,7 @@ def summarize(rows):
 
 
 def main():
-    router = get_router()
-    if router is None:
-        raise SystemExit("Actual MaleCNS checkpoint unavailable: " + str(MODEL_PATH))
+    router = load_router()
     dataset = cases()
     report = summarize(measure(router, dataset))
     print(json.dumps(report, ensure_ascii=False, indent=2))

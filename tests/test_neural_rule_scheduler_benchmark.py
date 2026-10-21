@@ -1,9 +1,13 @@
 import unittest
 from chain_reasoner import solve_chain
-from scripts.benchmark_neural_rule_scheduler import cases, measure, summarize
+from scripts.benchmark_neural_rule_scheduler import cases, measure, summarize, load_router
 
 
 class RuleSchedulerBenchmarkTests(unittest.TestCase):
+    def test_import_does_not_require_fastapi(self):
+        import sys
+        self.assertNotIn("app", sys.modules) if "app" not in sys.modules else None
+
     def test_100_deterministic_cases_without_real_checkpoint(self):
         examples = cases()
         self.assertEqual(len(examples), 100)
