@@ -844,118 +844,6 @@ def chat_endpoint(req: ChatRequest, request: Request):
     root_ids = extract_root_ids(msg) if neuron_lookup else []
 
     try:
-        if is_math_fast_path(msg):
-            result = dispatch_math_fast_path(msg)
-            answer = result.answer
-            return response_with_router(
-                answer=answer,
-                response_type="math_fast_path",
-                data=result.to_dict(),
-                route=None,
-                session_id=session_id,
-            )
-
-        # Verify supported linear-position constraints with exhaustive
-        # enumeration, *before* asking a small LLM to invent an arrangement.
-        # The parser opts out on unknown participant constraints rather than
-        # silently claiming a partial solution is proved.
-        seating = solve_linear_seating(msg)
-        if seating is not None:
-            elapsed_ms = round((time.perf_counter() - request_started) * 1000)
-            return response_with_router(
-                answer=seating.answer,
-                response_type="logic_verified",
-                data={
-                    "solver": "deterministic_seating_v1",
-                    "possible_count": seating.possible_count,
-                    "checked_count": seating.checked_count,
-                    "rule_count": seating.rule_count,
-                    "ui_meta": {
-                        "mode": "logic_verified",
-                        "app_version": APP_VERSION,
-                    },
-                    "timings": {"total_ms": elapsed_ms},
-                },
-                route=None,
-                session_id=session_id,
-                timings={"total_ms": elapsed_ms},
-            )
-
-        # Finite-domain constraint proof: all premises must be recognized,
-        # and the numerical search bounds must be explicitly provided.
-        # Proof-carrying forward chaining. Only precisely parsed clauses are
-        # accepted; unresolved questions fall back to existing dispatch.
-        chain_started = time.perf_counter()
-        chain = solve_chain(msg)
-        if chain is not None:
-            elapsed_ms = round((time.perf_counter() - request_started) * 1000)
-            return response_with_router(
-                answer=chain.answer,
-                response_type="logic_verified",
-                data={
-                    "reasoning": {"engine": "forward_chain_v1",
-                                  "origin": "deterministic_symbolic_solver",
-                                  "is_connectome_inference": False,
-                                  "evidence": chain.evidence},
-                    "ui_meta": {"mode": "logic_verified", "app_version": APP_VERSION},
-                    "timings": {"reasoning_ms": round((time.perf_counter() - chain_started) * 1000),
-                                "total_ms": elapsed_ms},
-                },
-                route=None,
-                session_id=session_id,
-                timings={"total_ms": elapsed_ms},
-            )
-
-        # Conservative v4 reasoning: exact quadratic roots and audited
-        # universal-premise entailment, without calling a language generator.
-        v4_started = time.perf_counter()
-        v4_result = reason_v4(msg)
-        if v4_result is not None:
-            elapsed_ms = round((time.perf_counter() - request_started) * 1000)
-            return response_with_router(
-                answer=v4_result.answer,
-                response_type="logic_verified",
-                data={
-                    "reasoning": {
-                        "engine": v4_result.engine,
-                        "origin": "deterministic_symbolic_solver",
-                        "is_connectome_inference": False,
-                        "evidence": v4_result.evidence,
-                    },
-                    "ui_meta": {"mode": "logic_verified", "app_version": APP_VERSION},
-                    "timings": {
-                        "reasoning_ms": round((time.perf_counter() - v4_started) * 1000),
-                        "total_ms": elapsed_ms,
-                    },
-                },
-                route=None,
-                session_id=session_id,
-                timings={"total_ms": elapsed_ms},
-            )
-
-        constraint_proof = solve_integer_constraints(msg)
-        if constraint_proof is not None:
-            elapsed_ms = round((time.perf_counter() - request_started) * 1000)
-            return response_with_router(
-                answer=constraint_proof.answer,
-                response_type="logic_verified",
-                data={
-                    "reasoning": {
-                        "engine": "integer_constraints_v1",
-                        "origin": "deterministic_symbolic_solver",
-                        "is_connectome_inference": False,
-                        "checked_count": constraint_proof.checked_count,
-                        "possible_count": len(constraint_proof.solutions),
-                        "constraints": list(constraint_proof.constraints),
-                    },
-                    "ui_meta": {"mode": "logic_verified", "app_version": APP_VERSION},
-                    "timings": {"total_ms": elapsed_ms},
-                },
-                route=None,
-                session_id=session_id,
-                timings={"total_ms": elapsed_ms},
-            )
-
         if "통계" in msg or "stats" in lower or "statistics" in lower:
             stats = get_connectome().stats()
             answer = (
@@ -1215,6 +1103,122 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 "accepted": route.get("accepted", False),
                 "semantic_override": bool(route.get("semantic_override")),
             })
+            # MaleCNS is evaluated BEFORE every math/logic inference path.
+            # Predictions remain untouched; a deterministic verifier can
+            # solve independently of gate confidence, with provenance shown.
+            if is_math_fast_path(msg):
+                result = dispatch_math_fast_path(msg)
+                answer = result.answer
+                return response_with_router(
+                    answer=answer,
+                    response_type="math_fast_path",
+                    data=result.to_dict(),
+                    route=route,
+                    session_id=session_id,
+                )
+
+            # Verify supported linear-position constraints with exhaustive
+            # enumeration, *before* asking a small LLM to invent an arrangement.
+            # The parser opts out on unknown participant constraints rather than
+            # silently claiming a partial solution is proved.
+            seating = solve_linear_seating(msg)
+            if seating is not None:
+                elapsed_ms = round((time.perf_counter() - request_started) * 1000)
+                return response_with_router(
+                    answer=seating.answer,
+                    response_type="logic_verified",
+                    data={
+                        "solver": "deterministic_seating_v1",
+                        "possible_count": seating.possible_count,
+                        "checked_count": seating.checked_count,
+                        "rule_count": seating.rule_count,
+                        "ui_meta": {
+                            "mode": "logic_verified",
+                            "app_version": APP_VERSION,
+                            "router_model": route.get("model", Path(MODEL_PATH).name),
+                        },
+                        "timings": {"total_ms": elapsed_ms},
+                    },
+                    route=route,
+                    session_id=session_id,
+                    timings={"router_ms": router_ms, "total_ms": elapsed_ms},
+                )
+
+            # Finite-domain constraint proof: all premises must be recognized,
+            # and the numerical search bounds must be explicitly provided.
+            # Proof-carrying forward chaining. Only precisely parsed clauses are
+            # accepted; unresolved questions fall back to existing dispatch.
+            chain_started = time.perf_counter()
+            chain = solve_chain(msg)
+            if chain is not None:
+                elapsed_ms = round((time.perf_counter() - request_started) * 1000)
+                return response_with_router(
+                    answer=chain.answer,
+                    response_type="logic_verified",
+                    data={
+                        "reasoning": {"engine": "forward_chain_v1",
+                                      "origin": "deterministic_symbolic_solver",
+                                      "is_connectome_inference": False,
+                                      "evidence": chain.evidence},
+                        "ui_meta": {"mode": "logic_verified", "app_version": APP_VERSION},
+                        "timings": {"reasoning_ms": round((time.perf_counter() - chain_started) * 1000),
+                                    "total_ms": elapsed_ms},
+                    },
+                    route=route,
+                    session_id=session_id,
+                    timings={"router_ms": router_ms, "total_ms": elapsed_ms},
+                )
+
+            # Conservative v4 reasoning: exact quadratic roots and audited
+            # universal-premise entailment, without calling a language generator.
+            v4_started = time.perf_counter()
+            v4_result = reason_v4(msg)
+            if v4_result is not None:
+                elapsed_ms = round((time.perf_counter() - request_started) * 1000)
+                return response_with_router(
+                    answer=v4_result.answer,
+                    response_type="logic_verified",
+                    data={
+                        "reasoning": {
+                            "engine": v4_result.engine,
+                            "origin": "deterministic_symbolic_solver",
+                            "is_connectome_inference": False,
+                            "evidence": v4_result.evidence,
+                        },
+                        "ui_meta": {"mode": "logic_verified", "app_version": APP_VERSION},
+                        "timings": {
+                            "reasoning_ms": round((time.perf_counter() - v4_started) * 1000),
+                            "total_ms": elapsed_ms,
+                        },
+                    },
+                    route=route,
+                    session_id=session_id,
+                    timings={"router_ms": router_ms, "total_ms": elapsed_ms},
+                )
+
+            constraint_proof = solve_integer_constraints(msg)
+            if constraint_proof is not None:
+                elapsed_ms = round((time.perf_counter() - request_started) * 1000)
+                return response_with_router(
+                    answer=constraint_proof.answer,
+                    response_type="logic_verified",
+                    data={
+                        "reasoning": {
+                            "engine": "integer_constraints_v1",
+                            "origin": "deterministic_symbolic_solver",
+                            "is_connectome_inference": False,
+                            "checked_count": constraint_proof.checked_count,
+                            "possible_count": len(constraint_proof.solutions),
+                            "constraints": list(constraint_proof.constraints),
+                        },
+                        "ui_meta": {"mode": "logic_verified", "app_version": APP_VERSION},
+                        "timings": {"total_ms": elapsed_ms},
+                    },
+                    route=route,
+                    session_id=session_id,
+                    timings={"router_ms": router_ms, "total_ms": elapsed_ms},
+                )
+
             # Experimental bounded symbolic reasoner: check literal premises
             # and enumerate every speaker case. Never relabel the classifier
             # prediction or claim that the connectome inferred this proof.
