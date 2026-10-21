@@ -1,0 +1,43 @@
+import unittest
+from chain_reasoner import solve_chain
+
+
+class ChainReasonerTests(unittest.TestCase):
+    def test_three_steps(self):
+        r = solve_chain("A이면 B이다. B이면 C이다. C이면 D이다. A는 참이다. D는 참인가?")
+        self.assertIsNotNone(r)
+        self.assertTrue(r.evidence["entailed"])
+        self.assertEqual([p["fact"] for p in r.evidence["proof_steps"]],["A","B","C","D"])
+
+    def test_out_of_order_rules(self):
+        r=solve_chain("C이면 D이다. B이면 C이다. A이면 B이다. A는 참이다. D는 참인가?")
+        self.assertTrue(r.evidence["entailed"])
+        self.assertIn("D",r.evidence["derived_facts"])
+
+    def test_no_reverse_implication(self):
+        r=solve_chain("A이면 B이다. B이면 C이다. C는 참이다. A는 참인가?")
+        self.assertFalse(r.evidence["entailed"])
+        self.assertNotIn("A",r.evidence["derived_facts"])
+
+    def test_missing_fact_not_false(self):
+        r=solve_chain("A이면 B이다. B이면 C이다. A는 참이다. D는 참인가?")
+        self.assertFalse(r.evidence["entailed"])
+        self.assertIn("참이 아니라는 뜻은 아니야",r.answer)
+
+    def test_cycle_halts(self):
+        r=solve_chain("A이면 B이다. B이면 A이다. A는 참이다. B는 참인가?")
+        self.assertTrue(r.evidence["entailed"])
+
+    def test_fail_closed(self):
+        for q in [
+            "A이면 B이다. B이면 C이다. A는 거짓이다. C는 참인가?",
+            "A이면 B이다. B일 수도 있다. A는 참이다. B는 참인가?",
+            "A이면 B이다. B이면 C이다. A는 참이다. C는 참인가? 추가 조건은 D다",
+            "A이면 B이다. B이면 C이다. A는 참이다. 왜?",
+        ]:
+            with self.subTest(q=q):
+                self.assertIsNone(solve_chain(q))
+
+
+if __name__=="__main__":
+    unittest.main()
