@@ -45,7 +45,9 @@ def cases(n=100, seed=20261021):
             rules.append("B이면 D이다")
         else:
             rules.append("F이면 D이다")
-        # Irrelevant distractors make deterministic goal-pruning measurable.\n        rules += ["X이면 Y이다", "Y이면 Z이다"]\n        rng.shuffle(rules)
+        # Irrelevant distractors make deterministic goal-pruning measurable.
+        rules += ["X이면 Y이다", "Y이면 Z이다"]
+        rng.shuffle(rules)
         query = ". ".join(rules + ["A는 참이다", "E는 참인가?"])
         result.append((query, affirmative))
     return result
@@ -92,14 +94,16 @@ def summarize(rows):
         "router_accepted": sum(r["router_accepted"] for r in rows),
         "rule_order_changed": sum(r["rule_order_changed"] for r in rows),
         "average_baseline_rule_checks": mean("baseline_checks"),
-        "average_goal_pruned_rules": mean("pruned"),\n        "average_unpruned_baseline_checks_estimate": None,
+        "average_goal_pruned_rules": mean("pruned"),
+        "average_unpruned_baseline_checks_estimate": None,
         "average_neural_rule_checks": mean("neural_checks"),
         "average_router_ms": mean("route_ms"),
         "average_baseline_solver_ms": mean("baseline_solver_ms"),
         "average_neural_solver_ms": mean("neural_solver_ms"),
         "limitations": [
             "This is a route-score-based ordering heuristic, not a trained rule-selection model.",
-            "Goal-driven pruning is deterministic and applies to both arms, so it is not a MaleCNS gain.",\n            "A reduced candidate rule set is measurable, but total speedup against the former version has not been measured.",
+            "Goal-driven pruning is deterministic and applies to both arms, so it is not a MaleCNS gain.",
+            "A reduced candidate rule set is measurable, but total speedup against the former version has not been measured.",
             "Rule order alone does not guarantee fewer rule checks; model has no learned rule-selection head.",
             "Measured inference time includes Python overhead; results depend on machine and checkpoint.",
         ],
