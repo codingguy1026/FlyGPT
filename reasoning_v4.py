@@ -72,9 +72,9 @@ def _syllogism(message: str) -> ReasoningV4Result | None:
     # Controlled, auditable fragment of universally quantified implications
     # and existential assertions. Evaluate finite models, not canned answers.
     text=" ".join(message.strip().split())
-    pattern=r"모든\s+([가-힣A-Za-z]+)(?:는|은)\s+([가-힣A-Za-z]+)(?:이다|다)"
+    pattern=r"모든\s+([가-힣A-Za-z]+)(?:는|은)\s+([가-힣A-Za-z]+)(?:이다)"
     universal=re.findall(pattern,text)
-    exists=re.findall(r"일부\s+([가-힣A-Za-z]+)(?:는|은)\s+([가-힣A-Za-z]+)(?:이다|다)",text)
+    exists=re.findall(r"일부\s+([가-힣A-Za-z]+)(?:는|은)\s+([가-힣A-Za-z]+)(?:이다)",text)
     conclusion=re.search(r"모든\s+([가-힣A-Za-z]+)(?:가|이)\s+([가-힣A-Za-z]+)(?:라고|이다고)\s+결론",text)
     if not conclusion or not universal or len(universal)>3 or len(exists)>2:
         return None
