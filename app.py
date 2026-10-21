@@ -23,6 +23,7 @@ from brain_runtime import FlyBrainRuntime
 from semantic_route_guard import apply_semantic_route_override
 from seating_solver import solve_linear_seating
 from symbolic_reasoner import solve_truth_teller_puzzle
+from constraint_reasoner import solve_integer_constraints
 from dispatcher import dispatch, dispatch_math_fast_path, is_math_fast_path
 from generator_runtime import GENERATIVE_ROUTES, GeneratorRuntime
 from local_generator_policy import enabled as local_generation_enabled
@@ -871,6 +872,31 @@ def chat_endpoint(req: ChatRequest, request: Request):
                         "mode": "logic_verified",
                         "app_version": APP_VERSION,
                     },
+                    "timings": {"total_ms": elapsed_ms},
+                },
+                route=None,
+                session_id=session_id,
+                timings={"total_ms": elapsed_ms},
+            )
+
+        # Finite-domain constraint proof: all premises must be recognized,
+        # and the numerical search bounds must be explicitly provided.
+        constraint_proof = solve_integer_constraints(msg)
+        if constraint_proof is not None:
+            elapsed_ms = round((time.perf_counter() - request_started) * 1000)
+            return response_with_router(
+                answer=constraint_proof.answer,
+                response_type="logic_verified",
+                data={
+                    "reasoning": {
+                        "engine": "integer_constraints_v1",
+                        "origin": "deterministic_symbolic_solver",
+                        "is_connectome_inference": False,
+                        "checked_count": constraint_proof.checked_count,
+                        "possible_count": len(constraint_proof.solutions),
+                        "constraints": list(constraint_proof.constraints),
+                    },
+                    "ui_meta": {"mode": "logic_verified", "app_version": APP_VERSION},
                     "timings": {"total_ms": elapsed_ms},
                 },
                 route=None,
