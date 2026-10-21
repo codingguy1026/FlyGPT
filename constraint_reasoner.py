@@ -24,7 +24,7 @@ def solve_integer_constraints(message: str) -> ConstraintResult | None:
         return None
     # A known, finite search universe is a mathematical requirement,
     # not a convenience that should be hidden from the user.
-    match = re.search(r"([A-Z])와\s*([A-Z])는\s*(-?\d+)부터\s*(-?\d+)까지의\s*정수", text)
+    match = re.search(r"([A-Z])와\s*([A-Z])는\s*(-?\d+)부터\s*(-?\d+)까지의\s*정수(?:다|이다)?", text)
     if not match:
         return None
     left, right, lo, hi = match.group(1), match.group(2), int(match.group(3)), int(match.group(4))
