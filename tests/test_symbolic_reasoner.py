@@ -33,7 +33,7 @@ class SymbolicReasonerTests(unittest.TestCase):
     def test_mutations_change_proof_not_just_wording(self):
         p = solve_truth_teller_puzzle(ORIGINAL.replace("그리고 B도 아니다", "그리고 C도 아니다"))
         self.assertIsNotNone(p)
-        self.assertEqual(p.possible_speakers, ("B", "C"))
+        self.assertEqual(p.possible_speakers, ("C",))
         self.assertEqual(p.truth_values, {"A": False, "B": True, "C": False})
         p = solve_truth_teller_puzzle(VARIANT.replace("나는 B가 아니다", "나는 B가 맞아"))
         self.assertIsNotNone(p)

@@ -31,7 +31,7 @@ def _roles(text: str) -> dict[str, str] | None:
         clause = rest[:bound.start()] if bound else rest[:70]
         if re.search(r"(?:항상\s*)?(?:진실|참)(?:만)?\s*(?:을\s*)?말", clause):
             role = "truth"
-        elif re.search(r"(?:항상\s*)?거짓말(?:만)?\s*(?:을\s*)?(?:하|말)|(?:항상\s*)?거짓(?:만)?\s*(?:을\s*)?말", clause):
+        elif re.search(r"(?:항상\s*)?거짓말(?:만)?\s*(?:을\s*)?(?:하|한|했|합|말)|(?:항상\s*)?거짓(?:만)?\s*(?:을\s*)?말", clause):
             role = "lie"
         elif re.search(r"(?:진실과\s*거짓|참과\s*거짓).{0,12}자유롭게\s*말|자유롭게\s*(?:말|참과\s*거짓)", clause):
             role = "free"
