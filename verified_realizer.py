@@ -7,6 +7,15 @@ from time import perf_counter
 def realize_verified(answer, generator):
     meta = {"stage": "verified_language_realization_v1", "attempted": False,
             "accepted": False, "fallback": True, "model": getattr(generator, "model", None)}
+    # Hybrid default: verified mathematical/logical replies return immediately.
+    # Set FLYGPT_VERIFIED_REALIZER_MODE=always to explicitly request Qwen.
+    mode = os.getenv("FLYGPT_VERIFIED_REALIZER_MODE", "auto").strip().lower()
+    if mode not in {"auto", "always", "off"}:
+        mode = "auto"
+    meta["mode"] = mode
+    if mode in {"auto", "off"}:
+        meta["reason"] = "verified_fast_path" if mode == "auto" else "realizer_disabled"
+        return answer, meta
     if not answer or not getattr(generator, "configured", False):
         meta["reason"] = "generator_unavailable"
         return answer, meta
