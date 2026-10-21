@@ -22,22 +22,24 @@ def solve_chain(message: str) -> ChainResult | None:
     pieces = [p.strip() for p in re.split(r"\.\s*", text) if p.strip()]
     if len(pieces) < 3 or len(pieces) > 16:
         return None
-    query = re.fullmatch(r"([A-Z])(?:는|은)\s*참인가\??", pieces[-1])
+    query = re.fullmatch(r"([A-Z])(?:가|이|는|은)\\s*참(?:이라고\\s*확정할\\s*수\\s*있을까\\?\\s*이유를\\s*설명해\\s*줘\\??|인가\\??)", pieces[-1])
     if query is None:
         return None
     target = query.group(1)
-    rules: list[tuple[str, str]] = []
+    rules: list[tuple[tuple[str, ...], str]] = []\n    unknown: set[str] = set()
     facts: set[str] = set()
     for piece in pieces[:-1]:
-        r = re.fullmatch(r"([A-Z])이면\s*([A-Z])이다", piece)
+        r = re.fullmatch(r"([A-Z])이면\\s*([A-Z])이다", piece)
+        r_and = re.fullmatch(r"([A-Z])와\\s*([A-Z])가\\s*모두\\s*참이면\\s*([A-Z])가\\s*참이다", piece)
+        u = re.fullmatch(r"([A-Z])는\\s*참인지\\s*모른다", piece)
         f = re.fullmatch(r"([A-Z])(?:는|은)\s*참이다", piece)
         if r:
-            rules.append((r.group(1),r.group(2)))
+            rules.append(((r.group(1),),r.group(2)))\n        elif r_and:\n            rules.append(((r_and.group(1),r_and.group(2)),r_and.group(3)))\n        elif u:\n            unknown.add(u.group(1))
         elif f:
             facts.add(f.group(1))
         else:
             return None
-    if not rules or not facts or len(rules) > 12:
+    if not rules or not facts or (unknown & facts) or len(rules) > 12:
         return None
     known = set(facts)
     # Capture first derivation, from a strictly smaller set of previous facts.
@@ -49,7 +51,7 @@ def solve_chain(message: str) -> ChainResult | None:
         for src, dest in rules:
             if src in known and dest not in known:
                 known.add(dest)
-                steps.append({"fact": dest, "source": "modus_ponens", "because": src, "rule": f"{src}→{dest}"})
+                steps.append({"fact": dest, "source": "modus_ponens", "because": "와 ".join(src), "rule": f"{'∧'.join(src)}→{dest}"})
                 changed = True
         if not changed:
             break
@@ -66,7 +68,7 @@ def solve_chain(message: str) -> ChainResult | None:
     return ChainResult(answer, {
         "engine": "forward_chain_v1",
         "initial_facts": sorted(facts),
-        "rules": [{"if":a,"then":b} for a,b in rules],
+        "rules": [{"if":list(a),"then":b} for a,b in rules],\n        "unknown_facts": sorted(unknown),
         "derived_facts": sorted(known),
         "target": target,
         "entailed": proven,

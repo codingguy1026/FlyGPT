@@ -28,6 +28,17 @@ class ChainReasonerTests(unittest.TestCase):
         r=solve_chain("A이면 B이다. B이면 A이다. A는 참이다. B는 참인가?")
         self.assertTrue(r.evidence["entailed"])
 
+    def test_and_missing_premise_is_unknown(self):
+        q = "A와 B가 모두 참이면 C가 참이다. A는 참이다. B는 참인지 모른다. C가 참이라고 확정할 수 있을까? 이유를 설명해 줘."
+        result = solve_chain(q)
+        self.assertIsNotNone(result)
+        self.assertFalse(result.evidence["entailed"])
+        self.assertEqual(result.evidence["unknown_facts"], ["B"])
+
+    def test_and_both_premises_true(self):
+        result = solve_chain("A와 B가 모두 참이면 C가 참이다. A는 참이다. B는 참이다. C는 참인가?")
+        self.assertTrue(result.evidence["entailed"])
+
     def test_fail_closed(self):
         for q in [
             "A이면 B이다. B이면 C이다. A는 거짓이다. C는 참인가?",
