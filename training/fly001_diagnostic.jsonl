@@ -1,0 +1,100 @@
+{"input":"hi","route":"general"}
+{"input":"hello there","route":"general"}
+{"input":"안뇽 파피티","route":"general"}
+{"input":"좋은 아침이야","route":"general"}
+{"input":"안녕하세요 반가워요","route":"general"}
+{"input":"ㅋㅋㅋㅋ 오늘 기분 어때?","route":"general"}
+{"input":"너는 무슨 AI야?","route":"general"}
+{"input":"What are you able to do?","route":"general"}
+{"input":"고마워 친구야","route":"general"}
+{"input":"땡큐 파피티","route":"general"}
+{"input":"Good morning!","route":"general"}
+{"input":"그게 무슨 뜻이야?","route":"general"}
+{"input":"초파리가 왜 연구에 쓰이는지 설명해줘","route":"general"}
+{"input":"난 아직 잘 모르겠어","route":"general"}
+{"input":"질문 하나 해도 돼?","route":"general"}
+{"input":"컴퓨터와 서버의 차이가 뭐야?","route":"general"}
+{"input":"응 알겠어","route":"general"}
+{"input":"정말 신기하네 ㅋㅋ","route":"general"}
+{"input":"Can you explain that simply?","route":"general"}
+{"input":"오늘도 잘 부탁해","route":"general"}
+{"input":"7 곱하기 13은 얼마야?","route":"math"}
+{"input":"x+8=19 풀어봐","route":"math"}
+{"input":"12의 제곱근을 구해줘","route":"math"}
+{"input":"삼각형 넓이 공식 알려줘","route":"math"}
+{"input":"3/7을 소수로 나타내줘","route":"math"}
+{"input":"100에서 18%는?","route":"math"}
+{"input":"Solve 2x + 5 = 17","route":"math"}
+{"input":"미분하면 기울기가 되는 이유 설명해줘","route":"math"}
+{"input":"평균이 6인 세 수의 합은?","route":"math"}
+{"input":"2의 10제곱 계산","route":"math"}
+{"input":"이차방정식 x²-5x+6=0 풀어줘","route":"math"}
+{"input":"분수 3/4와 2/3 더해봐","route":"math"}
+{"input":"log10(1000)은 뭐야","route":"math"}
+{"input":"절댓값이 9인 수는?","route":"math"}
+{"input":"직각삼각형 빗변 계산해줘","route":"math"}
+{"input":"확률 0.25는 퍼센트로 몇이야","route":"math"}
+{"input":"자바스크립트에서 배열 뒤집는 함수 작성해줘","route":"code"}
+{"input":"Write a Python function that sorts numbers","route":"code"}
+{"input":"TS에서 union type 예시 코드를 보여줘","route":"code"}
+{"input":"Next.js 페이지 컴포넌트 만들어줘","route":"code"}
+{"input":"파이썬 IndexError 왜 나와?","route":"code"}
+{"input":"이 오류 로그 디버깅 도와줘","route":"code"}
+{"input":"git rebase 충돌을 어떻게 해결하지?","route":"code"}
+{"input":"React useEffect 샘플 작성해줘","route":"code"}
+{"input":"SQL로 중복 레코드 찾는 쿼리 써줘","route":"code"}
+{"input":"CSS grid로 세 열 배치하는 방법 알려줘","route":"code"}
+{"input":"npm run build 에러 고쳐줘","route":"code"}
+{"input":"객체 배열에서 id만 추출하는 코드를 짜줘","route":"code"}
+{"input":"Fix this TypeScript type error","route":"code"}
+{"input":"FastAPI 라우터 예제 만들어줘","route":"code"}
+{"input":"이 함수에 unit test 붙여줘","route":"code"}
+{"input":"README에 들어갈 설치 스크립트를 작성해줘","route":"code"}
+{"input":"방금 전에 내가 무슨 질문 했어?","route":"memory"}
+{"input":"우리가 조금 전 정한 이름 뭐였지?","route":"memory"}
+{"input":"What did I tell you earlier?","route":"memory"}
+{"input":"아까 네가 추천한 두 번째 옵션 뭐였어?","route":"memory"}
+{"input":"지난 대화의 마지막 결론 기억나?","route":"memory"}
+{"input":"저번에 설정한 프로젝트 색상이 뭐였지?","route":"memory"}
+{"input":"아까 저장한 메모 불러와줘","route":"memory"}
+{"input":"이전 답변에서 말했던 파일명 다시 알려줘","route":"memory"}
+{"input":"우리 지난번 계획 다시 찾아줄래?","route":"memory"}
+{"input":"앞에서 말한 날짜가 언제였어?","route":"memory"}
+{"input":"내가 첫 번째로 고른 항목 기억해?","route":"memory"}
+{"input":"지난 대화 중 오류 메시지 찾아줘","route":"memory"}
+{"input":"방금 얘기한 함수 이름 뭐였어?","route":"memory"}
+{"input":"전에 정했던 규칙을 다시 알려줘","route":"memory"}
+{"input":"어제 내가 물어본 거 기억나?","route":"memory"}
+{"input":"Recall the preference I mentioned a moment ago","route":"memory"}
+{"input":"방금 긴 설명 세 줄로 줄여줘","route":"summarize"}
+{"input":"Summarize the above in one sentence","route":"summarize"}
+{"input":"요점만 다섯 단어로 정리해","route":"summarize"}
+{"input":"이 글의 주요 주장만 추려줘","route":"summarize"}
+{"input":"이 문단을 핵심 두 문장으로 압축해줘","route":"summarize"}
+{"input":"회의 메모에서 결정 사항만 요약","route":"summarize"}
+{"input":"앞서 쓴 내용을 간결하게 정리","route":"summarize"}
+{"input":"긴 에러 로그 핵심만 정리해봐","route":"summarize"}
+{"input":"TL;DR of the previous message please","route":"summarize"}
+{"input":"설명이 너무 길어 한 문장만","route":"summarize"}
+{"input":"내가 붙여넣은 문서를 요약해줘","route":"summarize"}
+{"input":"이전 응답의 장단점만 짧게 정리","route":"summarize"}
+{"input":"세 문단을 한 문단으로 요약","route":"summarize"}
+{"input":"이 목록에서 중요한 부분만 뽑아줘","route":"summarize"}
+{"input":"지금까지 대화를 세 줄로 요약","route":"summarize"}
+{"input":"Summarize the code review comments","route":"summarize"}
+{"input":"최신 파이썬 안정 버전 온라인에서 확인해줘","route":"research"}
+{"input":"Search the web for today's exchange rate","route":"research"}
+{"input":"오늘 대구 미세먼지 예보 검색해봐","route":"research"}
+{"input":"현재 GitHub 서비스 장애인지 조사해줘","route":"research"}
+{"input":"올해 발표된 초파리 논문 찾아줘","route":"research"}
+{"input":"공식 사이트에서 최신 공지 찾아봐","route":"research"}
+{"input":"지금 환율이 얼마인지 웹에서 찾아줘","route":"research"}
+{"input":"Search current AI conference dates","route":"research"}
+{"input":"오늘 경기 결과 검색해서 알려줘","route":"research"}
+{"input":"최근 논문 DOI와 출처 찾아줘","route":"research"}
+{"input":"이 상품 지금 주문 가능한지 조회해줘","route":"research"}
+{"input":"최근 업데이트된 FastAPI 문서 찾아줘","route":"research"}
+{"input":"이번 주 기술 산업 뉴스 검색","route":"research"}
+{"input":"현재 기상 특보가 있는지 확인","route":"research"}
+{"input":"이 라이브러리 최신 릴리스 노트 찾아줘","route":"research"}
+{"input":"오늘 기준 지원되는 Node.js 버전 확인해줘","route":"research"}
