@@ -31,3 +31,6 @@ data/trained_router_previous_env.json
 # Whole-population experiment: source graph & trained full-neuron model
 artifacts/fly_router_malecns_all_neurons.pt
 data/full_neuron_previous_env.json
+
+# Local evaluation reports (may include diagnostic prompt text)
+reports/fly001_*.json
