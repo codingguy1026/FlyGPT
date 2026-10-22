@@ -13,8 +13,6 @@ import sys
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from scripts.benchmark_neural_rule_scheduler import load_router
-from training.train_router import vectorize
 from chain_reasoner import solve_chain
 
 
@@ -49,6 +47,7 @@ def make_examples(count: int, seed: int):
 
 def embed(router, examples):
     import torch
+    from training.train_router import vectorize
     with torch.no_grad():
         batch = torch.stack([vectorize(t, router.vocab_size, router.vectorizer_version)
                              for t, _ in examples])
@@ -78,6 +77,7 @@ def accuracy(head, x, labels):
 
 def main():
     import torch
+    from scripts.benchmark_neural_rule_scheduler import load_router
     router = load_router()
     train = make_examples(160, 8123)
     heldout = make_examples(100, 92371)
