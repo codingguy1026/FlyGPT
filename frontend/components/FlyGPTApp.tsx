@@ -52,6 +52,7 @@ export default function FlyGPTApp({
 }) {
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
   const [chatHistory, setChatHistory] = useState<ChatRecord[]>([]);
+  const [historyQuery, setHistoryQuery] = useState("");
   const [activeChatId, setActiveChatId] = useState("");
   const [historyReady, setHistoryReady] = useState(false);
   const [input, setInput] = useState("");
@@ -198,6 +199,16 @@ export default function FlyGPTApp({
     "--accent-2": theme.accent2,
     "--accent-rgb": theme.glow,
   } as CSSProperties;
+
+  const filteredChatHistory = useMemo(() => {
+    const terms = historyQuery.normalize("NFKC").toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
+    if (!terms.length) return chatHistory;
+    return chatHistory.filter((chat) => {
+      const searchable = [chat.title, ...chat.messages.map((message) => message.content)]
+        .join(" ").normalize("NFKC").toLocaleLowerCase();
+      return terms.every((term) => searchable.includes(term));
+    });
+  }, [chatHistory, historyQuery]);
 
   const online = !healthError && health?.status === "ok";
 
@@ -419,6 +430,36 @@ export default function FlyGPTApp({
     }
   }
 
+  function exportCurrentFlight() {
+    if (sending) return;
+    const exportMessages = messages.filter((message) => message.id !== INITIAL_MESSAGE.id);
+    if (!exportMessages.some((message) => message.role === "user")) return;
+
+    const exportedAt = new Date();
+    const markdown = [
+      "# " + (conversationTitle.replace(/\s+/g, " ").trim() || "FlyGPT 대화"),
+      "",
+      "_FlyGPT 대화 기록 · " + exportedAt.toLocaleString("ko-KR") + "_",
+      "",
+      ...exportMessages.flatMap((message) => [
+        "## " + (message.role === "user" ? "사용자" : "FlyGPT"),
+        "",
+        message.content,
+        "",
+      ]),
+    ].join("\n");
+
+    // Export stays entirely in the browser; no extra API request is made.
+    const url = URL.createObjectURL(new Blob([markdown], { type: "text/markdown;charset=utf-8" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "FlyGPT-" + exportedAt.toISOString().slice(0, 10) + ".md";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   function applyMode(next: "ask" | "code" | "research") {
     setMode(next);
     if (next === "code" && !input) setInput("다음 코드를 도와줘: ");
@@ -480,14 +521,37 @@ export default function FlyGPTApp({
         <section className="historySection" aria-label="채팅 기록">
           <div className="historyLabel">
             <span>RECENT FLIGHTS</span>
-            <b>{chatHistory.length}</b>
+            <b>{historyQuery.trim() ? filteredChatHistory.length + "/" + chatHistory.length : chatHistory.length}</b>
+          </div>
+          <div className="historyTools">
+            <label className="historySearch">
+              <Icon name="search" size={15} />
+              <input
+                type="search"
+                value={historyQuery}
+                onChange={(event) => setHistoryQuery(event.target.value)}
+                placeholder="대화 제목·내용 검색"
+                aria-label="대화 기록 검색"
+              />
+            </label>
+            <button
+              className="historyExport"
+              type="button"
+              onClick={exportCurrentFlight}
+              disabled={sending || !messages.some((message) => message.role === "user")}
+              title="현재 대화를 Markdown 파일로 저장"
+            >
+              ↓ 현재 대화 저장 (.md)
+            </button>
           </div>
 
           <div className="historyList">
             {chatHistory.length === 0 ? (
               <p className="historyEmpty">대화를 시작하면 여기에 기록돼요.</p>
+            ) : filteredChatHistory.length === 0 ? (
+              <p className="historyEmpty">검색 결과가 없어요. 다른 단어를 입력해 보세요.</p>
             ) : (
-              chatHistory.map((chat) => (
+              filteredChatHistory.map((chat) => (
                 <button
                   key={chat.id}
                   className={"historyItem" + (chat.id === activeChatId ? " active" : "")}
