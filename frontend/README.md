@@ -50,3 +50,26 @@ A pull-request workflow runs the same checks automatically. Keep frontend reques
 The existing `flygpt-chat-history-v0.7:<user-id>` keys and account-scoped memory session IDs remain unchanged. The interface keeps its established palette, sidebar, conversation view, telemetry, and graph UI. Backend outages must not be presented as successful model inference. Browser chat records remain local to the device and may not persist in private-browsing sessions.
 
 The legacy Jinja/JavaScript frontend is intentionally retained during migration.
+
+
+## Local conversation retrieval (resurrection update)
+
+The **RECENT FLIGHTS** sidebar now searches the current account's locally saved
+conversation titles **and message contents** (case-insensitive, Unicode-normalized).
+Multiple space-separated terms must all match; an empty search shows every saved
+conversation. No search text or history is uploaded to another service.
+
+The **현재 대화 저장 (.md)** button downloads the currently open conversation as
+a Markdown file from the browser. It is disabled for empty chats and while a
+request is running. Exports contain only the visible conversation text and a
+timestamp, not credentials, memory identifiers, or neuron traces. Saved files
+remain on the user's device; storage keys and backend contracts are unchanged.
+
+Manual checks:
+1. Send a message, start another chat, and search by a word in the earlier
+   chat's **message body** as well as its title.
+2. Search a missing term and clear the field to see the complete chat list.
+3. Reopen an earlier chat, export it, and confirm the Markdown contains its
+   user and assistant messages in order.
+4. Verify the save button is disabled for an empty chat and during inference.
+5. Check mobile sidebar keyboard navigation and the search field's focus style.
