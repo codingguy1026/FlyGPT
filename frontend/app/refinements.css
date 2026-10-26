@@ -112,3 +112,60 @@
   }
   .flightApp :is(.flightRail, .flightHeader, .telemetryDock) { background-color: #f7f9fd; }
 }
+
+
+/* FlyGPT recovery: local chat search and opt-in Markdown export. */
+.flightApp .historyTools {
+  display: grid;
+  gap: 8px;
+  padding: 7px 6px 11px;
+}
+
+.flightApp .historySearch {
+  min-height: 37px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid rgba(var(--accent-rgb), .21);
+  border-radius: 10px;
+  color: #a2b9ac;
+  background: rgba(255, 255, 255, .035);
+}
+
+.flightApp .historySearch:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.flightApp .historySearch input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #ecf8ef;
+  font: inherit;
+  font-size: 11px;
+}
+
+.flightApp .historySearch input::placeholder { color: #899e93; opacity: 1; }
+
+.flightApp .historyExport {
+  min-height: 33px;
+  padding: 7px 10px;
+  border: 1px solid rgba(var(--accent-rgb), .22);
+  border-radius: 9px;
+  background: rgba(var(--accent-rgb), .06);
+  color: #d0eada;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+
+.flightApp .historyExport:hover:not(:disabled) {
+  background: rgba(var(--accent-rgb), .15);
+}
