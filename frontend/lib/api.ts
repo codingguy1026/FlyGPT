@@ -11,7 +11,7 @@ export type TraceFrame = {
 };
 
 export type ChatStreamEvent =
-  | { type: "status"; phase: "processing" | "router_loading" | "generation" }
+  | { type: "status"; phase: "processing" | "router_loading" | "generation"; request_budget_ms?: number }
   | { type: "trace"; frame: TraceFrame }
   | { type: "route"; route: string; confidence: number; accepted: boolean; semantic_override: boolean }
   | { type: "result"; response: ChatResponse }
@@ -223,36 +223,58 @@ export async function sendChatStream(
   sessionId: string,
   onEvent: (event: ChatStreamEvent) => void,
 ): Promise<ChatResponse> {
-  const response = await fetch("/api/chat/stream", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
-    body: JSON.stringify({ message, session_id: sessionId }),
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    throw new Error("HTTP " + response.status + ": 채팅 스트림을 열지 못했어.");
-  }
-  if (!response.body) throw new Error("스트리밍을 지원하지 않는 응답이야.");
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let finalResult: ChatResponse | null = null;
-
-  function parseBlock(block: string) {
-    const json = block.split("\n")
-      .filter((line) => line.startsWith("data:"))
-      .map((line) => line.slice(5).trimStart())
-      .join("\n");
-    if (!json) return;
-    const event = JSON.parse(json) as ChatStreamEvent;
-    onEvent(event);
-    if (event.type === "result") finalResult = event.response;
-    if (event.type === "error") throw new Error(event.message);
-  }
-
+  const controller = new AbortController();
+  const started = Date.now();
+  let timer: ReturnType<typeof setTimeout>;
+  let timedOut = false;
+  let budgetReceived = false;
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  const armDeadline = (budgetMs: number) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, Math.max(0, budgetMs + 15_000 - (Date.now() - started)));
+  };
+  // Covers old backends and a connection that never delivers response headers.
+  armDeadline(240_000);
   try {
+    const response = await fetch("/api/chat/stream", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+      body: JSON.stringify({ message, session_id: sessionId }),
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      throw new Error("HTTP " + response.status + ": 채팅 스트림을 열지 못했어.");
+    }
+    if (!response.body) throw new Error("스트리밍을 지원하지 않는 응답이야.");
+
+    reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let finalResult: ChatResponse | null = null;
+
+    function parseBlock(block: string) {
+      const json = block.split("\n")
+        .filter((line) => line.startsWith("data:"))
+        .map((line) => line.slice(5).trimStart())
+        .join("\n");
+      if (!json) return;
+      const event = JSON.parse(json) as ChatStreamEvent;
+      if (event.type === "status" && !budgetReceived &&
+          Number.isFinite(event.request_budget_ms) &&
+          event.request_budget_ms! > 0 && event.request_budget_ms! <= 240_000) {
+        budgetReceived = true;
+        armDeadline(event.request_budget_ms!);
+      }
+      onEvent(event);
+      if (event.type === "result") finalResult = event.response;
+      if (event.type === "error") throw new Error(event.message);
+    }
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -261,16 +283,27 @@ export async function sendChatStream(
       while (index >= 0) {
         parseBlock(buffer.slice(0, index));
         buffer = buffer.slice(index + 2);
+        // A final SSE event completes the request; don't wait for a socket EOF.
+        if (finalResult) return finalResult;
         index = buffer.indexOf("\n\n");
       }
     }
     buffer += decoder.decode();
     if (buffer.trim()) parseBlock(buffer);
+    if (!finalResult) throw new Error("채팅 스트림이 최종 응답 없이 종료됐어.");
+    return finalResult;
+  } catch (reason) {
+    if (timedOut) throw new Error("응답 대기 시간이 초과됐어요. 다시 시도해 주세요.");
+    throw reason;
   } finally {
-    reader.releaseLock();
+    clearTimeout(timer!);
+    // Abort stops network reads, including an unfinished body after a result.
+    controller.abort();
+    if (reader) {
+      void reader.cancel().catch(() => undefined);
+      reader.releaseLock();
+    }
   }
-  if (!finalResult) throw new Error("채팅 스트림이 최종 응답 없이 종료됐어.");
-  return finalResult;
 }
 
 export function sendChat(

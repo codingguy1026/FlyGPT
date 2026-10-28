@@ -8,6 +8,7 @@ export type Message = {
   role: "user" | "assistant";
   content: string;
   meta?: MessageMeta[];
+  retryPrompt?: string;
   learning?: {
     prompt: string;
     route: string;
@@ -55,6 +56,7 @@ function isMessage(input: unknown): input is Message {
   if (!input || typeof input !== "object") return false;
   const item = input as Partial<Message>;
   if (typeof item.id !== "string" || (item.role !== "user" && item.role !== "assistant") || typeof item.content !== "string") return false;
+  if (item.retryPrompt !== undefined && typeof item.retryPrompt !== "string") return false;
   if (item.meta !== undefined && (!Array.isArray(item.meta) || !item.meta.every(meta => meta && typeof meta.text === "string"))) return false;
   if (item.learning !== undefined && (!item.learning || typeof item.learning.prompt !== "string" || typeof item.learning.route !== "string")) return false;
   return true;

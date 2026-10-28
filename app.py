@@ -781,7 +781,10 @@ async def chat_stream_endpoint(req: ChatRequest, request: Request):
 
         task = asyncio.create_task(asyncio.to_thread(worker))
         try:
-            yield 'data: {"type":"status","phase":"processing"}\n\n'
+            yield "data: " + json.dumps({
+                "type": "status", "phase": "processing",
+                "request_budget_ms": round(CHAT_REQUEST_BUDGET_SECONDS * 1000),
+            }) + "\n\n"
             while True:
                 try:
                     event = await asyncio.wait_for(queue.get(), timeout=10.0)
@@ -1450,8 +1453,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
                     not failure and "timeout" in (generation.error or "").lower()
                 ):
                     answer = (
-                        "⏱️ 생성 시간이 제한을 초과했어. "
-                        "질문을 조금 나누거나 응답 시간 설정을 확인해 줘."
+                        "⏱️ 응답 생성 시간이 초과됐어요. 다시 시도해 주세요."
                     )
                     mode_label = f"{result.route} · generator_timeout"
                 elif failure == "truncated":
