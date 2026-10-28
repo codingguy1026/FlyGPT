@@ -57,6 +57,7 @@ export default function FlyGPTApp({
   const [historyReady, setHistoryReady] = useState(false);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
   const [brainOpen, setBrainOpen] = useState(false);
   const [telemetryOpen, setTelemetryOpen] = useState(false);
   const [railOpen, setRailOpen] = useState(false);
@@ -219,14 +220,18 @@ export default function FlyGPTApp({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const text = input.trim();
-    if (!text || sending || !sessionId) return;
+    await submitMessage(input.trim());
+  }
+
+  async function submitMessage(text: string, retryMessageId?: string) {
+    if (!text || sendingRef.current || !sessionId) return;
+    sendingRef.current = true;
 
     if (conversationTitle === "Untitled flight") {
       setConversationTitle(titleFrom(text));
     }
 
-    setInput("");
+    if (!retryMessageId) setInput("");
     setSending(true);
     setRouter(null);
     setLiveFrames([]);
@@ -235,10 +240,12 @@ export default function FlyGPTApp({
     setTraceRequestId((current) => current + 1);
     // The desktop Brain preview is already present; narrow screens need the overlay.
     if (window.matchMedia("(max-width: 1180px)").matches) setBrainOpen(true);
-    setMessages((current) => [
-      ...current,
-      { id: makeId("user"), role: "user", content: text },
-    ]);
+    setMessages((current) => retryMessageId
+      ? current.filter((message) => message.id !== retryMessageId)
+      : [
+          ...current,
+          { id: makeId("user"), role: "user", content: text },
+        ]);
 
     try {
       const response = await sendChatStream(text, sessionId, (event: ChatStreamEvent) => {
@@ -259,6 +266,9 @@ export default function FlyGPTApp({
       setMonitorPhase(response.router?.trace?.length ? "done" : response.type === "math_fast_path" ? "tool" : "done");
 
       const meta = buildMessageMeta(response);
+      const generationTimedOut = response.data?.generation?.error_code === "timeout" &&
+        !response.data.generation.used;
+      if (generationTimedOut) setMonitorPhase("error");
       setMessages((current) => [
         ...current,
         {
@@ -266,7 +276,8 @@ export default function FlyGPTApp({
           role: "assistant",
           content: response.answer,
           meta,
-          learning: response.router
+          retryPrompt: generationTimedOut ? text : undefined,
+          learning: response.router && !generationTimedOut
             ? {
                 prompt: text,
                 route: response.router.route,
@@ -293,9 +304,11 @@ export default function FlyGPTApp({
           id: makeId("error"),
           role: "assistant",
           content: "⚠️ 요청 실패\n" + detail,
+          retryPrompt: text,
         },
       ]);
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
   }
@@ -690,6 +703,13 @@ export default function FlyGPTApp({
 
                     {message.role === "assistant" && (
                       <div className="payloadActions">
+                        {message.retryPrompt && index === conversationMessages.length - 1 && (
+                          <button
+                            type="button"
+                            disabled={sending}
+                            onClick={() => void submitMessage(message.retryPrompt!, message.id)}
+                          >다시 시도</button>
+                        )}
                         <button type="button" title="복사" onClick={() => navigator.clipboard?.writeText(message.content)}>
                           <Icon name="copy" size={16} />
                         </button>

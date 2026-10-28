@@ -733,7 +733,28 @@ class GeneratorRuntime:
             with response_context as response:
                 open_wait_ms = round((time.perf_counter() - open_started) * 1000)
                 read_started = time.perf_counter()
-                raw_body = response.read()
+                # urllib's timeout is per socket operation. A provider sending
+                # tiny chunks can otherwise keep read() alive past the budget.
+                deadline = open_started + effective_timeout
+                raw_socket = getattr(getattr(getattr(response, "fp", None), "raw", None), "_sock", None)
+                if raw_socket is not None and callable(getattr(response, "read1", None)):
+                    chunks = []
+                    while True:
+                        remaining = deadline - time.perf_counter()
+                        if remaining <= 0:
+                            raise TimeoutError("generation response deadline exceeded")
+                        raw_socket.settimeout(remaining)
+                        chunk = response.read1(65536)
+                        if not chunk:
+                            break
+                        chunks.append(chunk)
+                        if response.isclosed():
+                            break
+                    raw_body = b"".join(chunks)
+                else:
+                    raw_body = response.read()
+                if time.perf_counter() >= deadline:
+                    raise TimeoutError("generation response deadline exceeded")
                 body_read_ms = round((time.perf_counter() - read_started) * 1000)
 
             response_bytes = len(raw_body)
@@ -1051,6 +1072,10 @@ class GeneratorRuntime:
                    if max_tokens_override is not None else {}),
             )
             result.attempts = attempts
+            # Socket timeouts are inactivity limits, not a total deadline.
+            # Never accept a late success or start recovery after the budget.
+            if remaining_seconds() <= 0:
+                return budget_result(model)
             if result.error_code == "invalid_response":
                 print(
                     "[GEN] invalid_response "
