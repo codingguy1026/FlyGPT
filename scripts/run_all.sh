@@ -77,6 +77,7 @@ OLLAMA_URL="http://127.0.0.1:11434/api/tags"
 BACKEND_PID=""
 FRONTEND_PID=""
 OLLAMA_PID=""
+PRELOAD_PID=""
 
 cleanup() {
   trap - INT TERM EXIT
@@ -89,6 +90,10 @@ cleanup() {
 
   if [[ -n "$BACKEND_PID" ]] && kill -0 "$BACKEND_PID" 2>/dev/null; then
     kill "$BACKEND_PID" 2>/dev/null || true
+  fi
+
+  if [[ -n "$PRELOAD_PID" ]] && kill -0 "$PRELOAD_PID" 2>/dev/null; then
+    kill "$PRELOAD_PID" 2>/dev/null || true
   fi
 
   # Only stop Ollama when this script started it.
@@ -147,13 +152,27 @@ if [[ "$USE_OLLAMA" -eq 1 ]]; then
     ollama pull "$MODEL"
   fi
 
-  echo "🔥 Preloading $MODEL with low-memory mmap / ctx=1024 / batch=32..."
-  # These are the exact loading controls used by the native chat adapter.
-  # A genuine tiny prompt warms the model before FlyGPT starts serving requests.
-  curl -fsS --max-time 180 http://127.0.0.1:11434/api/generate \
+  # In development, warm the model without blocking the web servers.
+  # Stable mode keeps sequential loading to avoid build-time memory contention.
+  preload_model() {
+    if curl -fsS --max-time 180 http://127.0.0.1:11434/api/generate \
     -H "Content-Type: application/json" \
     -d "{\"model\":\"${MODEL}\",\"prompt\":\"안녕\",\"stream\":false,\"keep_alive\":\"${OLLAMA_KEEP_ALIVE}\",\"options\":{\"use_mmap\":true,\"num_ctx\":1024,\"num_batch\":32,\"num_predict\":8}}" \
-    >/dev/null || echo "⚠️  Low-memory model preload failed; inspect Ollama logs before testing chat."
+    >/dev/null; then
+      echo "✅ Ollama model ready: $MODEL"
+    else
+      echo "⚠️  Low-memory model preload failed; inspect Ollama logs before testing chat."
+    fi
+  }
+
+  if [[ "$STABLE_MODE" -eq 1 ]]; then
+    echo "🔥 Preloading $MODEL before stable startup..."
+    preload_model
+  else
+    echo "🔥 Preloading $MODEL in background (web servers start immediately)..."
+    preload_model &
+    PRELOAD_PID=$!
+  fi
 else
   echo "☁️  Hosted generator: ${FLYGPT_GENERATOR_PROVIDER:-compatible-http} / ${FLYGPT_GENERATOR_MODEL:-unset}"
   if [[ -n "${FLYGPT_GENERATOR_FALLBACK_MODEL:-}" ]]; then
