@@ -6,84 +6,44 @@ export type FlyThinkingPhase =
   | "idle" | "processing" | "router_loading" | "routing"
   | "generation" | "tool" | "done" | "error";
 
-type Props = {
-  phase: FlyThinkingPhase;
-  frame: TraceFrame | null;
-};
+type Props = { phase: FlyThinkingPhase; frame: TraceFrame | null };
 
-// Copy always follows real SSE events. The dancing flies themselves are
-// decorative: they are NOT a neuron count, a progress percentage, or telemetry.
 function describeThinking(phase: FlyThinkingPhase, frame: TraceFrame | null) {
-  switch (phase) {
-    case "router_loading":
-      return {
-        label: "ROUTER STARTING",
-        headline: "초파리 신경망 준비 중…",
-        detail: "실제 라우터를 불러오는 중입니다",
-      };
-    case "routing": {
-      if (!frame) {
-        return {
-          label: "ROUTING",
-          headline: "뉴런 신호를 기다리는 중…",
-          detail: "라우터의 실제 실행 기록을 기다리는 중입니다",
-        };
-      }
-      const nodes = frame.activations.length;
-      const index = /^step_(\d+)$/.exec(frame.stage);
-      return {
-        label: "LIVE NEURON TRACE",
-        headline: frame.stage === "input" ? "뉴런 입력 신호 계산 중…" : "뉴런 신호 전파 중…",
-        detail: `${nodes.toLocaleString("ko-KR")}개 라우터 노드 · ${index ? `전파 ${index[1]}단계` : "입력 단계"} · 실제 실행 기록`,
-      };
-    }
-    case "generation":
-      return {
-        label: "RESPONSE GENERATION",
-        headline: "답변을 문장으로 만드는 중…",
-        detail: "라우터 작업 이후 생성기가 답변을 작성하는 중입니다",
-      };
-    case "tool":
-      return {
-        label: "EXACT TOOL",
-        headline: "계산 도구 처리 중…",
-        detail: "뉴런 라우터를 사용하지 않는 작업입니다",
-      };
-    default:
-      return {
-        label: "REQUEST IN PROGRESS",
-        headline: "질문 처리 중…",
-        detail: "서버의 다음 처리 단계를 기다리는 중입니다",
-      };
+  if (phase === "router_loading") return { title: "신경망 준비 중…", detail: "라우터를 불러오는 중입니다", step: 0 };
+  if (phase === "routing") {
+    const match = frame && /^step_(\d+)$/.exec(frame.stage);
+    return {
+      title: frame?.stage === "input" ? "입력 신호 분석 중…" : "뉴런 신호 분석 중…",
+      detail: frame ? `${frame.activations.length.toLocaleString("ko-KR")}개 라우터 노드 · ${match ? `전파 ${match[1]}단계` : "입력 단계"}` : "실제 실행 기록을 기다리는 중입니다",
+      step: 0,
+    };
   }
+  if (phase === "generation") return { title: "답변 생성 중…", detail: "생성기가 답변을 작성하고 있어요", step: 1 };
+  if (phase === "tool") return { title: "도구 처리 중…", detail: "계산 도구를 실행하고 있어요", step: 1 };
+  return { title: "요청 처리 중…", detail: "서버의 응답을 기다리는 중입니다", step: 0 };
 }
 
 export default function FlyThinkingIndicator({ phase, frame }: Props) {
-  const copy = describeThinking(phase, frame);
-
+  const current = describeThinking(phase, frame);
   return (
     <div className="flyThinking" role="status" aria-live="polite" aria-atomic="true">
-      <div className="flyThinkingFlight" aria-hidden="true">
-        <svg className="flyThinkingTrail" viewBox="0 0 136 70" fill="none" focusable="false">
-          <path d="M5 49 C26 12 37 68 65 36 S106 4 130 40"
-            stroke="currentColor" strokeWidth="1.2" strokeDasharray="3 7" strokeLinecap="round" />
-          <circle cx="69" cy="33" r="2.6" fill="currentColor" />
-          <circle cx="116" cy="47" r="1.5" fill="currentColor" />
-        </svg>
-        <span className="flyThinkingBug flyThinkingBugOne">🪰</span>
-        <span className="flyThinkingBug flyThinkingBugTwo">🪰</span>
-        <span className="flyThinkingSpark flyThinkingSparkOne" />
-        <span className="flyThinkingSpark flyThinkingSparkTwo" />
+      <div className="flyThinkingHeader">
+        <span className="flyThinkingBrand"><span className="flyThinkingSignal" aria-hidden="true" /> FLY</span>
+        <span className="flyThinkingState">응답 처리 중</span>
       </div>
-      <div className="flyThinkingContent">
-        <span className="flyThinkingEyebrow">
-          <i className="flyThinkingSignal" aria-hidden="true" />
-          {copy.label}
-        </span>
-        <strong>{copy.headline}</strong>
-        <span className="flyThinkingDetail">{copy.detail}</span>
-        <span className="flyThinkingQuip">파리가 날아다니고 있습니다… 🪰</span>
+      <div className="flyThinkingSteps" aria-hidden="true">
+        <div className={`flyThinkingStep ${current.step >= 0 ? "isActive" : ""}`}>
+          <span className="flyThinkingStepTrack" /><span>요청 분석</span>
+        </div>
+        <div className={`flyThinkingStep ${current.step >= 1 ? "isActive" : ""}`}>
+          <span className="flyThinkingStepTrack" /><span>답변 생성</span>
+        </div>
       </div>
+      <div className="flyThinkingStatus">
+        <span className="flyThinkingSpinner" aria-hidden="true" />
+        <div><strong>{current.title}</strong><span className="flyThinkingDetail">{current.detail}</span></div>
+      </div>
+      <div className="flyThinkingProgress" aria-hidden="true"><span /></div>
     </div>
   );
 }
