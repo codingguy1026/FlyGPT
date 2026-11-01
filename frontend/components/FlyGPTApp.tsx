@@ -27,6 +27,7 @@ import {
   clearRouteLearning,
   confirmRouteLearning,
   getHealth,
+  getGeneratorReadiness,
   getKnowledgeStatus,
   getRouteLearningStatus,
   sendChatStream,
@@ -67,6 +68,7 @@ export default function FlyGPTApp({
   const [monitorPhase, setMonitorPhase] = useState<"idle" | "processing" | "router_loading" | "routing" | "generation" | "tool" | "done" | "error">("idle");
   const [traceRequestId, setTraceRequestId] = useState(0);
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [generatorReadiness, setGeneratorReadiness] = useState<"checking" | "ready" | "loading" | "unavailable" | "not_local">("checking");
   const [learningStatus, setLearningStatus] = useState<RouteLearningStatus | null>(null);
   const [knowledgeStatus, setKnowledgeStatus] = useState<KnowledgeStatus | null>(null);
   const [healthError, setHealthError] = useState(false);
@@ -138,6 +140,22 @@ export default function FlyGPTApp({
     const timer = window.setInterval(refreshHealth, 30_000);
     return () => { active = false; window.clearInterval(timer); };
   }, [user.id]);
+
+  useEffect(() => {
+    let active = true;
+    const check = () => {
+      getGeneratorReadiness()
+        .then((result) => {
+          if (active) setGeneratorReadiness(result.state);
+        })
+        .catch(() => {
+          if (active) setGeneratorReadiness("unavailable");
+        });
+    };
+    check();
+    const timer = window.setInterval(check, 3_000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, []);
 
   useEffect(() => {
     try {
@@ -746,6 +764,14 @@ export default function FlyGPTApp({
                   <Icon name="search" size={14} />
                   Research
                 </button>
+              </div>
+
+              <div role="status" aria-live="polite" style={{ fontSize: 12, opacity: 0.8, padding: "4px 2px" }}>
+                {generatorReadiness === "ready" ? "🟢 AI 모델 준비 완료" :
+                  generatorReadiness === "loading" ? "🟡 AI 모델 준비 중 · 첫 답변이 느릴 수 있어요" :
+                  generatorReadiness === "unavailable" ? "⚠️ AI 모델 상태를 확인할 수 없어요" :
+                  generatorReadiness === "checking" ? "⏳ AI 모델 상태 확인 중..." :
+                  "☁️ 외부 AI 모델 연결"}
               </div>
 
               <div className="launchInputRow">
