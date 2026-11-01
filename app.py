@@ -574,6 +574,39 @@ def router_annotations(request: Request):
     return payload
 
 
+@app.get("/api/generator/readiness")
+def generator_readiness():
+    """Report local Ollama model residency without triggering model generation."""
+    import urllib.request
+    import urllib.error
+
+    generator_status = _generator.status()
+    model = str(generator_status.get("model") or "")
+    url = str(os.environ.get("FLYGPT_GENERATOR_URL", ""))
+    local = (
+        url.startswith("http://127.0.0.1:11434/")
+        or url.startswith("http://localhost:11434/")
+        or local_generation_enabled(os.environ.get("FLYGPT_LOCAL_ONLY"))
+    )
+    if not local:
+        return {"state": "not_local", "ready": None}
+
+    model = model or os.environ.get("FLYGPT_LOCAL_MODEL", "qwen3:4b-instruct")
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:11434/api/ps", timeout=1.5) as response:
+            payload = json.load(response)
+        loaded = payload.get("models", [])
+        ready = any(
+            isinstance(item, dict) and (
+                item.get("name") == model or item.get("model") == model
+            )
+            for item in loaded
+        )
+        return {"state": "ready" if ready else "loading", "ready": ready}
+    except (OSError, ValueError, TimeoutError, urllib.error.URLError):
+        return {"state": "unavailable", "ready": False}
+
+
 @app.get("/api/health")
 def health():
     model_path = Path(MODEL_PATH)
