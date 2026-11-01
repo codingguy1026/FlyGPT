@@ -289,6 +289,17 @@ export function sendChat(
   });
 }
 
+export type GeneratorReadiness = {
+  state: "ready" | "loading" | "unavailable" | "not_local";
+  ready: boolean | null;
+};
+
+export function getGeneratorReadiness(): Promise<GeneratorReadiness> {
+  return requestJson<GeneratorReadiness>("/api/generator/readiness", {
+    cache: "no-store",
+  });
+}
+
 export function getHealth(): Promise<HealthResponse> {
   return requestJson<HealthResponse>("/api/health", {
     cache: "no-store",
