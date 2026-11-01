@@ -152,12 +152,13 @@ if [[ "$USE_OLLAMA" -eq 1 ]]; then
     ollama pull "$MODEL"
   fi
 
+  # Warm through the same native Ollama chat API used by real FlyGPT requests.
   # In development, warm the model without blocking the web servers.
   # Stable mode keeps sequential loading to avoid build-time memory contention.
   preload_model() {
-    if curl -fsS --max-time 180 http://127.0.0.1:11434/api/generate \
+    if curl -fsS --max-time 180 http://127.0.0.1:11434/api/chat \
     -H "Content-Type: application/json" \
-    -d "{\"model\":\"${MODEL}\",\"prompt\":\"안녕\",\"stream\":false,\"keep_alive\":\"${OLLAMA_KEEP_ALIVE}\",\"options\":{\"use_mmap\":true,\"num_ctx\":1024,\"num_batch\":32,\"num_predict\":8}}" \
+    -d "{\"model\":\"${MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"안녕\"}],\"stream\":false,\"keep_alive\":\"${OLLAMA_KEEP_ALIVE}\",\"options\":{\"use_mmap\":true,\"num_ctx\":1024,\"num_batch\":32,\"num_predict\":8}}" \
     >/dev/null; then
       echo "✅ Ollama model ready: $MODEL"
     else
