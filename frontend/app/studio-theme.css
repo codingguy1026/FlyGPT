@@ -116,3 +116,70 @@ body {
 @media (prefers-reduced-transparency: reduce) {
   .flightApp .flightHeader { background: #fff; }
 }
+
+/* Screenshot QA patch: restore readable desktop geometry and consistent contrast. */
+@media (min-width: 1151px) {
+  .flightApp { grid-template-columns: 250px minmax(0,1fr) 300px; }
+}
+.flightApp .flightRail { align-items: stretch; padding: 18px 14px; }
+.flightApp .railNav { width: 100%; }
+.flightApp .railButton {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  padding: 0 12px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  font-size: 12px;
+  line-height: 1.2;
+}
+.flightApp .railButton.primary { background: #6275f6; }
+.flightApp .historySection, .flightApp .railSettings { min-width: 0; }
+.flightApp .historyItem { overflow-wrap: anywhere; }
+.flightApp .airCanvas {
+  background: #f5f6fa;
+  color: #17213a;
+}
+.flightApp .flightHeader { background: #fff; }
+.flightApp .flightTitle h1 { color: #17213a; }
+.flightApp .flightEyebrow { color: #596bba; }
+.flightApp .flightMessage.assistant .messageBubble,
+.flightApp .flightMessage.assistant .messageBubble .messageText,
+.flightApp .flightMessage.assistant .messageBubble p,
+.flightApp .flightMessage.assistant .messageBubble li,
+.flightApp .flightMessage.assistant .messageBubble strong {
+  color: #202b44;
+}
+.flightApp .flightMessage.user .messageBubble,
+.flightApp .flightMessage.user .messageBubble .messageText,
+.flightApp .flightMessage.user .messageBubble p { color: #fff; }
+.flightApp .messageMeta { color: #5d6880; }
+.flightApp .metaChip { color: #54627c; background: #f3f6fc; border-color: #e3e8f2; }
+.flightApp .metaChip.good { color: #166d4e; background: #eaf8f1; }
+.flightApp .telemetryDock { color: #17213a; }
+.flightApp .telemetryHeader h2,
+.flightApp .telemetrySection,
+.flightApp .sectionTitle,
+.flightApp .systemGrid strong { color: #202b44; }
+.flightApp .telemetryHeader > div > span,
+.flightApp .sectionTitle > span { color: #596bba; }
+.flightApp .systemGrid span,
+.flightApp .telemetryEmpty { color: #68758b; }
+.flightApp .flightMessage.assistant .messageBubble.flyThinkingBubble,
+.flightApp .flightMessage.assistant .messageBubble.flyThinkingBubble .flyThinkingStatus strong {
+  color: #d7f8e4;
+}
+.flightApp .flightMessage.assistant .messageBubble.flyThinkingBubble .flyThinkingDetail { color: #a5b9b0; }
+@media (min-width: 761px) and (max-width: 1150px) {
+  .flightApp { grid-template-columns: 220px minmax(0,1fr); }
+  .flightApp .flightRail { width: 220px; }
+}
+@media (max-width: 760px) {
+  .flightApp { grid-template-columns: minmax(0,1fr); }
+  .flightApp .flightRail { width: min(286px,86vw); }
+}
