@@ -1,7 +1,10 @@
-.PHONY: run local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural enable-trained-router disable-trained-router download-full-neuron-data train-full-neuron-router enable-full-neuron-router disable-full-neuron-router install-full-neuron-router help stop
+.PHONY: run fast local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural enable-trained-router disable-trained-router download-full-neuron-data train-full-neuron-router enable-full-neuron-router disable-full-neuron-router install-full-neuron-router help stop
 
 run:
 	@bash scripts/run_all.sh
+
+fast:
+	@bash scripts/run_all.sh --fast
 
 local:
 	@bash scripts/run_all.sh --local-only
@@ -79,6 +82,7 @@ disk:
 help:
 	@echo "FlyGPT development commands"
 	@echo "  make run         Start configured generator, backend, and frontend"
+	@echo "  make fast        Start with a smaller CPU-friendly local model (Qwen2.5 1.5B)"
 	@echo "  make local       Strictly local LLM via Ollama (ignore hosted API keys)"
 	@echo "  make stable      Build + serve production frontend without backend hot reload"
 	@echo "  make doctor      Diagnose frontend, backend, proxy and Codespaces URL"
