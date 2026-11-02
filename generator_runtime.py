@@ -291,6 +291,31 @@ def _env_int(name: str, default: int, *, minimum: int, maximum: int) -> int:
     return min(max(value, minimum), maximum)
 
 
+def _ollama_performance(payload: Any) -> dict[str, int | float] | None:
+    """Extract Ollama timings without logging prompt or generated text.
+
+    Ollama returns timing durations in nanoseconds, not milliseconds.
+    """
+    if not isinstance(payload, dict):
+        return None
+    metrics: dict[str, int | float] = {}
+    for key in ("total_duration", "load_duration", "prompt_eval_duration", "eval_duration"):
+        value = payload.get(key)
+        if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= 0:
+            metrics[key.removesuffix("_duration") + "_ms"] = round(value / 1_000_000, 2)
+    for key in ("prompt_eval_count", "eval_count"):
+        value = payload.get(key)
+        if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+            metrics[key] = value
+    eval_ns = payload.get("eval_duration")
+    eval_count = payload.get("eval_count")
+    if (isinstance(eval_ns, (int, float)) and not isinstance(eval_ns, bool)
+            and eval_ns > 0 and isinstance(eval_count, int)
+            and not isinstance(eval_count, bool) and eval_count >= 0):
+        metrics["tokens_per_second"] = round(eval_count * 1_000_000_000 / eval_ns, 2)
+    return metrics or None
+
+
 @dataclass
 class GenerationResult:
     used: bool
@@ -306,6 +331,7 @@ class GenerationResult:
     json_parse_ms: int | None = None
     request_bytes: int | None = None
     response_bytes: int | None = None
+    ollama_metrics: dict[str, int | float] | None = None
     error_code: str | None = None
     attempts: int = 0
 
@@ -672,6 +698,7 @@ class GeneratorRuntime:
                 "model": model,
                 "messages": messages,
                 "stream": False,
+                "think": False,  # Do not spend CPU tokens on hidden reasoning.
                 "keep_alive": os.environ.get("OLLAMA_KEEP_ALIVE", "30m"),
                 "options": {
                     "use_mmap": True,
@@ -740,6 +767,7 @@ class GeneratorRuntime:
             parse_started = time.perf_counter()
             payload = json.loads(raw_body.decode("utf-8"))
             json_parse_ms = round((time.perf_counter() - parse_started) * 1000)
+            ollama_metrics = _ollama_performance(payload) if native_url is not None else None
 
             # Providers may return either string content or typed text parts.
             # Still require a valid chat-completion envelope; never interpret
@@ -768,6 +796,7 @@ class GeneratorRuntime:
                     json_parse_ms=json_parse_ms,
                     request_bytes=len(request_bytes),
                     response_bytes=response_bytes,
+                    ollama_metrics=ollama_metrics,
                 )
             return GenerationResult(
                 used=True,
@@ -782,6 +811,7 @@ class GeneratorRuntime:
                 json_parse_ms=json_parse_ms,
                 request_bytes=len(request_bytes),
                 response_bytes=response_bytes,
+                ollama_metrics=ollama_metrics,
             )
 
         except urllib.error.HTTPError as exc:
@@ -995,6 +1025,14 @@ class GeneratorRuntime:
                 error="grounded semantic fact plan is invalid",
             )
 
+        # Only a validated MaleCNS social utterance plan may use the short cap.
+        # Normal answers keep their full output budget.
+        social_max_tokens = (
+            min(self.max_tokens, 64)
+            if mouth_ready and self._social_messages(plan) is not None
+            else None
+        )
+
         messages = self._messages(
             message,
             route,
@@ -1179,6 +1217,7 @@ class GeneratorRuntime:
         first = generate_with_budget(
             self.model,
             attempt_timeout=primary_attempt_timeout,
+            max_tokens_override=social_max_tokens,
         )
         if first.used:
             return first
@@ -1188,7 +1227,8 @@ class GeneratorRuntime:
             # An unfinished paragraph must not be returned as a final answer.
             if remaining_seconds() < 1.0:
                 return first
-            larger_limit = min(8192, max(self.max_tokens + 128, self.max_tokens * 2))
+            initial_limit = social_max_tokens or self.max_tokens
+            larger_limit = min(8192, max(initial_limit + 128, initial_limit * 2))
             return generate_with_budget(self.model, max_tokens_override=larger_limit)
 
         if not is_transient_failure(first):
