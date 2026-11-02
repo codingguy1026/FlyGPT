@@ -137,7 +137,8 @@ class LocalGenerationPolicyTests(unittest.TestCase):
         self.assertTrue(payload["options"]["use_mmap"])
         self.assertEqual(payload["options"]["num_ctx"], 1024)
         self.assertEqual(payload["options"]["num_batch"], 32)
-        self.assertEqual(payload["options"]["num_predict"], runtime.max_tokens)
+        self.assertEqual(payload["options"]["num_predict"], min(runtime.max_tokens, 64))
+        self.assertIs(payload["think"], False)
         self.assertEqual(payload["keep_alive"], "30m")
         urlopen.assert_not_called()
         args = build_opener.call_args.args
