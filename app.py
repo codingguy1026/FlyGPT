@@ -1557,6 +1557,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 f"gen_json={generation.json_parse_ms}ms "
                 f"req_bytes={generation.request_bytes} "
                 f"resp_bytes={generation.response_bytes} "
+                f"ollama_perf={generation.ollama_metrics} "
                 f"gen_budget={round(remaining_generation_budget * 1000)}ms "
                 f"request_budget={round(CHAT_REQUEST_BUDGET_SECONDS * 1000)}ms "
                 f"verify={verification_ms}ms total={total_ms}ms",
