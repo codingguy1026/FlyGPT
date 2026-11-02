@@ -20,8 +20,16 @@ for argument in "$@"; do
     --stable)
       STABLE_MODE=1
       ;;
+    --fast)
+      # Opt-in low-latency CPU model. Keep normal make run on Qwen3 4B.
+      export FLYGPT_LOCAL_ONLY=1
+      export FLYGPT_LOCAL_MODEL="${FLYGPT_FAST_MODEL:-qwen2.5:1.5b-instruct}"
+      export FLYGPT_GENERATOR_MODEL="$FLYGPT_LOCAL_MODEL"
+      export FLYGPT_GENERATOR_URL="http://127.0.0.1:11434/v1/chat/completions"
+      echo "⚡ Fast CPU mode: $FLYGPT_LOCAL_MODEL"
+      ;;
     *)
-      echo "Usage: bash scripts/run_all.sh [--local-only] [--stable]" >&2
+      echo "Usage: bash scripts/run_all.sh [--local-only] [--stable] [--fast]" >&2
       exit 2
       ;;
   esac
