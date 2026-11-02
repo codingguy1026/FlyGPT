@@ -1,0 +1,118 @@
+/* FlyGPT Studio 2026: calm, editorial workspace. Visual-only overrides.
+   The underlying chat, router, auth, telemetry and responsive behavior are unchanged. */
+:root {
+  --bg: #f5f6fa;
+  --surface: #ffffff;
+  --surface-strong: #ffffff;
+  --line: rgba(30, 42, 69, .10);
+  --line-strong: rgba(30, 42, 69, .17);
+  --text: #17213a;
+  --text-soft: #5d6880;
+  --muted: #8390a6;
+  --accent: #5065ec;
+  --accent-2: #8290ff;
+  --accent-rgb: 80,101,236;
+}
+body {
+  background: radial-gradient(ellipse 58rem 35rem at 70% -15%, #e6eaff 0%, transparent 68%),
+              linear-gradient(145deg,#fafbfe,#f2f4fa 70%,#f7f8fd);
+  color: var(--text);
+}
+.flightApp { grid-template-columns: 82px minmax(0,1fr) 300px; }
+.flightApp .flightRail {
+  padding: 18px 11px;
+  background: #151e36;
+  border-right: 1px solid #28334c;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.flightApp .railBrand { margin-bottom: 30px; }
+.flightApp .railButton { width: 50px; height: 50px; border-radius: 15px; color: #aab6d0; }
+.flightApp .railButton:hover { color: #fff; background: #2c3955; border-color: #40516e; }
+.flightApp .railButton.active { color: #fff; background: #354363; border-color: #53617c; box-shadow: none; }
+.flightApp .railButton.primary { color: #fff; background: #6275f6; border-color: transparent; box-shadow: 0 8px 24px #6275f644; }
+.flightApp .flightWorkspace { grid-template-rows: 72px minmax(0,1fr); }
+.flightApp .flightHeader {
+  padding-inline: clamp(18px,3vw,42px);
+  background: rgba(255,255,255,.88);
+  border-bottom: 1px solid #e6e9f2;
+  box-shadow: 0 1px 0 #ffffff;
+}
+.flightApp .flightEyebrow { color: #6778b6; letter-spacing: .14em; font-size: 9px; }
+.flightApp .flightTitle h1 { letter-spacing: -.045em; font-weight: 780; }
+.flightApp .connectionChip, .flightApp .routeChip { border-radius: 999px; }
+.flightApp .airCanvas::before { background-size: 30px 30px; opacity: .28; }
+.flightApp .airCurrent { opacity: .28; }
+.flightApp .flightConversation { width: min(880px,100%); }
+.flightApp .messageBubble {
+  border: 1px solid #e5e9f2;
+  box-shadow: 0 5px 22px rgba(31,44,80,.035);
+}
+.flightApp .flightMessage.assistant .messageBubble {
+  border-radius: 20px 20px 20px 6px;
+  background: #fff;
+  color: #202b44;
+}
+.flightApp .flightMessage.user .messageBubble {
+  border-radius: 20px 20px 6px 20px;
+  background: #5065ec;
+  border-color: #5065ec;
+  box-shadow: 0 9px 24px rgba(80,101,236,.15);
+  color: #fff;
+}
+.flightApp .messageText { font-size: 14px; line-height: 1.75; }
+.flightApp .launchDock {
+  padding: 0 clamp(14px,3vw,38px) 20px;
+  background: linear-gradient(180deg,transparent,rgba(245,246,250,.97) 34%);
+}
+.flightApp .launchComposer {
+  border-radius: 22px;
+  background: #fff;
+  border: 1px solid #dce2f0;
+  box-shadow: 0 18px 48px rgba(30,44,81,.10), 0 2px 6px rgba(30,44,81,.03);
+}
+.flightApp .launchInputRow textarea { color: #17213a; }
+.flightApp .launchInputRow textarea::placeholder { color: #929caf; }
+.flightApp .modeStrip button { border-radius: 9px; }
+.flightApp .launchButton { border-radius: 13px; }
+.flightApp .telemetryDock {
+  width: 300px;
+  background: #fdfdff;
+  border-left: 1px solid #e5e9f2;
+  padding: 24px 19px;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.flightApp .telemetryHeader h2 { letter-spacing: -.035em; }
+.flightApp .telemetrySection { border-color: #e5e9f2; }
+.flightApp .systemGrid > div, .flightApp .historyItem {
+  border-radius: 13px;
+}
+.flightApp .historySearch { background: #f5f7fc; border-color: #e1e6f1; color: #5b6680; }
+.flightApp .historySearch input { color: #202b44; }
+.flightApp .historySearch input::placeholder { color: #8894a9; }
+.flightApp .historyExport { background: #eef1ff; color: #4355ba; border-color: #dce2ff; }
+.flightApp .historyExport:hover:not(:disabled) { background: #e3e8ff; }
+.flightApp :is(.flightHeader,.telemetryDock,.launchComposer,.messageBubble,.historyItem) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.flightApp .flightMessage.assistant .messageBubble.flyThinkingBubble {
+  background: #17213a;
+  border-color: #2c3955;
+}
+.flightApp :is(button,a,input,textarea):focus-visible { outline-color: #5065ec; }
+@media (max-width: 1150px) {
+  .flightApp { grid-template-columns: 76px minmax(0,1fr); }
+  .flightApp .telemetryDock { width: min(340px,90vw); }
+}
+@media (max-width: 720px) {
+  .flightApp { grid-template-columns: minmax(0,1fr); }
+  .flightApp .flightHeader { padding-inline: 16px; }
+  .flightApp .launchDock { padding-inline: 12px; padding-bottom: 12px; }
+  .flightApp .launchComposer { border-radius: 17px; }
+  .flightApp .flightRail { box-shadow: 12px 0 36px rgba(15,23,42,.18); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .flightApp .flightHeader { background: #fff; }
+}
