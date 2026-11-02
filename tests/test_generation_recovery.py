@@ -150,7 +150,8 @@ class RuntimeRecoveryTests(unittest.TestCase):
 
         self.assertTrue(result.used)
         self.assertEqual(result.answer, "완성된 답변")
-        self.assertEqual(tokens, [128, 256])
+        # Social replies start with a tight cap and retry with room to finish.
+        self.assertEqual(tokens, [64, 192])
         self.assertEqual(result.attempts, 2)
 
     def test_repeated_length_truncation_never_shows_partial_as_complete(self):
