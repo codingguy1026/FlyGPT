@@ -178,7 +178,7 @@ if [[ "$USE_OLLAMA" -eq 1 ]]; then
     echo "🔥 Preloading $MODEL before stable startup..."
     preload_model
   else
-    echo "🔥 Preloading $MODEL in background (web servers start immediately)..."
+    echo "🔥 Preloading $MODEL while backend starts (frontend waits for model readiness)..."
     preload_model &
     PRELOAD_PID=$!
   fi
