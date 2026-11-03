@@ -160,17 +160,17 @@ if [[ "$USE_OLLAMA" -eq 1 ]]; then
     ollama pull "$MODEL"
   fi
 
-  # Warm through the same native Ollama chat API used by real FlyGPT requests.
-  # In development, warm the model without blocking the web servers.
-  # Stable mode keeps sequential loading to avoid build-time memory contention.
+  # Load the model without generating an unnecessary greeting. Match the
+  # options of real local /api/chat requests so the first conversation is warm.
+  # The load-only API returns done_reason=load on success.
   preload_model() {
-    if curl -fsS --max-time 180 http://127.0.0.1:11434/api/chat \
-    -H "Content-Type: application/json" \
-    -d "{\"model\":\"${MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"안녕\"}],\"stream\":false,\"keep_alive\":\"${OLLAMA_KEEP_ALIVE}\",\"options\":{\"use_mmap\":true,\"num_ctx\":1024,\"num_batch\":32,\"num_predict\":8}}" \
-    >/dev/null; then
-      echo "✅ Ollama model ready: $MODEL"
+    if curl -fsS --connect-timeout 3 --max-time 180 http://127.0.0.1:11434/api/generate \
+      -H "Content-Type: application/json" \
+      -d "{\"model\":\"${MODEL}\",\"stream\":false,\"keep_alive\":\"${OLLAMA_KEEP_ALIVE}\",\"options\":{\"use_mmap\":true,\"num_ctx\":1024,\"num_batch\":32}}" \
+      | python3 -c 'import json, sys; r = json.load(sys.stdin); sys.exit(0 if r.get("done") and r.get("done_reason") == "load" else 1)'; then
+      echo "✅ Ollama model ready: $MODEL (load only)"
     else
-      echo "⚠️  Low-memory model preload failed; inspect Ollama logs before testing chat."
+      echo "⚠️  Model preload failed; the first chat may be slower." >&2
     fi
   }
 
@@ -261,6 +261,17 @@ if [[ "$BACKEND_READY" -ne 1 ]]; then
 fi
 
 echo "✅ Backend ready"
+
+# Keep development startup work parallel, but do not expose the chat UI
+# before the background model preload has completed. A failed preload is
+# non-fatal: FlyGPT can still load the model on its first request.
+if [[ -n "$PRELOAD_PID" ]]; then
+  echo "⏳ Waiting for Ollama preload before starting the frontend..."
+  if ! wait "$PRELOAD_PID"; then
+    echo "⚠️  Model preloader exited unexpectedly; first chat may be slower." >&2
+  fi
+  PRELOAD_PID=""
+fi
 
 echo "🎨 Starting frontend : http://127.0.0.1:3000"
 (
