@@ -55,6 +55,8 @@ class ChatTraceStreamTests(unittest.IsolatedAsyncioTestCase):
             events = await asyncio.wait_for(collect_events(response), timeout=5)
 
         self.assertEqual(invocations, ["안녕"])
+        self.assertEqual(events[0]["request_budget_ms"],
+                         round(api.CHAT_REQUEST_BUDGET_SECONDS * 1000))
         self.assertEqual([event["frame"]["stage"] for event in events if event["type"] == "trace"],
                          ["input", "step_1"])
         self.assertEqual(events[-1]["type"], "result")

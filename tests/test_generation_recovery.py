@@ -4,11 +4,15 @@ import http.client
 import io
 import json
 import os
+import threading
+import time
 import unittest
 import urllib.error
+import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from unittest.mock import patch
 
-from generator_runtime import GeneratorRuntime
+from generator_runtime import GenerationResult, GeneratorRuntime
 
 
 class FakeResponse:
@@ -65,6 +69,78 @@ def setup_runtime(**extra):
 
 
 class RuntimeRecoveryTests(unittest.TestCase):
+    def test_real_http_body_deadline_and_normal_completion(self):
+        class Handler(BaseHTTPRequestHandler):
+            def do_POST(self):
+                raw = json.dumps({"choices": [{"message": {"content": "안녕하세요!"},
+                                               "finish_reason": "stop"}]}).encode()
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(raw)))
+                self.end_headers()
+                try:
+                    if self.path == "/slow":
+                        for byte in raw:
+                            self.wfile.write(bytes([byte]))
+                            self.wfile.flush()
+                            time.sleep(0.02)
+                    else:
+                        self.wfile.write(raw)
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
+
+            def log_message(self, *args):
+                pass
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        worker = threading.Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        try:
+            runtime = setup_runtime()
+            opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+            with patch("generator_runtime.urllib.request.urlopen", side_effect=opener.open):
+                runtime.url = f"http://127.0.0.1:{server.server_port}/ok"
+                normal = runtime._generate_once(model="test", messages=[], timeout_seconds=1)
+                self.assertTrue(normal.used)
+                self.assertEqual(normal.answer, "안녕하세요!")
+                runtime.url = f"http://127.0.0.1:{server.server_port}/slow"
+                started = time.perf_counter()
+                slow = runtime._generate_once(model="test", messages=[], timeout_seconds=0.15)
+                elapsed = time.perf_counter() - started
+                self.assertEqual(slow.error_code, "timeout")
+                self.assertFalse(slow.used)
+                self.assertIsNone(slow.answer)
+                self.assertLess(elapsed, 1.0)
+        finally:
+            server.shutdown()
+            server.server_close()
+            worker.join(timeout=2)
+
+    def test_late_success_is_timeout_and_does_not_retry(self):
+        runtime = setup_runtime()
+        clock = [0.0]
+
+        def late_success(**kwargs):
+            clock[0] = 8.0
+            return GenerationResult(used=True, provider="test", model="test-model",
+                                    answer="안녕하세요!")
+
+        with patch("generator_runtime.time.perf_counter", side_effect=lambda: clock[0]), \
+             patch.object(runtime, "_generate_once", side_effect=late_success) as generate:
+            result = runtime.generate("안녕", "general", brain_state=state(), budget_seconds=7)
+        self.assertFalse(result.used)
+        self.assertIsNone(result.answer)
+        self.assertEqual(result.error_code, "timeout")
+        self.assertEqual(result.attempts, 1)
+        generate.assert_called_once()
+
+    def test_expired_budget_makes_no_provider_request(self):
+        runtime = setup_runtime()
+        with patch.object(runtime, "_generate_once") as generate:
+            result = runtime.generate("안녕", "general", brain_state=state(), budget_seconds=0)
+        self.assertEqual(result.error_code, "timeout")
+        self.assertEqual(result.attempts, 0)
+        generate.assert_not_called()
+
     def test_remote_disconnect_during_body_read_is_retried(self):
         calls = 0
 
