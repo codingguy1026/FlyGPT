@@ -68,7 +68,7 @@ export default function FlyGPTApp({
   const [monitorPhase, setMonitorPhase] = useState<"idle" | "processing" | "router_loading" | "routing" | "generation" | "tool" | "done" | "error">("idle");
   const [traceRequestId, setTraceRequestId] = useState(0);
   const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [generatorReadiness, setGeneratorReadiness] = useState<"checking" | "ready" | "loading" | "unavailable" | "not_local">("checking");
+  const [generatorReadiness, setGeneratorReadiness] = useState<"checking" | "native" | "ready" | "loading" | "unavailable" | "not_local">("checking");
   const [learningStatus, setLearningStatus] = useState<RouteLearningStatus | null>(null);
   const [knowledgeStatus, setKnowledgeStatus] = useState<KnowledgeStatus | null>(null);
   const [healthError, setHealthError] = useState(false);
@@ -767,7 +767,8 @@ export default function FlyGPTApp({
               </div>
 
               <div role="status" aria-live="polite" style={{ fontSize: 12, opacity: 0.8, padding: "4px 2px" }}>
-                {generatorReadiness === "ready" ? "🟢 AI 모델 준비 완료" :
+                {generatorReadiness === "native" ? "🪰 파피티 자체 응답기 활성화 · LLM 미사용" :
+                   generatorReadiness === "ready" ? "🟢 AI 모델 준비 완료" :
                   generatorReadiness === "loading" ? "🟡 AI 모델 준비 중 · 첫 답변이 느릴 수 있어요" :
                   generatorReadiness === "unavailable" ? "⚠️ AI 모델 상태를 확인할 수 없어요" :
                   generatorReadiness === "checking" ? "⏳ AI 모델 상태 확인 중..." :

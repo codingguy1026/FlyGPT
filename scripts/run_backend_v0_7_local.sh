@@ -3,9 +3,14 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
+if [[ "${FLYGPT_GENERATOR_MODE:-http}" == "native" ]]; then
+  unset FLYGPT_GENERATOR_URL FLYGPT_GENERATOR_MODEL FLYGPT_GENERATOR_API_KEY
+  export FLYGPT_GENERATOR_PROVIDER=papiti-native
+else
 export FLYGPT_GENERATOR_URL="${FLYGPT_GENERATOR_URL:-http://127.0.0.1:11434/v1/chat/completions}"
 export FLYGPT_GENERATOR_MODEL="${FLYGPT_GENERATOR_MODEL:-qwen3:4b-instruct}"
 export FLYGPT_GENERATOR_PROVIDER="${FLYGPT_GENERATOR_PROVIDER:-ollama-local}"
+fi
 export FLYGPT_GENERATOR_TIMEOUT="${FLYGPT_GENERATOR_TIMEOUT:-150}"
 export FLYGPT_GENERATOR_BUDGET="${FLYGPT_GENERATOR_BUDGET:-145}"
 export FLYGPT_CHAT_BUDGET="${FLYGPT_CHAT_BUDGET:-150}"
@@ -13,8 +18,12 @@ export FLYGPT_GENERATOR_TEMPERATURE="${FLYGPT_GENERATOR_TEMPERATURE:-0.60}"
 export FLYGPT_GENERATOR_MAX_TOKENS="${FLYGPT_GENERATOR_MAX_TOKENS:-384}"
 
 echo "🪰 FlyGPT v0.8.0 backend"
-echo "Generator: $FLYGPT_GENERATOR_PROVIDER / $FLYGPT_GENERATOR_MODEL"
-echo "URL: $FLYGPT_GENERATOR_URL"
+if [[ "${FLYGPT_GENERATOR_MODE:-http}" == "native" ]]; then
+  echo "Generator: Papiti Native v1 (no LLM)"
+else
+  echo "Generator: $FLYGPT_GENERATOR_PROVIDER / $FLYGPT_GENERATOR_MODEL"
+  echo "URL: $FLYGPT_GENERATOR_URL"
+fi
 echo
 
 if [[ -x ".venv/bin/python" ]]; then
