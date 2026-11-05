@@ -13,6 +13,9 @@ def realize_verified(answer, generator):
     if mode not in {"auto", "always", "off"}:
         mode = "auto"
     meta["mode"] = mode
+    if getattr(generator, "native_mode", False):
+        meta["reason"] = "native_verified_fast_path"
+        return answer, meta
     if mode in {"auto", "off"}:
         meta["reason"] = "verified_fast_path" if mode == "auto" else "realizer_disabled"
         return answer, meta
