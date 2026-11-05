@@ -12,15 +12,22 @@ if [[ -f ".env" ]]; then
 fi
 
 STABLE_MODE=0
+# Native is the default: the fly router stays active, but no LLM is started.
+export FLYGPT_GENERATOR_MODE="${FLYGPT_GENERATOR_MODE:-native}"
 for argument in "$@"; do
   case "$argument" in
     --local-only)
+      export FLYGPT_GENERATOR_MODE=http
       export FLYGPT_LOCAL_ONLY=1
       ;;
     --stable)
       STABLE_MODE=1
       ;;
+    --native)
+      export FLYGPT_GENERATOR_MODE=native
+      ;;
     --fast)
+      export FLYGPT_GENERATOR_MODE=http
       # Opt-in low-latency CPU model. Keep normal make run on Qwen3 4B.
       export FLYGPT_LOCAL_ONLY=1
       export FLYGPT_LOCAL_MODEL="${FLYGPT_FAST_MODEL:-qwen2.5:1.5b-instruct}"
@@ -29,7 +36,7 @@ for argument in "$@"; do
       echo "⚡ Fast CPU mode: $FLYGPT_LOCAL_MODEL"
       ;;
     *)
-      echo "Usage: bash scripts/run_all.sh [--local-only] [--stable] [--fast]" >&2
+      echo "Usage: bash scripts/run_all.sh [--native] [--local-only] [--stable] [--fast]" >&2
       exit 2
       ;;
   esac
@@ -39,8 +46,15 @@ done
 # frontend rather than running two development/watch processes.
 export FLYGPT_STABLE_MODE="$STABLE_MODE"
 
-# Explicit local-only mode never invokes a hosted language model. It also
-# rejects stale hosted URLs rather than silently routing to them.
+# Explicit local-only HTTP mode never invokes a hosted language model.
+# Native mode takes precedence over stale .env generator and Ollama settings.
+if [[ "$FLYGPT_GENERATOR_MODE" != "native" && "$FLYGPT_GENERATOR_MODE" != "http" ]]; then
+  echo "❌ FLYGPT_GENERATOR_MODE must be native or http" >&2
+  exit 2
+fi
+if [[ "$FLYGPT_GENERATOR_MODE" == "native" ]]; then
+  unset FLYGPT_GENERATOR_URL FLYGPT_GENERATOR_MODEL FLYGPT_GENERATOR_API_KEY FLYGPT_LOCAL_ONLY GEMINI_API_KEY FLYGPT_GENERATOR_FALLBACK_MODEL
+else
 case "${FLYGPT_LOCAL_ONLY:-0}" in
   1|true|TRUE|yes|YES|on|ON)
     export FLYGPT_LOCAL_ONLY=1
@@ -61,10 +75,11 @@ case "${FLYGPT_LOCAL_ONLY:-0}" in
     echo "🔒 LOCAL ONLY: hosted LLM generation disabled"
     ;;
 esac
+fi
 
 # If a Gemini API key is present and no explicit generator endpoint was chosen,
 # use Gemini 3.8 Flash through Google's OpenAI-compatible chat endpoint.
-if [[ -n "${GEMINI_API_KEY:-}" && -z "${FLYGPT_GENERATOR_URL:-}" ]]; then
+if [[ "$FLYGPT_GENERATOR_MODE" == "http" && -n "${GEMINI_API_KEY:-}" && -z "${FLYGPT_GENERATOR_URL:-}" ]]; then
   export FLYGPT_GENERATOR_URL="https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
   export FLYGPT_GENERATOR_MODEL="${FLYGPT_GENERATOR_MODEL:-gemini-3.8-flash}"
   export FLYGPT_GENERATOR_PROVIDER="gemini"
@@ -122,12 +137,15 @@ else
 fi
 echo
 
-USE_OLLAMA=1
-if [[ -n "${FLYGPT_GENERATOR_URL:-}" ]]; then
-  case "$FLYGPT_GENERATOR_URL" in
-    http://127.0.0.1:11434/*|http://localhost:11434/*) ;;
-    *) USE_OLLAMA=0 ;;
-  esac
+USE_OLLAMA=0
+if [[ "$FLYGPT_GENERATOR_MODE" == "http" ]]; then
+  USE_OLLAMA=1
+  if [[ -n "${FLYGPT_GENERATOR_URL:-}" ]]; then
+    case "$FLYGPT_GENERATOR_URL" in
+      http://127.0.0.1:11434/*|http://localhost:11434/*) ;;
+      *) USE_OLLAMA=0 ;;
+    esac
+  fi
 fi
 
 if [[ "$USE_OLLAMA" -eq 1 ]]; then
@@ -183,12 +201,16 @@ if [[ "$USE_OLLAMA" -eq 1 ]]; then
     PRELOAD_PID=$!
   fi
 else
+  if [[ "$FLYGPT_GENERATOR_MODE" == "native" ]]; then
+    echo "🪰 PAPITI NATIVE: built-in deterministic responses, no Ollama or hosted LLM"
+  else
   echo "☁️  Hosted generator: ${FLYGPT_GENERATOR_PROVIDER:-compatible-http} / ${FLYGPT_GENERATOR_MODEL:-unset}"
   if [[ -n "${FLYGPT_GENERATOR_FALLBACK_MODEL:-}" ]]; then
     echo "🛟 Generator fallback: ${FLYGPT_GENERATOR_FALLBACK_MODEL}"
   fi
   if [[ "${FLYGPT_GENERATOR_PROVIDER:-}" == "gemini" && -z "${FLYGPT_GENERATOR_API_KEY:-}" ]]; then
     echo "⚠️  Gemini is selected but no API key is configured."
+  fi
   fi
 fi
 
