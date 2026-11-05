@@ -1,7 +1,10 @@
-.PHONY: run fast local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural enable-trained-router disable-trained-router download-full-neuron-data train-full-neuron-router enable-full-neuron-router disable-full-neuron-router install-full-neuron-router help stop
+.PHONY: run native fast local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural enable-trained-router disable-trained-router download-full-neuron-data train-full-neuron-router enable-full-neuron-router disable-full-neuron-router install-full-neuron-router help stop
 
 run:
 	@bash scripts/run_all.sh
+
+native:
+	@bash scripts/run_all.sh --native
 
 fast:
 	@bash scripts/run_all.sh --fast
@@ -82,8 +85,10 @@ disk:
 help:
 	@echo "FlyGPT development commands"
 	@echo "  make run         Start configured generator, backend, and frontend"
-	@echo "  make fast        Start with a smaller CPU-friendly local model (Qwen2.5 1.5B)"
-	@echo "  make local       Strictly local LLM via Ollama (ignore hosted API keys)"
+	@echo "  make run        Papiti-native replies by default, no local or hosted LLM"
+	@echo "  make native     Force deterministic Papiti-native response mode"
+	@echo "  make fast       Optional smaller Ollama LLM for open-ended chat"
+	@echo "  make local      Optional strictly local LLM via Ollama (ignore hosted API keys)"
 	@echo "  make stable      Build + serve production frontend without backend hot reload"
 	@echo "  make doctor      Diagnose frontend, backend, proxy and Codespaces URL"
 	@echo "  make stability   Sample frontend/backend/proxy six times for intermittent failures"
