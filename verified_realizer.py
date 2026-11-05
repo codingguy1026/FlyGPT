@@ -13,7 +13,7 @@ def realize_verified(answer, generator):
     if mode not in {"auto", "always", "off"}:
         mode = "auto"
     meta["mode"] = mode
-    if getattr(generator, "native_mode", False):
+    if getattr(generator, "native_mode", False) is True:
         meta["reason"] = "native_verified_fast_path"
         return answer, meta
     if mode in {"auto", "off"}:
