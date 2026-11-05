@@ -331,7 +331,9 @@ fi
 
 echo
 echo "✅ FlyGPT frontend and API proxy ready on port 3000"
-if [[ "$USE_OLLAMA" -eq 1 ]]; then
+if [[ "$FLYGPT_GENERATOR_MODE" == "native" ]]; then
+  echo "   Generator: Papiti Native v1 (no LLM)"
+elif [[ "$USE_OLLAMA" -eq 1 ]]; then
   echo "   Generator: Ollama :11434 / $MODEL"
 else
   echo "   Generator: ${FLYGPT_GENERATOR_PROVIDER:-compatible-http} / ${FLYGPT_GENERATOR_MODEL:-unset}"
