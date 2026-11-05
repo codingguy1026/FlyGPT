@@ -353,8 +353,8 @@ class GeneratorRuntime:
     def __init__(self) -> None:
         self.native_mode = os.environ.get("FLYGPT_GENERATOR_MODE", "").strip().lower() == "native"
         self.local_only = enabled(os.environ.get("FLYGPT_LOCAL_ONLY")) and not self.native_mode
-        self.url = os.environ.get("FLYGPT_GENERATOR_URL", "").strip()
-        self.model = os.environ.get("FLYGPT_GENERATOR_MODEL", "").strip()
+        self.url = "" if self.native_mode else os.environ.get("FLYGPT_GENERATOR_URL", "").strip()
+        self.model = "" if self.native_mode else os.environ.get("FLYGPT_GENERATOR_MODEL", "").strip()
         if self.local_only:
             # A stale Gemini key must never turn on hosted generation.
             self.url = self.url or DEFAULT_LOCAL_GENERATOR_URL
@@ -365,11 +365,11 @@ class GeneratorRuntime:
             not self.local_only or is_local_generator_url(self.url)
         )
         self.api_key = (
-            "" if self.local_only
+            "" if self.local_only or self.native_mode
             else os.environ.get("FLYGPT_GENERATOR_API_KEY", "").strip()
         )
         self.fallback_model = (
-            "" if self.local_only
+            "" if self.local_only or self.native_mode
             else os.environ.get("FLYGPT_GENERATOR_FALLBACK_MODEL", "").strip()
         )
         self.retry_delay = _env_float(
@@ -414,7 +414,7 @@ class GeneratorRuntime:
         ).strip().lower()
         self.reasoning_effort = (
             reasoning_effort
-            if not self.local_only and reasoning_effort in {"low", "medium", "high"}
+            if not self.local_only and not self.native_mode and reasoning_effort in {"low", "medium", "high"}
             else None
         )
 
