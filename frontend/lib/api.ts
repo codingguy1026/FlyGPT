@@ -290,7 +290,7 @@ export function sendChat(
 }
 
 export type GeneratorReadiness = {
-  state: "ready" | "loading" | "unavailable" | "not_local";
+  state: "native" | "ready" | "loading" | "unavailable" | "not_local";
   ready: boolean | null;
 };
 
