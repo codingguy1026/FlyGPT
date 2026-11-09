@@ -1,10 +1,13 @@
-.PHONY: run native fast local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural enable-trained-router disable-trained-router download-full-neuron-data train-full-neuron-router enable-full-neuron-router disable-full-neuron-router install-full-neuron-router help stop
+.PHONY: run native hybrid fast local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural enable-trained-router disable-trained-router download-full-neuron-data train-full-neuron-router enable-full-neuron-router disable-full-neuron-router install-full-neuron-router help stop
 
 run:
 	@bash scripts/run_all.sh
 
 native:
 	@bash scripts/run_all.sh --native
+
+hybrid:
+	@bash scripts/run_all.sh --hybrid
 
 fast:
 	@bash scripts/run_all.sh --fast
@@ -87,6 +90,7 @@ help:
 	@echo "  make run         Start configured generator, backend, and frontend"
 	@echo "  make run        Papiti-native replies by default, no local or hosted LLM"
 	@echo "  make native     Force deterministic Papiti-native response mode"
+	@echo "  make hybrid     Native-first responses; optional explicitly configured loopback model"
 	@echo "  make fast       Optional smaller Ollama LLM for open-ended chat"
 	@echo "  make local      Optional strictly local LLM via Ollama (ignore hosted API keys)"
 	@echo "  make stable      Build + serve production frontend without backend hot reload"
