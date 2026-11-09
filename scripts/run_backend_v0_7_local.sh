@@ -6,6 +6,9 @@ cd "$(git rev-parse --show-toplevel)"
 if [[ "${FLYGPT_GENERATOR_MODE:-http}" == "native" ]]; then
   unset FLYGPT_GENERATOR_URL FLYGPT_GENERATOR_MODEL FLYGPT_GENERATOR_API_KEY
   export FLYGPT_GENERATOR_PROVIDER=papiti-native
+elif [[ "${FLYGPT_GENERATOR_MODE:-http}" == "hybrid" ]]; then
+  unset FLYGPT_GENERATOR_URL FLYGPT_GENERATOR_MODEL FLYGPT_GENERATOR_API_KEY
+  export FLYGPT_GENERATOR_PROVIDER=papiti-hybrid
 else
 export FLYGPT_GENERATOR_URL="${FLYGPT_GENERATOR_URL:-http://127.0.0.1:11434/v1/chat/completions}"
 export FLYGPT_GENERATOR_MODEL="${FLYGPT_GENERATOR_MODEL:-qwen3:4b-instruct}"
@@ -20,6 +23,8 @@ export FLYGPT_GENERATOR_MAX_TOKENS="${FLYGPT_GENERATOR_MAX_TOKENS:-384}"
 echo "🪰 FlyGPT v0.8.0 backend"
 if [[ "${FLYGPT_GENERATOR_MODE:-http}" == "native" ]]; then
   echo "Generator: Papiti Native v1 (no LLM)"
+elif [[ "${FLYGPT_GENERATOR_MODE:-http}" == "hybrid" ]]; then
+  echo "Generator: Papiti Hybrid (native first; local model ${FLYGPT_HYBRID_MODEL:-not configured})"
 else
   echo "Generator: $FLYGPT_GENERATOR_PROVIDER / $FLYGPT_GENERATOR_MODEL"
   echo "URL: $FLYGPT_GENERATOR_URL"
