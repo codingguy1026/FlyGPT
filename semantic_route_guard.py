@@ -22,6 +22,7 @@ _SUPPORTED_GENERAL_INTENTS = frozenset({
     "acknowledge_presence",
     "request_specific_task",
     "return_welcome",
+    "acknowledge_personal_sports_win",
 })
 
 
