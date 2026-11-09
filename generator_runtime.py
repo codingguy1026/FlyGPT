@@ -351,11 +351,25 @@ class GeneratorRuntime:
     """
 
     def __init__(self) -> None:
-        self.native_mode = os.environ.get("FLYGPT_GENERATOR_MODE", "").strip().lower() == "native"
-        self.local_only = enabled(os.environ.get("FLYGPT_LOCAL_ONLY")) and not self.native_mode
-        self.url = "" if self.native_mode else os.environ.get("FLYGPT_GENERATOR_URL", "").strip()
-        self.model = "" if self.native_mode else os.environ.get("FLYGPT_GENERATOR_MODEL", "").strip()
-        if self.local_only:
+        mode = os.environ.get("FLYGPT_GENERATOR_MODE", "").strip().lower()
+        self.native_mode = mode == "native"
+        self.hybrid_mode = mode == "hybrid"
+        # Hybrid is opt-in and accepts only a dedicated, loopback language
+        # generator. No default Qwen model, auto-pull, or hosted API.
+        self.local_only = self.hybrid_mode or (
+            enabled(os.environ.get("FLYGPT_LOCAL_ONLY")) and not self.native_mode
+        )
+        self.url = (
+            os.environ.get("FLYGPT_HYBRID_URL", "").strip()
+            if self.hybrid_mode else
+            ("" if self.native_mode else os.environ.get("FLYGPT_GENERATOR_URL", "").strip())
+        )
+        self.model = (
+            os.environ.get("FLYGPT_HYBRID_MODEL", "").strip()
+            if self.hybrid_mode else
+            ("" if self.native_mode else os.environ.get("FLYGPT_GENERATOR_MODEL", "").strip())
+        )
+        if self.local_only and not self.hybrid_mode:
             # A stale Gemini key must never turn on hosted generation.
             self.url = self.url or DEFAULT_LOCAL_GENERATOR_URL
             self.model = self.model or (
@@ -420,12 +434,14 @@ class GeneratorRuntime:
 
     @property
     def configured(self) -> bool:
-        return self.native_mode or bool(self.url and self.model and self.local_endpoint_allowed)
+        return self.native_mode or self.hybrid_mode or bool(self.url and self.model and self.local_endpoint_allowed)
 
     @property
     def provider_name(self) -> str:
         if self.native_mode:
             return "papiti-native"
+        if self.hybrid_mode:
+            return "papiti-hybrid"
         if self.local_only:
             return "ollama-local"
         if not self.configured:
@@ -443,7 +459,13 @@ class GeneratorRuntime:
             "provider": self.provider_name,
             "model": ("Papiti Native v1" if self.native_mode else self.model or None),
             "native_mode": self.native_mode,
-            "uses_language_model": not self.native_mode,
+            "hybrid_mode": self.hybrid_mode,
+            "hybrid_model_configured": bool(
+                self.hybrid_mode and self.url and self.model and self.local_endpoint_allowed
+            ),
+            "uses_language_model": not self.native_mode and (
+                not self.hybrid_mode or bool(self.url and self.model and self.local_endpoint_allowed)
+            ),
             "url_configured": bool(self.url),
             "api_key_configured": bool(self.api_key),
             "timeout_seconds": self.timeout,
@@ -455,6 +477,7 @@ class GeneratorRuntime:
             "fallback_model": self.fallback_model or None,
             "retry_delay_seconds": self.retry_delay,
             "role": ("native_deterministic_language_realizer" if self.native_mode
+                     else "native_first_optional_local_language_model" if self.hybrid_mode
                      else "grounded_task_reasoner_and_mouth_only_language_realizer"),
             "strict_semantic_gate": True,
             "bounded_task_reasoning": True,
@@ -992,6 +1015,36 @@ class GeneratorRuntime:
                 latency_ms=round((time.perf_counter() - started) * 1000),
                 error_code=None if answer else "native_plan_unavailable",
             )
+
+        if self.hybrid_mode:
+            # A completed, validated mouth-only plan is authoritative.
+            # Invalid fact plans must NOT be sent to a free-form model.
+            started = time.perf_counter()
+            native_answer = realize_native(
+                message, route, brain_state=brain_state, tool_context=tool_context,
+            )
+            utterance_plan = (brain_state or {}).get("utterance_plan")
+            ready_plan = (
+                isinstance(utterance_plan, dict)
+                and utterance_plan.get("contract") == "mouth_only_v1"
+                and utterance_plan.get("ready") is True
+            )
+            if ready_plan or not (self.url and self.model and self.local_endpoint_allowed):
+                return GenerationResult(
+                    used=bool(native_answer),
+                    provider="papiti-hybrid-native",
+                    model=None,
+                    answer=native_answer,
+                    finish_reason=("native_realization" if ready_plan and native_answer
+                                   else "native_limited" if native_answer else None),
+                    latency_ms=round((time.perf_counter() - started) * 1000),
+                    error_code=None if native_answer else "native_plan_unavailable",
+                    error=("Hybrid model requires a loopback URL"
+                           if not ready_plan and self.url and not self.local_endpoint_allowed
+                           else None),
+                )
+            # A bounded task plan and existing response leak checks still
+            # gate all optional local model generations below.
 
         if self.local_only and not self.local_endpoint_allowed:
             return GenerationResult(
