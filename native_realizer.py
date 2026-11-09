@@ -19,6 +19,10 @@ _SOCIAL: dict[str, tuple[str, str]] = {
     "acknowledge_presence": ("응, 이야기할 준비가 됐어.", "I'm ready to chat."),
     "request_specific_task": ("어떤 도움이 필요한지 알려줘.", "What would you like help with?"),
     "return_welcome": ("나도 반가워!", "Nice to meet you too!"),
+    "acknowledge_personal_sports_win": (
+        "축하해! 몇 대 몇으로 이겼어?",
+        "Congrats! What was the score?",
+    ),
 }
 
 
