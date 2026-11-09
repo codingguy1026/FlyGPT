@@ -7,7 +7,16 @@ import unittest
 from unittest.mock import patch
 
 from generator_runtime import GeneratorRuntime, GenerationResult
-from tests.test_native_voice import plan_for
+from brain_runtime import FlyBrainRuntime
+
+ROUTE = {"route": "general", "confidence": 0.96, "margin": 0.75, "accepted": True}
+
+
+def plan_for(message: str, route: str = "general", **finalize):
+    brain = FlyBrainRuntime()
+    info = {**ROUTE, "route": route}
+    state = brain.plan(route_info=info, dispatch={"route": route}, message=message)
+    return brain.finalize(state, **finalize)
 
 
 class PapitiHybridTests(unittest.TestCase):
