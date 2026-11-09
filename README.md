@@ -30,6 +30,39 @@ is deleted by this code change: after testing native mode in Codespaces,
 you can remove an unused installed model separately with
 `ollama rm qwen3:4b-instruct` (only if nothing else uses it).
 
+## Papiti Hybrid v0.1 (experimental, opt-in)
+
+`make hybrid` combines the native reply engine with an **optional local
+language model**. For verified plans (greetings, exact calculations, checked
+FlyGPT facts and retrieved memory), it always answers deterministically.
+Only a validated open-ended `bounded_task_v1` plan may be sent to a language
+model. Unsupported requests still receive the native limitation message if no
+local model is configured.
+
+```bash
+make hybrid
+python -m unittest tests.test_native_voice tests.test_hybrid_voice -v
+```
+
+To experiment with a separately prepared locally hosted language model,
+set these variables in your private `.env`:
+
+```bash
+FLYGPT_HYBRID_URL=http://127.0.0.1:PORT/v1/chat/completions
+FLYGPT_HYBRID_MODEL=YOUR_LOCAL_MODEL_NAME
+```
+
+The model endpoint must be loopback. **No model is downloaded or started**
+automatically by `make hybrid`; no hosted endpoint, API key, or previous
+Qwen configuration is implicitly reused. This is a routing bridge for a
+**future Papiti-trained model**, not a claim that an original language model
+has already been trained. It reuses the existing bounded-task and output
+validation gates for local model responses. An optional model may be slow
+or hallucinate, so test before relying on its answers.
+
+To return to the pure deterministic experiment, use `make native`.
+The standalone Native PR must be merged before this stacked hybrid PR.
+
 As of v0.10.0, interactive connectome queries target the **Janelia MaleCNS v1.0**
 dataset through the official neuPrint service instead of requiring local
 FlyWire v783 Parquet files.

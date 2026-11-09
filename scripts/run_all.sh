@@ -26,6 +26,9 @@ for argument in "$@"; do
     --native)
       export FLYGPT_GENERATOR_MODE=native
       ;;
+    --hybrid)
+      export FLYGPT_GENERATOR_MODE=hybrid
+      ;;
     --fast)
       export FLYGPT_GENERATOR_MODE=http
       # Opt-in low-latency CPU model. Keep normal make run on Qwen3 4B.
@@ -36,7 +39,7 @@ for argument in "$@"; do
       echo "⚡ Fast CPU mode: $FLYGPT_LOCAL_MODEL"
       ;;
     *)
-      echo "Usage: bash scripts/run_all.sh [--native] [--local-only] [--stable] [--fast]" >&2
+      echo "Usage: bash scripts/run_all.sh [--native] [--hybrid] [--local-only] [--stable] [--fast]" >&2
       exit 2
       ;;
   esac
@@ -48,12 +51,17 @@ export FLYGPT_STABLE_MODE="$STABLE_MODE"
 
 # Explicit local-only HTTP mode never invokes a hosted language model.
 # Native mode takes precedence over stale .env generator and Ollama settings.
-if [[ "$FLYGPT_GENERATOR_MODE" != "native" && "$FLYGPT_GENERATOR_MODE" != "http" ]]; then
-  echo "❌ FLYGPT_GENERATOR_MODE must be native or http" >&2
+if [[ "$FLYGPT_GENERATOR_MODE" != "native" && "$FLYGPT_GENERATOR_MODE" != "http" && "$FLYGPT_GENERATOR_MODE" != "hybrid" ]]; then
+  echo "❌ FLYGPT_GENERATOR_MODE must be native, hybrid, or http" >&2
   exit 2
 fi
 if [[ "$FLYGPT_GENERATOR_MODE" == "native" ]]; then
   unset FLYGPT_GENERATOR_URL FLYGPT_GENERATOR_MODEL FLYGPT_GENERATOR_API_KEY FLYGPT_LOCAL_ONLY GEMINI_API_KEY FLYGPT_GENERATOR_FALLBACK_MODEL
+elif [[ "$FLYGPT_GENERATOR_MODE" == "hybrid" ]]; then
+  # Dedicated FLYGPT_HYBRID_{URL,MODEL} only. Never inherit stale hosted
+  # settings or auto-pull the old Qwen default.
+  unset FLYGPT_GENERATOR_URL FLYGPT_GENERATOR_MODEL FLYGPT_GENERATOR_API_KEY GEMINI_API_KEY FLYGPT_GENERATOR_FALLBACK_MODEL
+  export FLYGPT_LOCAL_ONLY=1
 else
 case "${FLYGPT_LOCAL_ONLY:-0}" in
   1|true|TRUE|yes|YES|on|ON)
@@ -203,6 +211,9 @@ if [[ "$USE_OLLAMA" -eq 1 ]]; then
 else
   if [[ "$FLYGPT_GENERATOR_MODE" == "native" ]]; then
     echo "🪰 PAPITI NATIVE: built-in deterministic responses, no Ollama or hosted LLM"
+  elif [[ "$FLYGPT_GENERATOR_MODE" == "hybrid" ]]; then
+    echo "🪰 PAPITI HYBRID: native answers first; optional explicit loopback language model"
+    echo "🧠 Hybrid model: ${FLYGPT_HYBRID_MODEL:-not configured (native-only fallback)}"
   else
   echo "☁️  Hosted generator: ${FLYGPT_GENERATOR_PROVIDER:-compatible-http} / ${FLYGPT_GENERATOR_MODEL:-unset}"
   if [[ -n "${FLYGPT_GENERATOR_FALLBACK_MODEL:-}" ]]; then
