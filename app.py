@@ -581,6 +581,8 @@ def generator_readiness():
     import urllib.error
 
     generator_status = _generator.status()
+    if generator_status.get("native_mode"):
+        return {"state": "native", "ready": True}
     model = str(generator_status.get("model") or "")
     url = str(os.environ.get("FLYGPT_GENERATOR_URL", ""))
     local = (
@@ -644,7 +646,8 @@ def health():
         "brain": {
             "enabled": True,
             "planner": "deterministic-connectome-semantic-state",
-            "generator_role": "mouth-only-language-realization",
+            "generator_role": ("native-deterministic-realization"
+                               if _generator.native_mode else "mouth-only-language-realization"),
             "semantic_contract": "mouth_only_v1",
         },
         "generator": _generator.status(),
@@ -1428,7 +1431,9 @@ def chat_endpoint(req: ChatRequest, request: Request):
             if generation.used and generation.answer:
                 answer = generation.answer
                 mode_label = (
-                    f"{result.route} · verified_fact_fallback"
+                    f"{result.route} · papiti_native"
+                    if generation.provider == "papiti-native"
+                    else f"{result.route} · verified_fact_fallback"
                     if generation.finish_reason == "verified_fact_fallback"
                     else f"{result.route} · generated"
                 )
@@ -1479,7 +1484,10 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 # Report actionable failures without exposing raw provider error
                 # bodies, credentials, or private request details in chat prose.
                 failure = generation.error_code or ""
-                if failure == "timeout" or (
+                if failure == "native_plan_unavailable":
+                    answer = "🪰 자체 응답 계획이 아직 준비되지 않았어. 지원하는 질문을 다시 시도해 줘."
+                    mode_label = f"{result.route} · native_plan_unavailable"
+                elif failure == "timeout" or (
                     not failure and "timeout" in (generation.error or "").lower()
                 ):
                     answer = (

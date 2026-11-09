@@ -23,8 +23,8 @@ PROJECT_FACTS: dict[str, dict[str, str]] = {
         "en": "A MaleCNS-backed task router classifies the type of user request.",
     },
     "architecture.language": {
-        "ko": "별도의 언어 모델이 주어진 응답 계획을 자연어 문장으로 표현한다.",
-        "en": "A separate language model turns a supplied answer plan into natural language.",
+        "ko": "독립된 언어 처리 계층이 주어진 응답 계획을 자연어 문장으로 표현한다.",
+        "en": "A separate language processing layer turns a supplied answer plan into natural language.",
     },
     "architecture.limit": {
         "ko": "초파리 커넥톰 자체가 인간 언어를 만들거나 의식을 가진다는 뜻은 아니다.",

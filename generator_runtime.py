@@ -12,6 +12,7 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 from semantic_planner import trusted_fact_fallback
+from native_realizer import realize_native
 from local_generator_policy import (
     DEFAULT_LOCAL_GENERATOR_URL,
     DEFAULT_LOCAL_MODEL,
@@ -350,9 +351,10 @@ class GeneratorRuntime:
     """
 
     def __init__(self) -> None:
-        self.local_only = enabled(os.environ.get("FLYGPT_LOCAL_ONLY"))
-        self.url = os.environ.get("FLYGPT_GENERATOR_URL", "").strip()
-        self.model = os.environ.get("FLYGPT_GENERATOR_MODEL", "").strip()
+        self.native_mode = os.environ.get("FLYGPT_GENERATOR_MODE", "").strip().lower() == "native"
+        self.local_only = enabled(os.environ.get("FLYGPT_LOCAL_ONLY")) and not self.native_mode
+        self.url = "" if self.native_mode else os.environ.get("FLYGPT_GENERATOR_URL", "").strip()
+        self.model = "" if self.native_mode else os.environ.get("FLYGPT_GENERATOR_MODEL", "").strip()
         if self.local_only:
             # A stale Gemini key must never turn on hosted generation.
             self.url = self.url or DEFAULT_LOCAL_GENERATOR_URL
@@ -363,11 +365,11 @@ class GeneratorRuntime:
             not self.local_only or is_local_generator_url(self.url)
         )
         self.api_key = (
-            "" if self.local_only
+            "" if self.local_only or self.native_mode
             else os.environ.get("FLYGPT_GENERATOR_API_KEY", "").strip()
         )
         self.fallback_model = (
-            "" if self.local_only
+            "" if self.local_only or self.native_mode
             else os.environ.get("FLYGPT_GENERATOR_FALLBACK_MODEL", "").strip()
         )
         self.retry_delay = _env_float(
@@ -412,16 +414,18 @@ class GeneratorRuntime:
         ).strip().lower()
         self.reasoning_effort = (
             reasoning_effort
-            if not self.local_only and reasoning_effort in {"low", "medium", "high"}
+            if not self.local_only and not self.native_mode and reasoning_effort in {"low", "medium", "high"}
             else None
         )
 
     @property
     def configured(self) -> bool:
-        return bool(self.url and self.model and self.local_endpoint_allowed)
+        return self.native_mode or bool(self.url and self.model and self.local_endpoint_allowed)
 
     @property
     def provider_name(self) -> str:
+        if self.native_mode:
+            return "papiti-native"
         if self.local_only:
             return "ollama-local"
         if not self.configured:
@@ -437,7 +441,9 @@ class GeneratorRuntime:
             "local_only": self.local_only,
             "local_endpoint_allowed": self.local_endpoint_allowed,
             "provider": self.provider_name,
-            "model": self.model or None,
+            "model": ("Papiti Native v1" if self.native_mode else self.model or None),
+            "native_mode": self.native_mode,
+            "uses_language_model": not self.native_mode,
             "url_configured": bool(self.url),
             "api_key_configured": bool(self.api_key),
             "timeout_seconds": self.timeout,
@@ -448,7 +454,8 @@ class GeneratorRuntime:
             "reasoning_effort": self.reasoning_effort,
             "fallback_model": self.fallback_model or None,
             "retry_delay_seconds": self.retry_delay,
-            "role": "grounded_task_reasoner_and_mouth_only_language_realizer",
+            "role": ("native_deterministic_language_realizer" if self.native_mode
+                     else "grounded_task_reasoner_and_mouth_only_language_realizer"),
             "strict_semantic_gate": True,
             "bounded_task_reasoning": True,
         }
@@ -969,6 +976,21 @@ class GeneratorRuntime:
                 provider=self.provider_name,
                 model=self.model or None,
                 answer=None,
+            )
+
+        if self.native_mode:
+            started = time.perf_counter()
+            answer = realize_native(
+                message, route, brain_state=brain_state, tool_context=tool_context,
+            )
+            return GenerationResult(
+                used=bool(answer),
+                provider="papiti-native",
+                model=None,
+                answer=answer,
+                finish_reason="native_realization" if answer else None,
+                latency_ms=round((time.perf_counter() - started) * 1000),
+                error_code=None if answer else "native_plan_unavailable",
             )
 
         if self.local_only and not self.local_endpoint_allowed:

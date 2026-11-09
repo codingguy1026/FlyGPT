@@ -3,6 +3,33 @@
 FlyGPT is an experimental Drosophila connectome interface and connectome-routed
 task router.
 
+## Papiti Native (experimental, no LLM)
+
+`make run` now starts **Papiti Native v1** by default. It keeps the MaleCNS
+task router and verified symbolic tools, but **does not start or download
+Ollama or call a hosted language model**. The new `native_realizer.py`
+renders validated conversation plans with deterministic Python logic.
+
+```bash
+make run                # native by default, including make stable
+make native             # explicitly force native mode
+python -m unittest tests.test_native_voice -v
+```
+
+The first native implementation can express greetings, Papiti/project facts,
+verified tool results, limited stored context and missing-evidence messages.
+It **cannot yet write free-form creative answers, arbitrary code, or explain
+unsolved questions**. Those requests receive a transparent limitation notice.
+MaleCNS routes task types; the fly connectome itself does not learn Korean or
+produce human language.
+
+The existing HTTP/LLM provider remains available as a deliberate rollback.
+Set `FLYGPT_GENERATOR_MODE=http` in your local `.env`, then use
+`make local` for Ollama or configure the hosted provider. No local model
+is deleted by this code change: after testing native mode in Codespaces,
+you can remove an unused installed model separately with
+`ollama rm qwen3:4b-instruct` (only if nothing else uses it).
+
 As of v0.10.0, interactive connectome queries target the **Janelia MaleCNS v1.0**
 dataset through the official neuPrint service instead of requiring local
 FlyWire v783 Parquet files.
