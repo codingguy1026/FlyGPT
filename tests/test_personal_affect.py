@@ -121,9 +121,7 @@ class PapitiAffectReactionTests(unittest.TestCase):
                     plan["style"]["tone"] = "angry"
                 else:
                     plan["speech_act"] = "acknowledge_personal_disappointment"
-                with self.subTest(kind=kind), patch.object(
-                    GeneratorRuntime(), "_generate_once",
-                ) as network:
+                with self.subTest(kind=kind):
                     runtime = GeneratorRuntime()
                     with patch.object(runtime, "_generate_once") as generate:
                         result = runtime.generate(text, fixed["route"],
