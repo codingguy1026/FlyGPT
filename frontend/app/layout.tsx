@@ -4,6 +4,7 @@ import "./globals.css";
 import "./refinements.css";
 import "./liquid-refraction.css";
 import "./studio-theme.css";
+import "./neuron-explorer.css";
 
 export const metadata: Metadata = {
   title: "FlyGPT v0.7.1",
