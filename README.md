@@ -57,6 +57,24 @@ trained automatically. It reuses the existing bounded-task and output
 validation gates for local model responses. An optional model may be slow
 or hallucinate, so test before relying on its answers.
 
+## Papiti independent language-model v0.2 (225 dialogues)
+
+The separate Papiti character-level Transformer now has a larger **225-example,
+22-topic Korean training experiment**. It is still randomly initialized from
+scratch, not pretrained, and remains too small for reliable general chat.
+The original v0.1 model and Native/Hybrid defaults are unchanged.
+
+```bash
+make papiti-lm-train-v0.2
+make papiti-lm-eval-v0.2
+make papiti-lm-chat-v0.2
+```
+
+A dedicated GitHub Actions workflow also trains and compares fresh **one-epoch**
+and **24-epoch** models on the *same* held-out split, and uploads the learned
+v0.2 checkpoint as a short-lived artifact. See
+[Papiti v0.2 experiment and checkpoint guide](docs/papiti-language-v0-2.md).
+
 ## Papiti scratch Transformer v0.1 (experimental)
 
 A separately initialized character-level causal Transformer can now be trained

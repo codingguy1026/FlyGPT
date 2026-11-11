@@ -134,7 +134,7 @@ def _train(args):
                 "initialization": "random_from_scratch",
             })
     print(f"best checkpoint saved locally: {args.checkpoint}")
-    print("This tiny corpus is for infrastructure checks; fluency is NOT established.")
+    print("Small training corpora are experimental and do not establish fluency.")
 
 
 def _eval(args):

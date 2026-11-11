@@ -1,7 +1,20 @@
-.PHONY: papiti-lm-train papiti-lm-eval papiti-lm-chat papiti-lm-serve run native hybrid fast local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural enable-trained-router disable-trained-router download-full-neuron-data train-full-neuron-router enable-full-neuron-router disable-full-neuron-router install-full-neuron-router help stop
+.PHONY: papiti-lm-train-v0.2 papiti-lm-eval-v0.2 papiti-lm-chat-v0.2 papiti-lm-serve-v0.2 papiti-lm-train papiti-lm-eval papiti-lm-chat papiti-lm-serve run native hybrid fast local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural enable-trained-router disable-trained-router download-full-neuron-data train-full-neuron-router enable-full-neuron-router disable-full-neuron-router install-full-neuron-router help stop
 
 # Explicit opt-in scratch language-model experiment; never invoked by make run.
 PAPITI_PYTHON ?= $(if $(wildcard .venv-papiti/bin/python),.venv-papiti/bin/python,python3)
+
+# Separate experiments; original v0.1 targets remain unchanged.
+papiti-lm-train-v0.2:
+	@$(PAPITI_PYTHON) -m papiti_lm train --data training/papiti_dialogues_v0_2.jsonl --checkpoint artifacts/papiti_language_v0_2.pt --epochs 24 --batch-size 16
+
+papiti-lm-eval-v0.2:
+	@$(PAPITI_PYTHON) -m papiti_lm eval --data training/papiti_dialogues_v0_2.jsonl --checkpoint artifacts/papiti_language_v0_2.pt
+
+papiti-lm-chat-v0.2:
+	@$(PAPITI_PYTHON) -m papiti_lm chat --checkpoint artifacts/papiti_language_v0_2.pt
+
+papiti-lm-serve-v0.2:
+	@$(PAPITI_PYTHON) -m papiti_lm serve --checkpoint artifacts/papiti_language_v0_2.pt
 
 papiti-lm-train:
 	@$(PAPITI_PYTHON) -m papiti_lm train
@@ -102,7 +115,11 @@ disk:
 
 help:
 	@echo "FlyGPT development commands"
-	@echo "  make papiti-lm-train  Train Papiti Transformer from scratch (opt-in)"
+	@echo "  make papiti-lm-train-v0.2  Train Papiti v0.2 (225 original dialogue pairs)"
+	@echo "  make papiti-lm-eval-v0.2   Evaluate v0.2 group-heldout split"
+	@echo "  make papiti-lm-chat-v0.2   Chat with v0.2 learned weights"
+	@echo "  make papiti-lm-serve-v0.2  Serve local v0.2 experiment"
+	@echo "  make papiti-lm-train       Train original v0.1 (48 pairs)"
 	@echo "  make papiti-lm-eval   Evaluate held-out groups"
 	@echo "  make papiti-lm-chat   Chat with local Papiti weights"
 	@echo "  make papiti-lm-serve  Serve localhost Papiti checkpoint"

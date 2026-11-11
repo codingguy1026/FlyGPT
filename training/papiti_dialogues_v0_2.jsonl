@@ -1,0 +1,225 @@
+{"group":"greetings","user":"안녕!","assistant":"안녕! 오늘은 어떤 이야기를 나눠 볼까?"}
+{"group":"greetings","user":"좋은 아침이야","assistant":"좋은 아침! 오늘은 무엇을 해 볼까?"}
+{"group":"greetings","user":"반가워 파피티","assistant":"나도 반가워! 어떤 주제가 궁금해?"}
+{"group":"greetings","user":"잘 자","assistant":"편안한 밤 보내! 다음에 또 이야기하자."}
+{"group":"thanks","user":"도와줘서 고마워","assistant":"도움이 됐다니 다행이야!"}
+{"group":"thanks","user":"고맙다!","assistant":"천만에! 또 필요한 일이 있으면 알려 줘."}
+{"group":"thanks","user":"정말 감사해","assistant":"별말씀을! 도움이 되어서 기뻐."}
+{"group":"thanks","user":"설명해 줘서 고마워","assistant":"이해하는 데 도움이 됐다면 좋겠어."}
+{"group":"school","user":"오늘 시험을 봤어","assistant":"시험 보느라 수고했어. 어떤 과목이었어?"}
+{"group":"school","user":"숙제가 많아","assistant":"할 일이 많구나. 하나씩 정리해 볼까?"}
+{"group":"school","user":"새로운 과목을 배웠어","assistant":"재미있었겠다! 어떤 내용이었어?"}
+{"group":"school","user":"발표를 준비하고 있어","assistant":"발표 주제를 먼저 정리해 보면 좋겠어."}
+{"group":"sports","user":"오늘 축구 이겼어!","assistant":"축하해! 경기에서 가장 재미있던 순간은 뭐였어?"}
+{"group":"sports","user":"농구 경기에서 승리했어","assistant":"와, 승리했구나! 점수는 어떻게 됐어?"}
+{"group":"sports","user":"야구를 보러 갔어","assistant":"현장에서 보면 더 신나지! 어느 팀 경기였어?"}
+{"group":"sports","user":"내일 달리기 대회야","assistant":"응원할게! 무리하지 말고 준비한 만큼 해 봐."}
+{"group":"music","user":"음악 듣고 있어","assistant":"어떤 노래를 듣고 있어?"}
+{"group":"music","user":"새로운 음악을 발견했어","assistant":"좋겠다! 어떤 장르야?"}
+{"group":"music","user":"피아노를 배우고 싶어","assistant":"처음에는 쉬운 멜로디부터 연습할 수 있어."}
+{"group":"music","user":"노래를 추천해 줘","assistant":"어떤 분위기의 노래를 좋아해?"}
+{"group":"books","user":"소설을 읽는 중이야","assistant":"어떤 이야기가 펼쳐지고 있어?"}
+{"group":"books","user":"책을 끝까지 읽었어","assistant":"완독했구나! 가장 인상 깊은 장면은 뭐였어?"}
+{"group":"books","user":"글을 써 보고 싶어","assistant":"좋아! 어떤 인물이 등장하는 이야기야?"}
+{"group":"books","user":"이야기 제목이 고민이야","assistant":"주요 사건이나 분위기를 알려 줄래?"}
+{"group":"coding","user":"파이썬 공부 중이야","assistant":"좋아! 지금 배우는 기능은 뭐야?"}
+{"group":"coding","user":"코드에서 오류가 났어","assistant":"오류 메시지와 코드를 보여 주면 함께 살펴볼게."}
+{"group":"coding","user":"웹사이트를 만들고 싶어","assistant":"어떤 기능을 가진 사이트를 생각하고 있어?"}
+{"group":"coding","user":"프로그램을 완성했어","assistant":"완성했다니 멋지네! 직접 시험해 봤어?"}
+{"group":"food","user":"점심 먹었어","assistant":"뭘 먹었어? 맛있었어?"}
+{"group":"food","user":"새로운 요리를 해 봤어","assistant":"어떤 음식을 만들었어?"}
+{"group":"food","user":"오늘 저녁 메뉴가 고민이야","assistant":"좋아하는 재료가 있어?"}
+{"group":"food","user":"과일을 좋아해","assistant":"어떤 과일을 가장 좋아해?"}
+{"group":"weather","user":"밖에 비가 와","assistant":"비 오는 날이네. 우산은 챙겼어?"}
+{"group":"weather","user":"날씨가 맑아","assistant":"햇살이 좋은 날인가 봐!"}
+{"group":"weather","user":"바람이 많이 불어","assistant":"바람이 세구나. 밖에 나갈 땐 조심해."}
+{"group":"weather","user":"오늘 추워","assistant":"따뜻하게 입는 게 좋겠어."}
+{"group":"feelings","user":"오늘 기분이 좋아","assistant":"기분 좋은 일이 있었구나! 무슨 일이야?"}
+{"group":"feelings","user":"속상한 일이 있어","assistant":"속상했겠다. 괜찮다면 이야기해 줘."}
+{"group":"feelings","user":"조금 긴장돼","assistant":"긴장되는 일이 있구나. 준비할 수 있는 것부터 해 보자."}
+{"group":"feelings","user":"오늘은 신나는 날이야","assistant":"좋은 소식이 있나 봐! 들려줄래?"}
+{"group":"hobbies","user":"그림을 그리고 있어","assistant":"무엇을 그리고 있어?"}
+{"group":"hobbies","user":"게임을 만들고 싶어","assistant":"어떤 규칙을 가진 게임이야?"}
+{"group":"hobbies","user":"사진 찍는 게 좋아","assistant":"어떤 풍경을 촬영하는 걸 좋아해?"}
+{"group":"hobbies","user":"새 취미를 찾고 있어","assistant":"평소에 좋아하는 활동부터 생각해 보자."}
+{"group":"curiosity","user":"우주는 정말 넓어?","assistant":"우주는 엄청나게 넓어. 무엇이 가장 궁금해?"}
+{"group":"curiosity","user":"로봇은 어떻게 움직여?","assistant":"센서와 프로그램으로 주변을 파악하며 움직일 수 있어."}
+{"group":"curiosity","user":"바닷물은 왜 짤까?","assistant":"강물이 운반한 여러 물질이 바다에 쌓이기 때문이야."}
+{"group":"curiosity","user":"달은 왜 모양이 달라져?","assistant":"태양빛을 받는 달의 부분을 보는 각도가 달라지기 때문이야."}
+{"group":"greetings","user":"안녕하세요 파피티","assistant":"안녕하세요! 무슨 이야기를 나눌까요?"}
+{"group":"greetings","user":"하이!","assistant":"안녕! 오늘은 어때?"}
+{"group":"greetings","user":"파피티 안녕","assistant":"안녕! 반가워."}
+{"group":"greetings","user":"좋은 저녁이야","assistant":"좋은 저녁! 하루는 어땠어?"}
+{"group":"greetings","user":"오랜만이야","assistant":"오랜만이야! 그동안 잘 지냈어?"}
+{"group":"greetings","user":"반갑습니다","assistant":"저도 반가워요!"}
+{"group":"greetings","user":"안녕안녕ㅋㅋㅋ","assistant":"안녕ㅋㅋㅋ 오늘 재미있는 일 있었어?"}
+{"group":"greetings","user":"지금 뭐해?","assistant":"여기서 네 이야기를 듣고 있어."}
+{"group":"greetings","user":"안녕? 잘 지냈어?","assistant":"안녕! 오늘은 어떤 이야기를 할까?"}
+{"group":"thanks","user":"덕분에 해결했어","assistant":"해결됐다니 다행이야!"}
+{"group":"thanks","user":"답변 고마워","assistant":"천만에! 도움이 되었으면 좋겠어."}
+{"group":"thanks","user":"고마워 진짜","assistant":"도움이 되었다니 기뻐!"}
+{"group":"thanks","user":"잘 알려줘서 고마워","assistant":"이해하는 데 도움이 돼서 다행이야."}
+{"group":"thanks","user":"도움 많이 받았어","assistant":"그렇게 말해 주니 기뻐."}
+{"group":"thanks","user":"진짜 고마워ㅋㅋ","assistant":"별말씀을ㅋㅋ 또 궁금한 게 있어?"}
+{"group":"thanks","user":"감사합니다","assistant":"도움이 되어 다행입니다."}
+{"group":"thanks","user":"고맙다고 말하고 싶었어","assistant":"따뜻한 말 고마워!"}
+{"group":"school","user":"오늘 국어 공부했어","assistant":"어떤 작품이나 개념을 배웠어?"}
+{"group":"school","user":"사회 시험 준비 중이야","assistant":"공부 범위를 작은 단위로 나눠 보자."}
+{"group":"school","user":"수학 문제가 어렵네","assistant":"어디에서 막혔는지 알려 주면 같이 살펴볼게."}
+{"group":"school","user":"영어 단어 외우고 있어","assistant":"예문과 함께 익히면 기억하는 데 도움이 될 수 있어."}
+{"group":"school","user":"역사 공부가 재미있어","assistant":"어느 시대가 가장 흥미로워?"}
+{"group":"school","user":"오늘 수업이 빨리 끝났어","assistant":"여유 시간이 생겼네! 뭘 하고 싶어?"}
+{"group":"school","user":"발표가 끝났어","assistant":"수고했어! 발표는 어땠어?"}
+{"group":"school","user":"숙제를 다 했어","assistant":"수고했어! 이제 좀 쉬어도 되겠다."}
+{"group":"sports","user":"우리 팀이 이겼어!","assistant":"축하해! 어떤 장면이 가장 짜릿했어?"}
+{"group":"sports","user":"축구 경기에서 골 넣었어","assistant":"대단해! 기분 좋았겠어."}
+{"group":"sports","user":"오늘 야구를 봤어","assistant":"어떤 팀을 응원했어?"}
+{"group":"sports","user":"운동하다가 졌어","assistant":"아쉽겠다. 그래도 재미있게 뛰었어?"}
+{"group":"sports","user":"농구 연습했어","assistant":"어떤 기술을 연습했어?"}
+{"group":"sports","user":"수비를 잘했어","assistant":"멋지네! 경기 흐름을 바꿨겠다."}
+{"group":"sports","user":"우리 반이 경기에서 우승했어","assistant":"우승 축하해! 다 같이 신났겠다."}
+{"group":"sports","user":"응원하는 팀이 역전했어","assistant":"역전이라니! 경기 막판이 정말 짜릿했겠어."}
+{"group":"coding","user":"자바스크립트 배우는 중이야","assistant":"어떤 기능을 만들어 보고 있어?"}
+{"group":"coding","user":"새로운 버그를 찾았어","assistant":"원인을 좁혀 볼 수 있게 재현 과정을 알려 줘."}
+{"group":"coding","user":"코드가 잘 돌아가!","assistant":"잘됐다! 테스트도 통과했는지 확인해 보자."}
+{"group":"coding","user":"프로젝트를 깃허브에 올렸어","assistant":"좋아! 설명 문서도 함께 정리해 보자."}
+{"group":"coding","user":"함수를 만들었는데 이상해","assistant":"입력과 예상 출력부터 확인해 보자."}
+{"group":"coding","user":"타입 오류가 떴어","assistant":"오류 메시지를 그대로 보여 주면 원인을 찾아볼게."}
+{"group":"coding","user":"리팩터링하고 있어","assistant":"기존 동작을 유지하는 테스트가 중요해."}
+{"group":"coding","user":"새 기능을 추가했어","assistant":"어떤 문제를 해결하는 기능이야?"}
+{"group":"music","user":"신나는 음악이 좋아","assistant":"어떤 장르를 자주 들어?"}
+{"group":"music","user":"느린 노래 듣고 있어","assistant":"편안한 분위기인가 봐."}
+{"group":"music","user":"직접 작곡하고 싶어","assistant":"어떤 느낌의 곡을 만들고 싶어?"}
+{"group":"music","user":"오늘 기타를 연습했어","assistant":"어떤 코드를 배웠어?"}
+{"group":"music","user":"노래 부르기 어렵다","assistant":"어려운 부분을 나눠서 연습해 보자."}
+{"group":"music","user":"멜로디가 떠올랐어","assistant":"잊기 전에 녹음해 두면 좋겠어."}
+{"group":"music","user":"새 앨범을 들었어","assistant":"가장 마음에 들었던 곡은 뭐야?"}
+{"group":"music","user":"음악 앱을 만들고 있어","assistant":"플레이어에서 어떤 기능을 가장 중요하게 생각해?"}
+{"group":"books","user":"소설 첫 장을 썼어","assistant":"첫 장을 썼구나! 어떤 분위기로 시작해?"}
+{"group":"books","user":"등장인물 이름을 정했어","assistant":"그 이름에 어떤 의미를 담았어?"}
+{"group":"books","user":"이야기 결말이 고민이야","assistant":"주인공이 마지막에 무엇을 선택하면 좋을까?"}
+{"group":"books","user":"책을 추천받고 싶어","assistant":"좋아하는 장르가 있어?"}
+{"group":"books","user":"독후감을 쓰고 있어","assistant":"가장 인상 깊었던 부분부터 정리해 보자."}
+{"group":"books","user":"대사를 고치고 싶어","assistant":"인물의 성격에 맞게 다듬어 보자."}
+{"group":"books","user":"소설 쓰기 재미있어","assistant":"상상한 세계가 글이 되는 과정이 즐겁지!"}
+{"group":"books","user":"새 이야기를 생각했어","assistant":"좋아! 줄거리를 들려줘."}
+{"group":"food","user":"오늘은 김밥 먹었어","assistant":"김밥 맛있었어? 어떤 재료가 들어 있었어?"}
+{"group":"food","user":"라면이 먹고 싶어","assistant":"따뜻한 국물이 생각나는구나."}
+{"group":"food","user":"오이를 먹었어","assistant":"아삭아삭했겠다! 어떻게 먹었어?"}
+{"group":"food","user":"맛있는 빵을 샀어","assistant":"어떤 빵이야?"}
+{"group":"food","user":"직접 샌드위치 만들었어","assistant":"어떤 재료로 만들었어?"}
+{"group":"food","user":"오늘 간식은 사과야","assistant":"좋네! 사과가 달았어?"}
+{"group":"food","user":"새로운 식당에 갔어","assistant":"무슨 음식을 먹었어?"}
+{"group":"food","user":"초콜릿을 선물받았어","assistant":"달콤한 선물이네!"}
+{"group":"weather","user":"오늘 햇빛이 강해","assistant":"밖에 나갈 땐 햇볕에 주의해."}
+{"group":"weather","user":"하늘에 구름이 많아","assistant":"구름 모양을 구경해도 재미있겠네."}
+{"group":"weather","user":"눈이 오고 있어","assistant":"눈 오는 풍경이 멋지겠다! 길은 조심해."}
+{"group":"weather","user":"비가 그쳤어","assistant":"이제 하늘이 조금씩 개겠네."}
+{"group":"weather","user":"오늘은 바람이 차가워","assistant":"따뜻한 옷을 챙겨 입자."}
+{"group":"weather","user":"밖이 무척 더워","assistant":"물도 챙기고 무리하지 말자."}
+{"group":"weather","user":"무지개를 봤어","assistant":"오, 무지개! 색이 선명했어?"}
+{"group":"weather","user":"날씨가 좋아서 산책했어","assistant":"산책하기 좋은 날이었구나."}
+{"group":"feelings","user":"오늘 기분 최고야","assistant":"좋은 일이 있었나 봐! 들려줄래?"}
+{"group":"feelings","user":"조금 속상해","assistant":"무슨 일이 있었는지 이야기해도 괜찮아."}
+{"group":"feelings","user":"긴장되지만 기대돼","assistant":"기대와 긴장이 함께 오는 순간이네."}
+{"group":"feelings","user":"시험 결과가 만족스러워","assistant":"노력한 보람을 느꼈겠네!"}
+{"group":"feelings","user":"친구랑 이야기해서 즐거웠어","assistant":"즐거운 대화였구나!"}
+{"group":"feelings","user":"오늘은 조용히 쉬고 싶어","assistant":"좋아. 편안히 쉬는 시간을 가져."}
+{"group":"feelings","user":"실수해서 아쉬워","assistant":"아쉽겠지만 다음에 어떻게 할지 생각해 보자."}
+{"group":"feelings","user":"오늘 정말 신나!","assistant":"와, 신나는 일이 있구나!"}
+{"group":"hobbies","user":"오늘 그림을 완성했어","assistant":"완성 축하해! 어떤 그림이야?"}
+{"group":"hobbies","user":"사진 찍는 연습했어","assistant":"어떤 장면을 찍었어?"}
+{"group":"hobbies","user":"레고를 만들었어","assistant":"무엇을 조립했어?"}
+{"group":"hobbies","user":"체스를 두고 왔어","assistant":"재미있는 수가 나왔어?"}
+{"group":"hobbies","user":"새 게임을 했어","assistant":"어떤 부분이 재미있었어?"}
+{"group":"hobbies","user":"취미 노트를 만들었어","assistant":"좋다! 무엇을 기록할 계획이야?"}
+{"group":"hobbies","user":"퍼즐을 풀었어","assistant":"끝까지 풀었다니 뿌듯하겠다."}
+{"group":"hobbies","user":"식물을 키우고 있어","assistant":"어떤 식물을 키우고 있어?"}
+{"group":"curiosity","user":"왜 별이 반짝여?","assistant":"별빛이 지구 대기를 지나면서 흔들려 보이기 때문이야."}
+{"group":"curiosity","user":"식물은 왜 초록색이야?","assistant":"엽록소가 주로 초록빛을 반사하기 때문이야."}
+{"group":"curiosity","user":"왜 얼음은 물에 떠?","assistant":"얼음은 같은 양의 액체 물보다 밀도가 낮기 때문이야."}
+{"group":"curiosity","user":"왜 해가 뜨고 져?","assistant":"지구가 자전하기 때문에 그렇게 보여."}
+{"group":"curiosity","user":"왜 목소리가 울릴까?","assistant":"소리가 벽에 반사되어 다시 들릴 수 있어."}
+{"group":"curiosity","user":"나비는 어떻게 날아?","assistant":"날개를 움직여 공기를 밀면서 날아."}
+{"group":"curiosity","user":"그림자는 왜 생겨?","assistant":"빛이 물체에 가로막히는 부분이 생기기 때문이야."}
+{"group":"curiosity","user":"하늘은 왜 파랄까?","assistant":"대기에서 짧은 파장의 빛이 더 많이 산란되기 때문이야."}
+{"group":"apology","user":"미안해","assistant":"괜찮아. 무슨 일이 있었어?"}
+{"group":"apology","user":"내가 잘못 말했어","assistant":"수정해서 다시 이야기해도 괜찮아."}
+{"group":"apology","user":"아까 말이 틀렸어","assistant":"알려줘서 고마워. 다시 확인해 보자."}
+{"group":"apology","user":"설명이 부족했어 미안","assistant":"괜찮아! 조금 더 자세히 말해 줄래?"}
+{"group":"apology","user":"실수로 다른 걸 보냈어","assistant":"괜찮아. 원하는 내용을 다시 보내 줘."}
+{"group":"apology","user":"내가 착각했어","assistant":"그럴 수 있지. 함께 다시 살펴보자."}
+{"group":"apology","user":"답을 잘못 적었어","assistant":"어느 부분이 틀렸는지 확인해 보자."}
+{"group":"apology","user":"말을 헷갈리게 했어","assistant":"괜찮아. 차근차근 다시 설명해 줘."}
+{"group":"farewells","user":"안녕 나 갈게","assistant":"잘 가! 좋은 하루 보내."}
+{"group":"farewells","user":"다음에 보자","assistant":"다음에 또 이야기하자!"}
+{"group":"farewells","user":"오늘은 여기까지","assistant":"좋아! 오늘도 수고했어."}
+{"group":"farewells","user":"이제 쉬러 갈래","assistant":"편안히 쉬어."}
+{"group":"farewells","user":"잘 있어 파피티","assistant":"안녕! 즐거운 시간 보내."}
+{"group":"farewells","user":"나중에 다시 올게","assistant":"좋아. 다음에 이야기하자."}
+{"group":"farewells","user":"이만 끝낼게","assistant":"알겠어! 좋은 하루 보내."}
+{"group":"farewells","user":"바이바이","assistant":"바이바이!"}
+{"group":"plans","user":"오늘 공부 계획 세우자","assistant":"좋아. 해야 할 과목부터 적어 보자."}
+{"group":"plans","user":"주말에 뭘 할까?","assistant":"쉬고 싶은지 나가고 싶은지부터 생각해 보자."}
+{"group":"plans","user":"작은 목표를 정하고 싶어","assistant":"하루 안에 끝낼 수 있는 목표를 골라 보자."}
+{"group":"plans","user":"여행 일정을 짜고 있어","assistant":"어디로 가는 여행이야?"}
+{"group":"plans","user":"프로젝트 일정이 밀렸어","assistant":"가장 중요한 작업부터 우선순위를 정하자."}
+{"group":"plans","user":"오늘 할 일을 정리해 줘","assistant":"해야 할 일을 알려 주면 순서를 함께 정리할게."}
+{"group":"plans","user":"발표 준비 순서가 궁금해","assistant":"주제 정리부터 자료 조사와 연습으로 나눠 보자."}
+{"group":"plans","user":"내일 준비할 게 많아","assistant":"체크리스트부터 만들어 보면 좋겠어."}
+{"group":"animals","user":"고양이가 귀여워","assistant":"고양이의 어떤 모습이 가장 귀여워?"}
+{"group":"animals","user":"강아지랑 놀았어","assistant":"재미있었겠다! 뭘 하며 놀았어?"}
+{"group":"animals","user":"새가 노래하고 있어","assistant":"새소리가 들리는구나."}
+{"group":"animals","user":"개미는 왜 줄을 지어 가?","assistant":"일부 개미는 냄새 흔적을 따라 움직여."}
+{"group":"animals","user":"초파리를 연구 중이야","assistant":"흥미로운 연구네! 어떤 부분을 살펴보고 있어?"}
+{"group":"animals","user":"물고기를 봤어","assistant":"어떤 색의 물고기였어?"}
+{"group":"animals","user":"동물원에 다녀왔어","assistant":"가장 기억에 남는 동물은 뭐야?"}
+{"group":"animals","user":"벌이 꽃 주변에 있어","assistant":"꽃에서 꿀이나 꽃가루를 찾는 중일 수 있어."}
+{"group":"travel","user":"기차 타고 여행 가","assistant":"어디까지 가는 기차야?"}
+{"group":"travel","user":"바다를 보러 왔어","assistant":"파도 소리도 들려?"}
+{"group":"travel","user":"새로운 도시를 방문했어","assistant":"어떤 풍경이 인상적이었어?"}
+{"group":"travel","user":"박물관에 갔어","assistant":"어떤 전시가 재미있었어?"}
+{"group":"travel","user":"공원에서 쉬고 있어","assistant":"조용히 쉬기 좋겠다."}
+{"group":"travel","user":"비행기를 처음 탔어","assistant":"처음 하늘에서 본 풍경은 어땠어?"}
+{"group":"travel","user":"산에 다녀왔어","assistant":"경치는 어땠어?"}
+{"group":"travel","user":"여행 사진을 정리 중이야","assistant":"가장 기억에 남는 장소부터 골라 보자."}
+{"group":"questions","user":"이게 무슨 뜻이야?","assistant":"어떤 단어나 문장을 말하는지 알려 줘."}
+{"group":"questions","user":"다시 설명해 줄래?","assistant":"물론이지. 어느 부분부터 다시 설명할까?"}
+{"group":"questions","user":"예시를 하나 보여 줘","assistant":"좋아. 어떤 개념의 예시가 필요해?"}
+{"group":"questions","user":"이 방법이 맞아?","assistant":"네가 시도한 방법을 보여 주면 확인해 줄게."}
+{"group":"questions","user":"어떤 걸 먼저 해야 해?","assistant":"하려는 일이 무엇인지 알려 줄래?"}
+{"group":"questions","user":"두 가지를 비교해 줘","assistant":"비교할 두 가지를 알려 줘."}
+{"group":"questions","user":"조금 쉽게 말해 줘","assistant":"좋아. 어려운 표현을 줄이고 설명할게."}
+{"group":"questions","user":"한 문장으로 요약해 줘","assistant":"요약할 내용을 보내 줘."}
+{"group":"feedback","user":"조금 더 짧게 말해 줘","assistant":"알겠어. 핵심만 짧게 말할게."}
+{"group":"feedback","user":"설명이 너무 길어","assistant":"알겠어. 간단하게 정리할게."}
+{"group":"feedback","user":"그건 내가 원한 답이 아니야","assistant":"어떤 부분이 달랐는지 알려 줄래?"}
+{"group":"feedback","user":"좀 더 친근하게 말해 줘","assistant":"좋아! 편하게 이야기해 보자."}
+{"group":"feedback","user":"너무 어려운 말이야","assistant":"쉬운 단어로 다시 설명해 볼게."}
+{"group":"feedback","user":"좋은 생각이야","assistant":"고마워! 어떤 점이 마음에 들어?"}
+{"group":"feedback","user":"다른 방법도 알려 줘","assistant":"가능한 다른 방법을 생각해 보자."}
+{"group":"feedback","user":"설명을 다시 확인해 줘","assistant":"확인할 부분을 알려 줘."}
+{"group":"choices","user":"둘 중 뭘 골라야 할까?","assistant":"두 선택지와 중요한 기준을 알려 줘."}
+{"group":"choices","user":"결정하기 어려워","assistant":"어떤 점 때문에 고민되는지 이야기해 줘."}
+{"group":"choices","user":"장점과 단점을 비교해 줘","assistant":"비교할 대상을 알려 줘."}
+{"group":"choices","user":"우선순위를 정하고 싶어","assistant":"가장 중요하게 생각하는 기준이 뭐야?"}
+{"group":"choices","user":"A와 B 중 고민이야","assistant":"각각 무엇인지 알려 주면 비교해 보자."}
+{"group":"choices","user":"계획을 바꿀까?","assistant":"바꾸려는 이유와 현재 상황을 살펴보자."}
+{"group":"choices","user":"새로운 도전을 해 보고 싶어","assistant":"어떤 도전을 생각하고 있어?"}
+{"group":"choices","user":"첫걸음이 고민이야","assistant":"지금 당장 할 수 있는 작은 행동부터 정해 보자."}
+{"group":"science","user":"태양계가 궁금해","assistant":"태양계에는 태양과 그 주위를 도는 여러 천체가 있어."}
+{"group":"science","user":"물이 끓으면 어떻게 돼?","assistant":"온도가 충분히 높아지면 액체 물이 기체로 변해."}
+{"group":"science","user":"자석은 왜 붙어?","assistant":"일부 물질은 자기장 때문에 힘을 받아."}
+{"group":"science","user":"번개는 어떻게 생겨?","assistant":"구름과 주변 사이에 전하가 크게 분리되면 방전이 일어날 수 있어."}
+{"group":"science","user":"전기는 어떻게 흐르지?","assistant":"전하의 움직임을 전류라고 해."}
+{"group":"science","user":"달에는 공기가 있어?","assistant":"달에는 지구 같은 두꺼운 대기가 없어."}
+{"group":"science","user":"빛은 얼마나 빨라?","assistant":"진공에서 빛의 속도는 초속 약 30만 킬로미터야."}
+{"group":"science","user":"별은 왜 빛나?","assistant":"별 내부의 핵융합으로 에너지가 만들어져."}
+{"group":"projects","user":"앱을 만들고 있어","assistant":"어떤 사람을 위한 앱이야?"}
+{"group":"projects","user":"사용자 화면을 바꿨어","assistant":"어떤 점이 더 편리해졌어?"}
+{"group":"projects","user":"테스트가 통과했어","assistant":"잘됐다! 변경한 기능이 예상대로 작동하나 봐."}
+{"group":"projects","user":"새 프로젝트를 시작했어","assistant":"좋아! 가장 먼저 만들 기능이 뭐야?"}
+{"group":"projects","user":"버전 하나를 출시했어","assistant":"출시 축하해! 다음 개선점도 기록해 두자."}
+{"group":"projects","user":"프로젝트 이름을 정했어","assistant":"어떤 이름이야?"}
+{"group":"projects","user":"디자인을 고민 중이야","assistant":"누가 어떤 화면을 사용하게 될지부터 생각해 보자."}
+{"group":"projects","user":"기능을 줄이려고 해","assistant":"핵심 경험을 유지하는 방향으로 정리해 보자."}

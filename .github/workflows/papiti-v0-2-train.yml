@@ -1,0 +1,65 @@
+name: Papiti v0.2 training experiment
+
+on:
+  pull_request:
+    paths:
+      - "training/papiti_dialogues_v0_2.jsonl"
+      - "papiti_lm/**"
+      - "tests/test_papiti_lm.py"
+      - ".github/workflows/papiti-v0-2-train.yml"
+  push:
+    branches: [main]
+    paths:
+      - "training/papiti_dialogues_v0_2.jsonl"
+      - "papiti_lm/**"
+      - "tests/test_papiti_lm.py"
+      - ".github/workflows/papiti-v0-2-train.yml"
+  workflow_dispatch:
+
+jobs:
+  compare-training:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install CPU PyTorch and lightweight API test dependencies
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch
+          python -m pip install fastapi uvicorn
+      - name: Validate v0.2 data and model tests
+        run: python -m unittest tests.test_papiti_lm -v
+      - name: Train one epoch control (fresh weights)
+        run: |
+          python -m papiti_lm train \
+            --data training/papiti_dialogues_v0_2.jsonl \
+            --checkpoint /tmp/papiti-v0-2-control.pt \
+            --epochs 1 --batch-size 16 --seed 42
+          python -m papiti_lm eval \
+            --data training/papiti_dialogues_v0_2.jsonl \
+            --checkpoint /tmp/papiti-v0-2-control.pt
+      - name: Train 24 epochs (fresh weights, same split)
+        run: |
+          python -m papiti_lm train \
+            --data training/papiti_dialogues_v0_2.jsonl \
+            --checkpoint artifacts/papiti_language_v0_2.pt \
+            --epochs 24 --batch-size 16 --seed 42
+          python -m papiti_lm eval \
+            --data training/papiti_dialogues_v0_2.jsonl \
+            --checkpoint artifacts/papiti_language_v0_2.pt
+      - name: Sample both learned models without hardcoded responses
+        run: |
+          echo "=== one-epoch baseline ==="
+          python -m papiti_lm chat --checkpoint /tmp/papiti-v0-2-control.pt --message "안녕!" --max-new-tokens 64 --seed 7
+          echo "=== best 24-epoch run ==="
+          python -m papiti_lm chat --checkpoint artifacts/papiti_language_v0_2.pt --message "안녕!" --max-new-tokens 64 --seed 7
+          python -m papiti_lm chat --checkpoint artifacts/papiti_language_v0_2.pt --message "오늘 학교에서 축구 이겼어!" --max-new-tokens 64 --seed 7
+      - name: Upload trained v0.2 checkpoint
+        uses: actions/upload-artifact@v4
+        with:
+          name: papiti-v0-2-trained-weights
+          path: artifacts/papiti_language_v0_2.pt
+          if-no-files-found: error
+          retention-days: 7
