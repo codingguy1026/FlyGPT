@@ -3,6 +3,16 @@
 FlyGPT is an experimental Drosophila connectome interface and connectome-routed
 task router.
 
+## Papiti language v0.6 (opt-in research experiment)
+
+v0.6 adds a staged, source-attributed mathematics curriculum, Korean sentence
+and situation examples, contrastive training, and separate validation/final
+tests. Its chat and local API generate answers only with the scratch
+Transformer, even when the legacy calculator environment variable is set.
+See [the Korean experiment guide](docs/papiti-language-v0-6.md) for commands,
+data provenance, evaluation criteria and measured limitations. This does not
+change `make run`, Native/Hybrid behavior, or earlier version commands.
+
 ## Papiti Native (experimental, no LLM)
 
 `make run` now starts **Papiti Native v1** by default. It keeps the MaleCNS

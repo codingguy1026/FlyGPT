@@ -183,6 +183,8 @@ def _chat(args):
     _torch()
     from papiti_lm.model import generate, load_checkpoint
     model, tokenizer, metadata = load_checkpoint(args.checkpoint)
+    if metadata.get("version") == "v0.6" and args.math_tool:
+        raise ValueError("v0.6 checkpoints require model-only inference; use papiti_lm.v0_6 chat")
     print(f"Papiti scratch Transformer | trained epoch {metadata.get('epoch', '?')}")
     from papiti_lm.arithmetic import try_arithmetic
 

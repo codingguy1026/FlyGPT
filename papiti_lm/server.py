@@ -36,7 +36,8 @@ def _loaded():
     path = os.environ.get("PAPITI_LM_CHECKPOINT")
     if not path:
         raise RuntimeError("PAPITI_LM_CHECKPOINT is not configured")
-    model, tokenizer, _metadata = load_checkpoint(path)
+    model, tokenizer, metadata = load_checkpoint(path)
+    model.papiti_version = metadata.get("version")
     return model, tokenizer
 
 
@@ -59,7 +60,8 @@ def chat(request: ChatRequest):
         model, tokenizer = _loaded()
         # This is still single-turn generation: system/history are ignored.
         text = None
-        if os.environ.get("PAPITI_LM_ARITHMETIC") == "1":
+        if (getattr(model, "papiti_version", None) != "v0.6"
+                and os.environ.get("PAPITI_LM_ARITHMETIC") == "1"):
             from papiti_lm.arithmetic import try_arithmetic
             text = try_arithmetic(users[-1])
         if text is None:
