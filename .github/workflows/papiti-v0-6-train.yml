@@ -1,0 +1,70 @@
+name: Papiti v0.6 curriculum and unseen evaluation
+
+on:
+  pull_request:
+    paths:
+      - "papiti_lm/**"
+      - "training/papiti_v0_6_curriculum.json"
+      - "training/papiti_dialogues_v0_3.jsonl"
+      - "tests/test_papiti*.py"
+      - ".github/workflows/papiti-v0-6-train.yml"
+  push:
+    branches: [main]
+    paths:
+      - "papiti_lm/**"
+      - "training/papiti_v0_6_curriculum.json"
+      - "training/papiti_dialogues_v0_3.jsonl"
+      - "tests/test_papiti*.py"
+      - ".github/workflows/papiti-v0-6-train.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  train-and-evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install CPU training and API dependencies
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu 'torch>=2.4,<3'
+          python -m pip install fastapi uvicorn
+      - name: Test leakage, model-only inference, old checkpoints and new curriculum
+        run: python -m unittest tests.test_papiti_lm tests.test_papiti_v0_6 -v
+      - name: Train fixed curriculum with validation-only checkpoint selection
+        run: |
+          python -m papiti_lm.v0_6 train --epochs 12 --seed 42 \
+            --checkpoint artifacts/papiti_language_v0_6.pt \
+            --baseline-checkpoint artifacts/papiti_language_v0_6_epoch1.pt
+      - name: Score untouched tests for selected model and one-epoch control
+        run: |
+          mkdir -p reports
+          python -m papiti_lm.v0_6 eval \
+            --compare-checkpoint artifacts/papiti_language_v0_6_epoch1.pt \
+            --report reports/papiti_v0_6.json > reports/papiti_v0_6.log
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path("reports/papiti_v0_6.json").read_text())
+          print(json.dumps({"metrics": report["metrics"], "delta_char_nll": report["delta_char_nll"]}, indent=2))
+          for row in report["generations"]:
+              if row["domain"] != "arithmetic" or row["family"] == "addition:1:1":
+                  print(json.dumps(row, ensure_ascii=False))
+          print("Pipeline success does not establish model quality. Human review remains required.")
+          PY
+      - name: Upload weights, complete generations, control and review worksheet
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: papiti-v0-6-model-only-evidence
+          path: |
+            artifacts/papiti_language_v0_6*.pt
+            reports/papiti_v0_6.json
+            reports/papiti_v0_6.log
+          if-no-files-found: error
+          retention-days: 14

@@ -3,6 +3,20 @@
 # Explicit opt-in scratch language-model experiment; never invoked by make run.
 PAPITI_PYTHON ?= $(if $(wildcard .venv-papiti/bin/python),.venv-papiti/bin/python,python3)
 
+.PHONY: papiti-lm-train-v0.6 papiti-lm-eval-v0.6 papiti-lm-chat-v0.6 papiti-lm-serve-v0.6
+
+papiti-lm-train-v0.6:
+	@$(PAPITI_PYTHON) -m papiti_lm.v0_6 train --baseline-checkpoint artifacts/papiti_language_v0_6_epoch1.pt
+
+papiti-lm-eval-v0.6:
+	@$(PAPITI_PYTHON) -m papiti_lm.v0_6 eval --compare-checkpoint artifacts/papiti_language_v0_6_epoch1.pt
+
+papiti-lm-chat-v0.6:
+	@$(PAPITI_PYTHON) -m papiti_lm.v0_6 chat
+
+papiti-lm-serve-v0.6:
+	@$(PAPITI_PYTHON) -m papiti_lm.v0_6 serve
+
 # v0.5 is explicitly model-only. No math-tool and no answer mapping at runtime.
 # Training labels are generated before model training; reserved operand pairs
 # are never used for optimization and are evaluated without answer injection.
@@ -155,6 +169,10 @@ disk:
 
 help:
 	@echo "FlyGPT development commands"
+	@echo "  make papiti-lm-train-v0.6  Train staged Korean + sourced mathematics curriculum"
+	@echo "  make papiti-lm-eval-v0.6   Score untouched tests and one-epoch control"
+	@echo "  make papiti-lm-chat-v0.6   Pure Transformer inference"
+	@echo "  make papiti-lm-serve-v0.6  Pure Transformer local API"
 	@echo "  make papiti-lm-train-v0.5  Train pure Korean + synthetic-math model"
 	@echo "  make papiti-lm-eval-v0.5   Evaluate truly unseen math prompts"
 	@echo "  make papiti-lm-chat-v0.5   Chat with only v0.5 learned Transformer"
