@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import random
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -111,3 +112,27 @@ class CharTokenizer:
         input_ids, labels = ids[:-1], ids[1:]
         labels[:len(prefix) - 1] = [-100] * (len(prefix) - 1)
         return input_ids, labels
+
+
+class JamoTokenizer(CharTokenizer):
+    """Decompose precomposed Korean syllables into Unicode NFD jamo tokens.
+
+    The vocabulary is still derived ONLY from the training split. In contrast
+    to syllable tokenization, a novel valid Hangul syllable can be encoded when
+    its constituent jamo were observed in training. This is not a pretrained
+    tokenizer and it does not guarantee valid Korean generation.
+    """
+
+    @classmethod
+    def from_examples(cls, examples: list[Example]):
+        characters: set[str] = set()
+        for item in examples:
+            characters.update(unicodedata.normalize("NFD", item.user))
+            characters.update(unicodedata.normalize("NFD", item.assistant))
+        return cls(sorted(characters))
+
+    def encode(self, text: str) -> list[int]:
+        return super().encode(unicodedata.normalize("NFD", text))
+
+    def decode(self, tokens: list[int]) -> str:
+        return unicodedata.normalize("NFC", super().decode(tokens))

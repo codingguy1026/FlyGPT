@@ -1,7 +1,20 @@
-.PHONY: papiti-lm-train-v0.2 papiti-lm-eval-v0.2 papiti-lm-chat-v0.2 papiti-lm-serve-v0.2 papiti-lm-train papiti-lm-eval papiti-lm-chat papiti-lm-serve run native hybrid fast local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural enable-trained-router disable-trained-router download-full-neuron-data train-full-neuron-router enable-full-neuron-router disable-full-neuron-router install-full-neuron-router help stop
+.PHONY: papiti-lm-train-v0.3 papiti-lm-eval-v0.3 papiti-lm-chat-v0.3 papiti-lm-serve-v0.3 papiti-lm-train-v0.2 papiti-lm-eval-v0.2 papiti-lm-chat-v0.2 papiti-lm-serve-v0.2 papiti-lm-train papiti-lm-eval papiti-lm-chat papiti-lm-serve run native hybrid fast local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural enable-trained-router disable-trained-router download-full-neuron-data train-full-neuron-router enable-full-neuron-router disable-full-neuron-router install-full-neuron-router help stop
 
 # Explicit opt-in scratch language-model experiment; never invoked by make run.
 PAPITI_PYTHON ?= $(if $(wildcard .venv-papiti/bin/python),.venv-papiti/bin/python,python3)
+
+# Papiti v0.3: Korean NFD jamo tokenizer, larger corpus, early stopping.
+papiti-lm-train-v0.3:
+	@$(PAPITI_PYTHON) -m papiti_lm train --data training/papiti_dialogues_v0_3.jsonl --checkpoint artifacts/papiti_language_v0_3.pt --epochs 30 --patience 7 --batch-size 16 --tokenizer jamo --d-model 128 --heads 4 --layers 2 --context 192
+
+papiti-lm-eval-v0.3:
+	@$(PAPITI_PYTHON) -m papiti_lm eval --data training/papiti_dialogues_v0_3.jsonl --checkpoint artifacts/papiti_language_v0_3.pt
+
+papiti-lm-chat-v0.3:
+	@$(PAPITI_PYTHON) -m papiti_lm chat --checkpoint artifacts/papiti_language_v0_3.pt --temperature 0.7 --top-k 16 --repetition-penalty 1.12
+
+papiti-lm-serve-v0.3:
+	@$(PAPITI_PYTHON) -m papiti_lm serve --checkpoint artifacts/papiti_language_v0_3.pt
 
 # Separate experiments; original v0.1 targets remain unchanged.
 papiti-lm-train-v0.2:
@@ -115,6 +128,10 @@ disk:
 
 help:
 	@echo "FlyGPT development commands"
+	@echo "  make papiti-lm-train-v0.3  Train jamo-based Korean v0.3 (721 original pairs)"
+	@echo "  make papiti-lm-eval-v0.3   Evaluate v0.3 group-heldout split"
+	@echo "  make papiti-lm-chat-v0.3   Chat with v0.3 learned weights"
+	@echo "  make papiti-lm-serve-v0.3  Serve local v0.3 experiment"
 	@echo "  make papiti-lm-train-v0.2  Train Papiti v0.2 (225 original dialogue pairs)"
 	@echo "  make papiti-lm-eval-v0.2   Evaluate v0.2 group-heldout split"
 	@echo "  make papiti-lm-chat-v0.2   Chat with v0.2 learned weights"

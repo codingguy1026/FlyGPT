@@ -67,7 +67,7 @@ def _evaluate(model, sequences, batch_size: int) -> dict[str, float]:
 def _train(args):
     torch = _torch()
     from torch.utils.data import DataLoader
-    from papiti_lm.corpus import CharTokenizer
+    from papiti_lm.corpus import CharTokenizer, JamoTokenizer
     from papiti_lm.model import ModelConfig, PapitiTransformer, save_checkpoint
 
     if not 1 <= args.epochs <= 200 or not 1 <= args.batch_size <= 256:
@@ -78,7 +78,7 @@ def _train(args):
     random.seed(args.seed)
     torch.set_num_threads(min(4, torch.get_num_threads()))
     train, valid, digest = _dataset(args.data, args.seed, args.val_fraction)
-    tokenizer = CharTokenizer.from_examples(train)
+    tokenizer = (JamoTokenizer if args.tokenizer == "jamo" else CharTokenizer).from_examples(train)
     config = ModelConfig(
         vocab_size=tokenizer.vocab_size,
         context=args.context,
@@ -100,6 +100,7 @@ def _train(args):
         model.parameters(), lr=args.learning_rate, weight_decay=0.01
     )
     best_nll = float("inf")
+    epochs_no_improvement = 0
     print(f"random init | parameters={sum(p.numel() for p in model.parameters()):,} "
           f"| train={len(train)} | held-out={len(valid)} | vocab={tokenizer.vocab_size}")
     for epoch in range(1, args.epochs + 1):
@@ -122,6 +123,7 @@ def _train(args):
               f"heldout_ppl={metrics['perplexity']:.3f}")
         if metrics["nll"] < best_nll:
             best_nll = metrics["nll"]
+            epochs_no_improvement = 0
             save_checkpoint(args.checkpoint, model, tokenizer, {
                 "seed": args.seed,
                 "source_sha256": digest,
@@ -132,7 +134,13 @@ def _train(args):
                 "heldout_nll": metrics["nll"],
                 "heldout_perplexity": metrics["perplexity"],
                 "initialization": "random_from_scratch",
+                "tokenizer_type": args.tokenizer,
             })
+        else:
+            epochs_no_improvement += 1
+        if args.patience > 0 and epochs_no_improvement >= args.patience:
+            print(f"early_stop epoch={epoch} after {args.patience} non-improving epochs")
+            break
     print(f"best checkpoint saved locally: {args.checkpoint}")
     print("Small training corpora are experimental and do not establish fluency.")
 
@@ -159,7 +167,9 @@ def _chat(args):
     if args.message is not None:
         print(generate(model, tokenizer, args.message,
                        max_new_tokens=args.max_new_tokens,
-                       temperature=args.temperature, seed=args.seed))
+                       temperature=args.temperature, top_k=args.top_k,
+                       repetition_penalty=args.repetition_penalty,
+                       seed=args.seed))
         return
     print("type /quit to leave")
     while True:
@@ -173,7 +183,8 @@ def _chat(args):
             continue
         print("papiti> " + generate(
             model, tokenizer, message, max_new_tokens=args.max_new_tokens,
-            temperature=args.temperature, seed=args.seed
+            temperature=args.temperature, top_k=args.top_k,
+            repetition_penalty=args.repetition_penalty, seed=args.seed
         ))
 
 
@@ -197,6 +208,8 @@ def main(argv=None):
     train.add_argument("--data", default="training/papiti_demo_dialogues.jsonl")
     train.add_argument("--checkpoint", default="artifacts/papiti_language_v0_1.pt")
     train.add_argument("--epochs", type=int, default=12)
+    train.add_argument("--tokenizer", choices=("char", "jamo"), default="char")
+    train.add_argument("--patience", type=int, default=0, help="early stop after N unimproved validation epochs; 0 disables")
     train.add_argument("--batch-size", type=int, default=8)
     train.add_argument("--learning-rate", type=float, default=0.001)
     train.add_argument("--context", type=int, default=192)
@@ -218,6 +231,8 @@ def main(argv=None):
     chat.add_argument("--message", default=None)
     chat.add_argument("--max-new-tokens", type=int, default=96)
     chat.add_argument("--temperature", type=float, default=0.8)
+    chat.add_argument("--top-k", type=int, default=24)
+    chat.add_argument("--repetition-penalty", type=float, default=1.0)
     chat.add_argument("--seed", type=int, default=None)
     chat.set_defaults(func=_chat)
 

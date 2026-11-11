@@ -9,7 +9,7 @@ from pathlib import Path
 
 from papiti_lm.corpus import (
     ASSISTANT, BOS, EOS, UNK, USER,
-    CharTokenizer, Example, load_examples, split_by_group,
+    CharTokenizer, JamoTokenizer, Example, load_examples, split_by_group,
 )
 
 
@@ -70,6 +70,20 @@ class CorpusTests(unittest.TestCase):
         for item in train + valid:
             tokenizer.sequence(item, context=192)
 
+    def test_v0_3_expanded_corpus_and_jamo_roundtrip(self):
+        path = Path(__file__).resolve().parents[1] / "training/papiti_dialogues_v0_3.jsonl"
+        examples = load_examples(path)
+        self.assertEqual(len(examples), 721)
+        self.assertGreaterEqual(len({row.group for row in examples}), 50)
+        train, valid = split_by_group(examples, seed=42)
+        self.assertFalse({row.group for row in train} & {row.group for row in valid})
+        tokenizer = JamoTokenizer.from_examples(train)
+        for row in train + valid:
+            tokenizer.sequence(row, context=192)
+        # A composed syllable is split into constituent jamo.
+        self.assertEqual(tokenizer.decode(tokenizer.encode("한글 테스트!")), "한글 테스트!")
+        self.assertLess(tokenizer.vocab_size, 200)
+
     def test_bundled_demo_is_loadable(self):
         path = Path(__file__).resolve().parents[1] / "training/papiti_demo_dialogues.jsonl"
         examples = load_examples(path)
@@ -100,6 +114,33 @@ class TransformerSmokeTests(unittest.TestCase):
             result = chat(request)
         self.assertEqual(result["choices"][0]["message"]["content"], "반가워")
         self.assertEqual(mock_generate.call_args.kwargs["max_new_tokens"], 128)
+
+    def test_jamo_checkpoint_reload_and_repetition_penalty(self):
+        import torch
+        from papiti_lm.model import (
+            ModelConfig, PapitiTransformer, generate, load_checkpoint, save_checkpoint
+        )
+        rows = [Example("demo", "안녕하세요", "반가워요!"),
+                Example("demo", "고마워요", "천만에요!")]
+        tokenizer = JamoTokenizer.from_examples(rows)
+        torch.manual_seed(7)
+        model = PapitiTransformer(ModelConfig(
+            vocab_size=tokenizer.vocab_size, context=96,
+            d_model=32, heads=4, layers=1, dropout=0
+        ))
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "jamo.pt"
+            save_checkpoint(path, model, tokenizer, {"epoch": 1})
+            loaded, tok, _ = load_checkpoint(path)
+            self.assertIsInstance(tok, JamoTokenizer)
+            self.assertEqual(tok.decode(tok.encode("안녕하세요")), "안녕하세요")
+            text1 = generate(loaded, tok, "안녕", max_new_tokens=10,
+                             repetition_penalty=1.12, seed=42)
+            text2 = generate(loaded, tok, "안녕", max_new_tokens=10,
+                             repetition_penalty=1.12, seed=42)
+            self.assertEqual(text1, text2)
+            with self.assertRaisesRegex(ValueError, "repetition_penalty"):
+                generate(loaded, tok, "안녕", repetition_penalty=0.5)
 
     def test_causality_gradient_generation_and_safe_reload(self):
         import torch

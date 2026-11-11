@@ -57,6 +57,27 @@ trained automatically. It reuses the existing bounded-task and output
 validation gates for local model responses. An optional model may be slow
 or hallucinate, so test before relying on its answers.
 
+## Papiti v0.3: Korean syllable composition and 721 dialogue examples
+
+Papiti v0.3 remains a self-trained **randomly initialized** Transformer,
+separate from the MaleCNS router. It now offers an optional Unicode
+Hangul-jamo tokenizer, more varied Korean training examples, an opt-in
+output repetition penalty and validation early stopping. No pretrained
+Qwen/GPT model is downloaded or used.
+
+```bash
+make papiti-lm-train-v0.3
+make papiti-lm-eval-v0.3
+make papiti-lm-chat-v0.3
+```
+
+The GitHub Actions CPU workflow trains a one-epoch control and a separately
+trained best-checkpoint candidate on **the same** grouped held-out split,
+then uploads a short-lived trained-weight artifact. Read
+[the v0.3 experiment guide](docs/papiti-language-v0-3.md) for results,
+limitations, and setup. New data do not establish fluency by themselves;
+v0.1/v0.2 checkpoints, commands, and production defaults remain available.
+
 ## Papiti independent language-model v0.2 (225 dialogues)
 
 The separate Papiti character-level Transformer now has a larger **225-example,
