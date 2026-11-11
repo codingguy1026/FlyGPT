@@ -1,0 +1,42 @@
+name: Papiti scratch Transformer smoke
+
+on:
+  pull_request:
+    paths:
+      - "papiti_lm/**"
+      - "training/papiti_demo_dialogues.jsonl"
+      - "tests/test_papiti_lm.py"
+      - ".github/workflows/papiti-lm-smoke.yml"
+  workflow_dispatch:
+
+jobs:
+  train-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install CPU PyTorch and small server dependencies
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch
+          python -m pip install fastapi uvicorn
+      - name: Test causal masking, gradient and secure checkpoint reload
+        run: python -m unittest tests.test_papiti_lm -v
+      - name: Train fresh weights on bundled demo data (one epoch)
+        run: |
+          python -m papiti_lm train --epochs 1 --batch-size 8 --d-model 32 --heads 4 --layers 1 --context 192 --checkpoint /tmp/papiti-ci.pt
+          python -m papiti_lm eval --checkpoint /tmp/papiti-ci.pt
+          python -m papiti_lm chat --checkpoint /tmp/papiti-ci.pt --message "안녕" --max-new-tokens 12 --seed 7
+      - name: Local HTTP server startup smoke
+        run: |
+          python -m papiti_lm serve --checkpoint /tmp/papiti-ci.pt --port 8765 >/tmp/papiti-ci-server.log 2>&1 &
+          PID=$!
+          trap 'kill $PID 2>/dev/null || true' EXIT
+          for i in $(seq 1 25); do
+            if curl --fail --silent http://127.0.0.1:8765/health | grep -q 'papiti-char-transformer-v0.1'; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/papiti-ci-server.log
+          exit 1
