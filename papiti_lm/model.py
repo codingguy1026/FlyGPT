@@ -124,8 +124,9 @@ def generate(
     message = message[-(model.config.context - 3):]
     ids = [BOS, USER, *message, ASSISTANT]
     produced: list[int] = []
-    rng = torch.Generator(device=device)
+    rng = None
     if seed is not None:
+        rng = torch.Generator(device=device)
         rng.manual_seed(seed)
     model.eval()
     for _ in range(max_new_tokens):
