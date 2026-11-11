@@ -165,7 +165,7 @@ export type NeuronSkeletonResponse = {
 };
 
 export function getNeuronSkeleton(bodyId: string): Promise<NeuronSkeletonResponse> {
-  if (!/^\\d{1,16}$/.test(bodyId) || Number(bodyId) <= 0) {
+  if (!/^\d{1,16}$/.test(bodyId) || Number(bodyId) <= 0) {
     return Promise.reject(new Error("올바른 숫자 Body ID를 입력해 주세요."));
   }
   return requestJson<NeuronSkeletonResponse>(
