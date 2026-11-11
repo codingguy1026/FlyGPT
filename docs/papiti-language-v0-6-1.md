@@ -66,3 +66,27 @@ generated outputs. This is intentional: it protects verified upstream
 meaning and makes fallback behavior honest. The local subprocess adds
 startup and inference latency. No model is silently marked production
 ready merely because CI succeeds.
+
+## First measured experiment, 2026-11-12
+
+GitHub Actions run #43052648076 trained a 381,504-parameter random-initialized
+v0.6.1 speaker from 304 offline supervised rows. The best checkpoint
+was selected after epoch 11 using validation loss.
+
+- Unseen packet exact-match: 21/22 (95.5%). IMPORTANT: 20 of these
+  packets supply a number to copy; this is not arithmetic generalization
+  or broad Korean quality.
+- A true Hybrid runtime integration (not mocks) generated and accepted:
+  - Korean greeting: "안녕" -> "안녕! 반가워."
+  - Thanks: "고마워" -> "천만에!"
+  - Farewell: "잘 가" -> "잘 가!"
+  - Identity: "너 누구야?" -> the 3 complete project facts supplied upstream.
+- All four were tagged papiti-hybrid-v0.6.1, with finish reason
+  neural_semantic_realization. None came from Native fallback.
+- This proves the wiring and limited semantic-to-speech ability only.
+  No claim of free-form reasoning, reliable open-domain Korean or
+  production readiness. Human review and broader semantic evaluation
+  are still required.
+
+The CI job and short-lived weights are available from
+https://github.com/codingguy1026/FlyGPT/actions/runs/43052648076 .

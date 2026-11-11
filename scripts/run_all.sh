@@ -371,6 +371,8 @@ echo
 echo "✅ FlyGPT frontend and API proxy ready on port 3000"
 if [[ "$FLYGPT_GENERATOR_MODE" == "native" ]]; then
   echo "   Generator: Papiti Native v1 (no LLM)"
+elif [[ "$FLYGPT_GENERATOR_MODE" == "hybrid" ]]; then
+  echo "   Generator: MaleCNS/Python brain -> ${FLYGPT_HYBRID_SPEAKER:-v0.6.1} speech (native fallback)"
 elif [[ "$USE_OLLAMA" -eq 1 ]]; then
   echo "   Generator: Ollama :11434 / $MODEL"
 else

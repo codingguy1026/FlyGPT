@@ -37,11 +37,41 @@ The optional HTTP language generator remains available only when explicitly
 configured. Native and Hybrid modes do not select or download pretrained
 models. Previously installed model files must be removed separately.
 
+## Papiti Hybrid v0.6.1 neural speech (experimental)
+
+In Hybrid, the **MaleCNS router and Python reasoning engine still decide
+WHAT to say**. The new from-scratch **v0.6.1 Transformer only converts a
+completed semantic packet into a response**. The model has no independent
+reasoning or calculator authority and is trained only on approved brain
+speech plans, not fixed answers at runtime.
+
+```bash
+make train-setup
+make papiti-lm-train-v0.6.1
+make papiti-lm-eval-v0.6.1
+make hybrid
+```
+
+Hybrid selects v0.6.1 as its preferred experimental speaker **only if a
+compatible local checkpoint is present**. Its outputs are labeled
+`papiti-hybrid-v0.6.1` when genuinely generated and accepted by semantic
+checks. Incorrect exact results, corrupted factual content, repeated text,
+missing checkpoints and model execution errors all use the already present
+Native path, labeled `papiti-hybrid-native`. No model, formula, or answer is
+downloaded or invented at startup. Unsupported open-ended tasks do not
+magically become solvable. To disable this experiment, set
+`FLYGPT_HYBRID_SPEAKER=legacy`. See
+[the v0.6.1 experiment guide](docs/papiti-language-v0-6-1.md).
+
+### Historical Hybrid v0.1 behavior
+
 ## Papiti Hybrid v0.1 (experimental, opt-in)
 
 `make hybrid` combines the native reply engine with an **optional local
-language model**. For verified plans (greetings, exact calculations, checked
-FlyGPT facts and retrieved memory), it always answers deterministically.
+language model**. In the historical v0.1 mode, verified plans (greetings, exact calculations,
+checked FlyGPT facts and retrieved memory) answered deterministically.
+The newer v0.6.1 mode attempts a conditioned neural realization first and
+retains deterministic Native fallback.
 Only a validated open-ended `bounded_task_v1` plan may be sent to a language
 model. Unsupported requests still receive the native limitation message if no
 local model is configured.
