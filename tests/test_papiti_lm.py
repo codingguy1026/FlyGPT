@@ -9,7 +9,7 @@ from pathlib import Path
 
 from papiti_lm.corpus import (
     ASSISTANT, BOS, EOS, UNK, USER,
-    CharTokenizer, JamoTokenizer, SubwordTokenizer, Example, load_examples, split_by_group,
+    CharTokenizer, JamoTokenizer, SubwordTokenizer, DigitSubwordTokenizer, Example, load_examples, split_by_group,
 )
 
 
@@ -107,6 +107,42 @@ class CorpusTests(unittest.TestCase):
             tokenizer.sequence(item, context=192)
 
 
+class V05CurriculumTests(unittest.TestCase):
+    def test_arithmetic_splits_hold_out_unordered_pairs(self):
+        from papiti_lm.v0_5_corpus import PROBE_PAIRS, arithmetic_examples
+        first = arithmetic_examples(seed=42, train_count=200, valid_count=60)
+        second = arithmetic_examples(seed=42, train_count=200, valid_count=60)
+        self.assertEqual(first, second)
+        self.assertFalse(first.train_pairs & first.valid_pairs)
+        self.assertEqual(len(first.train), 200)
+        self.assertEqual(len(first.valid), 60 + len(PROBE_PAIRS))
+        self.assertTrue(all(x.assistant.isdecimal() for x in first.train))
+        for a, b in PROBE_PAIRS:
+            self.assertNotIn((min(a, b), max(a, b)), first.train_pairs)
+
+    def test_augment_does_not_modify_original_groups_or_answers(self):
+        from papiti_lm.v0_5_corpus import augment_language
+        original = [Example("only-train", "안녕", "반가워"),
+                    Example("only-train", "고마워!", "천만에")]
+        augmented = augment_language(original)
+        self.assertEqual([x.group for x in augmented], ["only-train"] * 2)
+        self.assertEqual([x.assistant for x in augmented], [x.assistant for x in original])
+        self.assertEqual([x.user for x in augmented], ["안녕!", "고마워"])
+
+    def test_digit_bpe_never_merges_adjacent_digits(self):
+        from papiti_lm.v0_5_corpus import arithmetic_examples
+        mathset = arithmetic_examples(seed=42, train_count=100, valid_count=40)
+        sentences = [Example("korean", "안녕", "반가워")]
+        tok = DigitSubwordTokenizer.from_examples(mathset.train + sentences, max_merges=32)
+        sample = "23+47은?"
+        self.assertEqual(tok.decode(tok.encode(sample)), sample)
+        self.assertEqual(tok.encode("23"), tok.encode("2") + tok.encode("3"))
+        self.assertEqual(tok.encode("99"), tok.encode("9") + tok.encode("9"))
+        self.assertTrue(all(not any(c.isdigit() for c in p[0] + p[1])
+                            for p in tok.merges))
+        self.assertFalse(mathset.train_pairs & mathset.valid_pairs)
+
+
 class CalculatorTests(unittest.TestCase):
     def test_arithmetic_is_explicit_and_never_eval(self):
         from papiti_lm.arithmetic import try_arithmetic
@@ -142,6 +178,44 @@ class TransformerSmokeTests(unittest.TestCase):
             result = chat(request)
         self.assertEqual(result["choices"][0]["message"]["content"], "반가워")
         self.assertEqual(mock_generate.call_args.kwargs["max_new_tokens"], 128)
+
+    def test_v0_5_checkpoint_and_model_only_math_chat(self):
+        import io
+        import torch
+        from contextlib import redirect_stdout
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from papiti_lm.model import ModelConfig, PapitiTransformer, load_checkpoint, save_checkpoint
+        from papiti_lm import v0_5
+
+        rows = [Example("t", "1+1은?", "2"),
+                Example("t", "안녕", "반가워!")]
+        tok = DigitSubwordTokenizer.from_examples(rows, max_merges=8)
+        torch.manual_seed(15)
+        model = PapitiTransformer(ModelConfig(
+            vocab_size=tok.vocab_size, context=64,
+            d_model=32, heads=4, layers=1, dropout=0.0
+        ))
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "model_only.pt"
+            save_checkpoint(path, model, tok, {"version": "v0.5", "epoch": 1})
+            _, loaded_tok, meta = load_checkpoint(path)
+        self.assertIsInstance(loaded_tok, DigitSubwordTokenizer)
+        self.assertEqual(meta["version"], "v0.5")
+        self.assertEqual(loaded_tok.encode("23"), tok.encode("23"))
+        args = SimpleNamespace(
+            checkpoint="unused", message="1+1은?", max_new_tokens=8,
+            temperature=0.0, top_k=12, repetition_penalty=1.0, seed=7
+        )
+        output = io.StringIO()
+        with patch.object(v0_5, "_torch"), \
+             patch("papiti_lm.model.load_checkpoint",
+                   return_value=(model, tok, {"version": "v0.5", "epoch": 1})), \
+             patch("papiti_lm.model.generate", return_value="actual-model-output") as called, \
+             redirect_stdout(output):
+            v0_5._chat(args)
+        self.assertIn("actual-model-output", output.getvalue())
+        self.assertEqual(called.call_args.args[2], "1+1은?")
 
     def test_bpe_checkpoint_reload_and_seeded_generation(self):
         import torch

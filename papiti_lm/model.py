@@ -14,7 +14,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from papiti_lm import MODEL_NAME
-from papiti_lm.corpus import ASSISTANT, BOS, EOS, PAD, UNK, USER, CharTokenizer, JamoTokenizer, SubwordTokenizer
+from papiti_lm.corpus import ASSISTANT, BOS, EOS, PAD, UNK, USER, CharTokenizer, JamoTokenizer, SubwordTokenizer, DigitSubwordTokenizer
 
 
 @dataclass(frozen=True)
@@ -180,7 +180,8 @@ def save_checkpoint(
             "config": asdict(model.config),
             "characters": tokenizer.characters,
             "tokenizer_type": (
-                "bpe" if isinstance(tokenizer, SubwordTokenizer)
+                "digit_bpe" if isinstance(tokenizer, DigitSubwordTokenizer)
+                else "bpe" if isinstance(tokenizer, SubwordTokenizer)
                 else "jamo" if isinstance(tokenizer, JamoTokenizer) else "char"
             ),
             "bpe_merges": (
@@ -203,7 +204,11 @@ def load_checkpoint(path: str | Path, device: str = "cpu"):
     if checkpoint.get("model_name") != MODEL_NAME:
         raise ValueError("checkpoint belongs to a different model")
     tokenizer_type = checkpoint.get("tokenizer_type", "char")
-    if tokenizer_type == "bpe":
+    if tokenizer_type == "digit_bpe":
+        tokenizer = DigitSubwordTokenizer(
+            checkpoint["characters"], checkpoint.get("bpe_merges", [])
+        )
+    elif tokenizer_type == "bpe":
         tokenizer = SubwordTokenizer(
             checkpoint["characters"], checkpoint.get("bpe_merges", [])
         )
