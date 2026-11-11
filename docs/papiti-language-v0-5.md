@@ -82,3 +82,24 @@ examples are not enough to guarantee grammar, understanding or
 generalization to unseen arithmetic pairs. If exact-match arithmetic
 accuracy is low, v0.5 genuinely failed the test; we will not conceal
 that failure by substituting fixed answers.
+
+## Actual first-run results (2026-11-11)
+
+GitHub Actions workflow #42962356775 finished successfully. The
+best balanced held-out-loss checkpoint came from epoch **2**:
+- Korean held-out character NLL: **3.04786** (character perplexity 21.07).
+- Math held-out character NLL: **1.20974**.
+- **Unseen arithmetic exact match: 0/32 (0%)**.
+- Input `1+1은?` generated `4`, although the correct answer is 2.
+- Input `23+47은?` generated `67`, although the correct answer is 70.
+- Input `고마워` generated `안녕! 도움이 됐다니 됐다니 줘.`
+
+This is an **experiment demonstrating model-only evaluation**, not a
+claim that v0.5 learned general addition or improved language over
+v0.4. We explicitly kept wrong numeric predictions rather than
+substituting calculator results. The language character NLL was
+slightly worse than v0.4's 2.983 on the same original held-out
+dialogue split, so this run is not an end-user quality upgrade.
+
+The trained checkpoint is in the GitHub Actions artifact
+papiti-v0-5-model-only-trained-weights (short-lived).
