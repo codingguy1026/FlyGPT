@@ -66,6 +66,9 @@ elif [[ "$FLYGPT_GENERATOR_MODE" == "hybrid" ]]; then
   # settings or automatically select an old language model.
   unset FLYGPT_GENERATOR_URL FLYGPT_GENERATOR_MODEL FLYGPT_GENERATOR_API_KEY GEMINI_API_KEY FLYGPT_GENERATOR_FALLBACK_MODEL
   export FLYGPT_LOCAL_ONLY=1
+  # Prefer the locally trained, brain-conditioned v0.6.1 speech model.
+  # Never auto-download weights or silently substitute a hosted provider.
+  export FLYGPT_HYBRID_SPEAKER="${FLYGPT_HYBRID_SPEAKER:-v0.6.1}"
 else
 case "${FLYGPT_LOCAL_ONLY:-0}" in
   1|true|TRUE|yes|YES|on|ON)
@@ -225,8 +228,19 @@ else
   if [[ "$FLYGPT_GENERATOR_MODE" == "native" ]]; then
     echo "🪰 PAPITI NATIVE: built-in deterministic responses, no Ollama or hosted LLM"
   elif [[ "$FLYGPT_GENERATOR_MODE" == "hybrid" ]]; then
-    echo "🪰 PAPITI HYBRID: native answers first; optional explicit loopback language model"
-    echo "🧠 Hybrid model: ${FLYGPT_HYBRID_MODEL:-not configured (native-only fallback)}"
+    echo "🪰 PAPITI HYBRID: MaleCNS/Python brain first; v0.6.1 neural speech when trained"
+    if [[ "${FLYGPT_HYBRID_SPEAKER:-}" == "v0.6.1" ]]; then
+      SPEECH_CKPT="${FLYGPT_HYBRID_SPEECH_CHECKPOINT:-artifacts/papiti_language_v0_6_1.pt}"
+      if [[ -f "$SPEECH_CKPT" ]]; then
+        echo "🗣️  v0.6.1 speaker checkpoint present: $SPEECH_CKPT"
+        echo "   Generation is labeled neural only when it passes meaning-preservation checks."
+      else
+        echo "⚠️  v0.6.1 speech weights missing: $SPEECH_CKPT"
+        echo "   Until installed, Hybrid explicitly labels Native fallback responses."
+        echo "   Train first: make papiti-lm-train-v0.6.1 (CPU PyTorch needed)."
+      fi
+    fi
+    echo "🧠 Legacy optional local endpoint: ${FLYGPT_HYBRID_MODEL:-not configured}"
   else
   echo "☁️  Hosted generator: ${FLYGPT_GENERATOR_PROVIDER:-compatible-http} / ${FLYGPT_GENERATOR_MODEL:-unset}"
   if [[ -n "${FLYGPT_GENERATOR_FALLBACK_MODEL:-}" ]]; then

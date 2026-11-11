@@ -1,7 +1,14 @@
 .PHONY: papiti-lm-train-v0.5 papiti-lm-eval-v0.5 papiti-lm-chat-v0.5 papiti-lm-train-v0.4 papiti-lm-eval-v0.4 papiti-lm-chat-v0.4 papiti-lm-serve-v0.4 papiti-lm-train-v0.3 papiti-lm-eval-v0.3 papiti-lm-chat-v0.3 papiti-lm-serve-v0.3 papiti-lm-train-v0.2 papiti-lm-eval-v0.2 papiti-lm-chat-v0.2 papiti-lm-serve-v0.2 papiti-lm-train papiti-lm-eval papiti-lm-chat papiti-lm-serve run native hybrid fast local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural enable-trained-router disable-trained-router download-full-neuron-data train-full-neuron-router enable-full-neuron-router disable-full-neuron-router install-full-neuron-router help stop
 
 # Explicit opt-in scratch language-model experiment; never invoked by make run.
-PAPITI_PYTHON ?= $(if $(wildcard .venv-papiti/bin/python),.venv-papiti/bin/python,python3)
+PAPITI_PYTHON ?= $(if $(wildcard .venv-papiti/bin/python),.venv-papiti/bin/python,$(if $(wildcard .venv-train/bin/python),.venv-train/bin/python,python3))
+
+.PHONY: papiti-lm-train-v0.6.1 papiti-lm-eval-v0.6.1
+papiti-lm-train-v0.6.1:
+	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 train
+
+papiti-lm-eval-v0.6.1:
+	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 eval
 
 .PHONY: papiti-lm-train-v0.6 papiti-lm-eval-v0.6 papiti-lm-chat-v0.6 papiti-lm-serve-v0.6
 

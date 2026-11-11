@@ -1,0 +1,76 @@
+name: Papiti v0.6.1 Hybrid neural speech and meaning guard
+
+on:
+  pull_request:
+    paths:
+      - "papiti_lm/**"
+      - "generator_runtime.py"
+      - "hybrid_speech.py"
+      - "scripts/run_all.sh"
+      - "Makefile"
+      - "tests/test_hybrid_voice.py"
+      - "tests/test_papiti_v0_6_1.py"
+      - ".github/workflows/papiti-v0-6-1-speech.yml"
+  push:
+    branches: [main]
+    paths:
+      - "papiti_lm/**"
+      - "generator_runtime.py"
+      - "hybrid_speech.py"
+      - "scripts/run_all.sh"
+      - "Makefile"
+      - "tests/test_hybrid_voice.py"
+      - "tests/test_papiti_v0_6_1.py"
+      - ".github/workflows/papiti-v0-6-1-speech.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  model-only-speech:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install small Transformer dependencies (no hosted models)
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu 'torch>=2.4,<3'
+          python -m pip install fastapi uvicorn
+      - name: Check Hybrid brain-to-speech contract and old regressions
+        run: |
+          python -m unittest tests.test_papiti_v0_6_1 tests.test_hybrid_voice tests.test_brain_runtime tests.test_papiti_lm tests.test_papiti_v0_6 -v
+      - name: Train a fresh, conditional v0.6.1 language speaker
+        run: |
+          python -m papiti_lm.v0_6_1 train \
+            --epochs 12 --patience 5 \
+            --checkpoint artifacts/papiti_language_v0_6_1.pt
+      - name: Evaluate unseen semantics and preserve actual model failures
+        run: |
+          mkdir -p reports
+          python -m papiti_lm.v0_6_1 eval \
+            --checkpoint artifacts/papiti_language_v0_6_1.pt \
+            --report reports/papiti_v0_6_1.json > reports/papiti_v0_6_1.log
+          python - <<'PY'
+          import json
+          report=json.load(open('reports/papiti_v0_6_1.json', encoding='utf-8'))
+          print('UNSEEN exact matches:', report['unseen_exact_match_count'], '/', report['test_count'])
+          print('LOSS:', report['test_metrics'])
+          for row in report['test_generations'][:5]:
+              print(row)
+          print('Research-only, NOT release-ready:', not report['release_ready'])
+          PY
+      - name: Publish short-lived model checkpoint and inspection evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: papiti-v0-6-1-hybrid-speech-evidence
+          path: |
+            artifacts/papiti_language_v0_6_1.pt
+            reports/papiti_v0_6_1.json
+            reports/papiti_v0_6_1.log
+          if-no-files-found: warn
+          retention-days: 7
