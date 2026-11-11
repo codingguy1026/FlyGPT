@@ -13,6 +13,8 @@ from typing import Any
 
 from semantic_planner import trusted_fact_fallback
 from native_realizer import realize_native
+from hybrid_speech import checkpoint_present as speech_checkpoint_present
+from hybrid_speech import generate_speech, check_candidate
 from local_generator_policy import (
     DEFAULT_LOCAL_GENERATOR_URL,
     DEFAULT_LOCAL_MODEL,
@@ -354,6 +356,10 @@ class GeneratorRuntime:
         mode = os.environ.get("FLYGPT_GENERATOR_MODE", "").strip().lower()
         self.native_mode = mode == "native"
         self.hybrid_mode = mode == "hybrid"
+        self.hybrid_speaker = (
+            os.environ.get("FLYGPT_HYBRID_SPEAKER", "v0.6.1").strip().lower()
+            if self.hybrid_mode else ""
+        )
         # Hybrid is opt-in and accepts only a dedicated, loopback language
         # generator. No implicit local model, auto-pull, or hosted API.
         self.local_only = self.hybrid_mode or (
@@ -460,11 +466,17 @@ class GeneratorRuntime:
             "model": ("Papiti Native v1" if self.native_mode else self.model or None),
             "native_mode": self.native_mode,
             "hybrid_mode": self.hybrid_mode,
+            "hybrid_speaker_requested": self.hybrid_speaker or None,
+            "hybrid_speaker_checkpoint_present": bool(
+                self.hybrid_mode and self.hybrid_speaker == "v0.6.1"
+                and speech_checkpoint_present()
+            ),
             "hybrid_model_configured": bool(
                 self.hybrid_mode and self.url and self.model and self.local_endpoint_allowed
             ),
             "uses_language_model": not self.native_mode and (
                 not self.hybrid_mode or bool(self.url and self.model and self.local_endpoint_allowed)
+                or (self.hybrid_speaker == "v0.6.1" and speech_checkpoint_present())
             ),
             "url_configured": bool(self.url),
             "api_key_configured": bool(self.api_key),
@@ -477,7 +489,7 @@ class GeneratorRuntime:
             "fallback_model": self.fallback_model or None,
             "retry_delay_seconds": self.retry_delay,
             "role": ("native_deterministic_language_realizer" if self.native_mode
-                     else "native_first_optional_local_language_model" if self.hybrid_mode
+                     else "brain_conditioned_v0.6.1_speech_with_honest_native_fallback" if self.hybrid_mode
                      else "grounded_task_reasoner_and_mouth_only_language_realizer"),
             "strict_semantic_gate": True,
             "bounded_task_reasoning": True,
@@ -1029,17 +1041,57 @@ class GeneratorRuntime:
                 and utterance_plan.get("contract") == "mouth_only_v1"
                 and utterance_plan.get("ready") is True
             )
+            # The brain's completed semantic packet is authoritative. v0.6.1
+            # never sees unresolved tasks or invents a task solution itself.
+            # No v0.6.1 checkpoint => honest Native fallback, never an
+            # untrained model presented as a trained speaker.
+            speaker_error = None
+            invalid_facts = (
+                ready_plan and bool(utterance_plan.get("semantic_steps"))
+                and trusted_fact_fallback(utterance_plan) is None
+            )
+            if (ready_plan and self.hybrid_speaker == "v0.6.1"
+                    and speech_checkpoint_present() and not invalid_facts):
+                try:
+                    candidate = generate_speech(
+                        utterance_plan,
+                        timeout_seconds=min(20.0, float(budget_seconds or self.budget)),
+                    )
+                    speaker_error = check_candidate(utterance_plan, candidate)
+                    if speaker_error is None and _contains_internal_plan(candidate):
+                        speaker_error = "internal_plan_leak"
+                    if speaker_error is None and _contains_mouth_only_leak(candidate):
+                        speaker_error = "internal_metadata_leak"
+                    if speaker_error is None and _wrong_output_language(candidate, utterance_plan):
+                        speaker_error = "wrong_output_language"
+                    if speaker_error is None:
+                        return GenerationResult(
+                            used=True,
+                            provider="papiti-hybrid-v0.6.1",
+                            model="papiti-language-v0.6.1",
+                            answer=candidate,
+                            finish_reason="neural_semantic_realization",
+                            latency_ms=round((time.perf_counter() - started) * 1000),
+                        )
+                except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
+                    speaker_error = type(exc).__name__
+                # Never replace a failed model reply with a fabricated neural
+                # answer; Native is explicitly labelled as a fallback.
             if ready_plan or not (self.url and self.model and self.local_endpoint_allowed):
                 return GenerationResult(
                     used=bool(native_answer),
                     provider="papiti-hybrid-native",
                     model=None,
                     answer=native_answer,
-                    finish_reason=("native_realization" if ready_plan and native_answer
-                                   else "native_limited" if native_answer else None),
+                    finish_reason=(
+                        "native_fallback_v0.6.1" if speaker_error and native_answer
+                        else "native_realization" if ready_plan and native_answer
+                        else "native_limited" if native_answer else None
+                    ),
                     latency_ms=round((time.perf_counter() - started) * 1000),
                     error_code=None if native_answer else "native_plan_unavailable",
-                    error=("Hybrid model requires a loopback URL"
+                    error=(f"v0.6.1 speech rejected: {speaker_error}" if speaker_error
+                           else "Hybrid model requires a loopback URL"
                            if not ready_plan and self.url and not self.local_endpoint_allowed
                            else None),
                 )
