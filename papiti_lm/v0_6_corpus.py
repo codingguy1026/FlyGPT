@@ -121,9 +121,9 @@ def prepare(data: str = DATA, legacy: str = LEGACY, seed: int = 42,
             family = "addition:" + ":".join(map(str, operands))
             records.append(Record(example, "arithmetic", family, split, source="synthetic"))
     audit(records)
-    digest = hashlib.sha256(path.read_bytes() + b"\0" + old_path.read_bytes()
-                            + Path(__file__).read_bytes()
-                            + Path(__file__).with_name("v0_5_corpus.py").read_bytes()).hexdigest()
+    sources = (path, old_path, Path(__file__), Path(__file__).with_name("v0_5_corpus.py"))
+    canonical = b"\0".join(source.read_text(encoding="utf-8").encode("utf-8") for source in sources)
+    digest = hashlib.sha256(canonical).hexdigest()
     return Curriculum(records, manifest, digest)
 
 

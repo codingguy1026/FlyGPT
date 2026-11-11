@@ -48,6 +48,16 @@ class CurriculumTests(unittest.TestCase):
         self.assertNotIn("addition:1:1", {record.family for record in splits["train"]})
         self.assertIn("addition:1:1", {record.family for record in splits["test"]})
 
+    def test_fingerprint_survives_windows_line_endings(self):
+        from papiti_lm.v0_6_corpus import DATA, LEGACY
+        with tempfile.TemporaryDirectory() as folder:
+            data, legacy = Path(folder) / "new.json", Path(folder) / "legacy.jsonl"
+            data.write_bytes(Path(DATA).read_text(encoding="utf-8").replace("\n", "\r\n").encode("utf-8"))
+            legacy.write_bytes(Path(LEGACY).read_text(encoding="utf-8").replace("\n", "\r\n").encode("utf-8"))
+            second = prepare(str(data), str(legacy), math_train=80, math_holdout=12)
+        self.assertEqual(self.curriculum.digest, second.digest)
+        self.assertEqual(self.curriculum.records, second.records)
+
     def test_audit_rejects_perturbed_prompt_leakage(self):
         rows = list(self.curriculum.records)
         original = next(record for record in rows if record.split == "train")
