@@ -31,9 +31,13 @@ for argument in "$@"; do
       ;;
     --fast)
       export FLYGPT_GENERATOR_MODE=http
-      # Opt-in low-latency CPU model. Keep normal make run on Qwen3 4B.
+      # Fast mode is opt-in; an installed model must be selected explicitly.
       export FLYGPT_LOCAL_ONLY=1
-      export FLYGPT_LOCAL_MODEL="${FLYGPT_FAST_MODEL:-qwen2.5:1.5b-instruct}"
+      export FLYGPT_LOCAL_MODEL="${FLYGPT_FAST_MODEL:-${FLYGPT_LOCAL_MODEL:-}}"
+      if [[ -z "$FLYGPT_LOCAL_MODEL" ]]; then
+        echo "❌ Set FLYGPT_FAST_MODEL to an installed model before make fast." >&2
+        exit 2
+      fi
       export FLYGPT_GENERATOR_MODEL="$FLYGPT_LOCAL_MODEL"
       export FLYGPT_GENERATOR_URL="http://127.0.0.1:11434/v1/chat/completions"
       echo "⚡ Fast CPU mode: $FLYGPT_LOCAL_MODEL"
@@ -59,7 +63,7 @@ if [[ "$FLYGPT_GENERATOR_MODE" == "native" ]]; then
   unset FLYGPT_GENERATOR_URL FLYGPT_GENERATOR_MODEL FLYGPT_GENERATOR_API_KEY FLYGPT_LOCAL_ONLY GEMINI_API_KEY FLYGPT_GENERATOR_FALLBACK_MODEL
 elif [[ "$FLYGPT_GENERATOR_MODE" == "hybrid" ]]; then
   # Dedicated FLYGPT_HYBRID_{URL,MODEL} only. Never inherit stale hosted
-  # settings or auto-pull the old Qwen default.
+  # settings or automatically select an old language model.
   unset FLYGPT_GENERATOR_URL FLYGPT_GENERATOR_MODEL FLYGPT_GENERATOR_API_KEY GEMINI_API_KEY FLYGPT_GENERATOR_FALLBACK_MODEL
   export FLYGPT_LOCAL_ONLY=1
 else
@@ -67,7 +71,11 @@ case "${FLYGPT_LOCAL_ONLY:-0}" in
   1|true|TRUE|yes|YES|on|ON)
     export FLYGPT_LOCAL_ONLY=1
     export FLYGPT_GENERATOR_URL="${FLYGPT_GENERATOR_URL:-http://127.0.0.1:11434/v1/chat/completions}"
-    export FLYGPT_GENERATOR_MODEL="${FLYGPT_GENERATOR_MODEL:-${FLYGPT_LOCAL_MODEL:-qwen3:4b-instruct}}"
+    export FLYGPT_GENERATOR_MODEL="${FLYGPT_GENERATOR_MODEL:-${FLYGPT_LOCAL_MODEL:-}}"
+    if [[ -z "$FLYGPT_GENERATOR_MODEL" ]]; then
+      echo "❌ No local model selected. Set FLYGPT_LOCAL_MODEL explicitly." >&2
+      exit 2
+    fi
     export FLYGPT_GENERATOR_PROVIDER=ollama-local
     # Local CPU models need longer than the hosted defaults already present
     # in older .env files. Dedicated opt-in overrides avoid accidental 22s
@@ -97,7 +105,7 @@ if [[ "$FLYGPT_GENERATOR_MODE" == "http" && -n "${GEMINI_API_KEY:-}" && -z "${FL
   export FLYGPT_GENERATOR_RETRY_DELAY="${FLYGPT_GENERATOR_RETRY_DELAY:-0.6}"
 fi
 
-MODEL="${FLYGPT_GENERATOR_MODEL:-${FLYGPT_LOCAL_MODEL:-qwen3:4b-instruct}}"
+MODEL="${FLYGPT_GENERATOR_MODEL:-${FLYGPT_LOCAL_MODEL:-}}"
 export OLLAMA_KEEP_ALIVE="${OLLAMA_KEEP_ALIVE:-30m}"
 
 if [[ -z "${NEUPRINT_TOKEN:-}" && -z "${NEUPRINT_APPLICATION_CREDENTIALS:-}" ]]; then
@@ -157,6 +165,10 @@ if [[ "$FLYGPT_GENERATOR_MODE" == "http" ]]; then
 fi
 
 if [[ "$USE_OLLAMA" -eq 1 ]]; then
+  if [[ -z "$MODEL" ]]; then
+    echo "❌ Set FLYGPT_GENERATOR_MODEL explicitly before using Ollama." >&2
+    exit 2
+  fi
   if ! command -v ollama >/dev/null 2>&1; then
     echo "❌ Ollama is not installed."
     echo "Run: bash scripts/setup_ollama_generator.sh"
@@ -182,8 +194,9 @@ if [[ "$USE_OLLAMA" -eq 1 ]]; then
   fi
 
   if ! ollama list 2>/dev/null | awk 'NR > 1 {print $1}' | grep -Fxq "$MODEL"; then
-    echo "📦 Local model not found. Pulling $MODEL..."
-    ollama pull "$MODEL"
+    echo "❌ Model $MODEL is not installed; automatic downloads are disabled." >&2
+    echo "   Check available models with: ollama list" >&2
+    exit 1
   fi
 
   # Load the model without generating an unnecessary greeting. Match the

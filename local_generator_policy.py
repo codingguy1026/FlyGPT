@@ -10,7 +10,8 @@ from ipaddress import ip_address
 from urllib.parse import urlsplit
 
 DEFAULT_LOCAL_GENERATOR_URL = "http://127.0.0.1:11434/v1/chat/completions"
-DEFAULT_LOCAL_MODEL = "qwen3:4b-instruct"
+# Intentionally blank: no implicit pretrained model selection.
+DEFAULT_LOCAL_MODEL = ""
 
 
 def enabled(value: str | None) -> bool:

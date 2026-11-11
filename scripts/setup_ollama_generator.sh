@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODEL="${FLYGPT_LOCAL_MODEL:-qwen3:4b-instruct}"
+MODEL="${FLYGPT_LOCAL_MODEL:-}"
+if [[ -z "$MODEL" ]]; then
+  echo "❌ Set FLYGPT_LOCAL_MODEL to an already-installed model before setup." >&2
+  exit 2
+fi
 export OLLAMA_KEEP_ALIVE="${OLLAMA_KEEP_ALIVE:-30m}"
 
 if ! command -v ollama >/dev/null 2>&1; then
@@ -26,8 +30,10 @@ if ! curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "==> Pulling local generator model: $MODEL"
-ollama pull "$MODEL"
+if ! ollama list 2>/dev/null | awk 'NR > 1 {print $1}' | grep -Fxq "$MODEL"; then
+  echo "❌ Model $MODEL is not installed; automatic downloads are disabled." >&2
+  exit 1
+fi
 
 echo "==> Preloading $MODEL..."
 curl -fsS http://127.0.0.1:11434/api/generate \

@@ -52,7 +52,7 @@ def _env_seconds(name: str, default: float, minimum: float, maximum: float) -> f
 
 
 def _chat_request_budget_seconds() -> float:
-    # Small hosted models need a bounded request; Qwen3 4B on a CPU Codespace
+    # Small hosted models need a bounded request; a local LLM on a CPU Codespace
     # needs time to load and generate without silently failing at 22 seconds.
     local = local_generation_enabled(os.environ.get("FLYGPT_LOCAL_ONLY"))
     return _env_seconds(
@@ -593,7 +593,9 @@ def generator_readiness():
     if not local:
         return {"state": "not_local", "ready": None}
 
-    model = model or os.environ.get("FLYGPT_LOCAL_MODEL", "qwen3:4b-instruct")
+    model = model or os.environ.get("FLYGPT_LOCAL_MODEL", "").strip()
+    if not model:
+        return {"state": "unconfigured", "ready": False}
     try:
         with urllib.request.urlopen("http://127.0.0.1:11434/api/ps", timeout=1.5) as response:
             payload = json.load(response)
