@@ -42,7 +42,7 @@ def _collate(batch):
     return inputs, targets
 
 
-def _evaluate(model, sequences, batch_size: int) -> dict[str, float]:
+def _evaluate(model, sequences, batch_size: int, char_count: int | None = None) -> dict[str, float]:
     import torch
     from torch.utils.data import DataLoader
 
@@ -61,24 +61,38 @@ def _evaluate(model, sequences, batch_size: int) -> dict[str, float]:
     if not total_tokens:
         raise ValueError("no validation response tokens")
     nll = total_loss / total_tokens
-    return {"nll": round(nll, 5), "perplexity": round(math.exp(min(20, nll)), 3)}
+    metrics = {"nll": round(nll, 5), "perplexity": round(math.exp(min(20, nll)), 3)}
+    if char_count is not None:
+        if char_count < 1:
+            raise ValueError("char_count must be positive")
+        # Same held-out text's original Unicode codepoints + EOS allows
+        # comparison across tokenizers with different token counts.
+        char_nll = total_loss / char_count
+        metrics["char_nll"] = round(char_nll, 5)
+        metrics["char_perplexity"] = round(math.exp(min(20, char_nll)), 3)
+    return metrics
 
 
 def _train(args):
     torch = _torch()
     from torch.utils.data import DataLoader
-    from papiti_lm.corpus import CharTokenizer, JamoTokenizer
+    from papiti_lm.corpus import CharTokenizer, JamoTokenizer, SubwordTokenizer
     from papiti_lm.model import ModelConfig, PapitiTransformer, save_checkpoint
 
     if not 1 <= args.epochs <= 200 or not 1 <= args.batch_size <= 256:
         raise ValueError("epochs and batch size outside supported range")
     if not 0 < args.learning_rate <= 0.01:
         raise ValueError("learning rate outside supported range")
+    if not 0 <= args.bpe_merges <= 1024:
+        raise ValueError("bpe-merges outside supported range")
     torch.manual_seed(args.seed)
     random.seed(args.seed)
     torch.set_num_threads(min(4, torch.get_num_threads()))
     train, valid, digest = _dataset(args.data, args.seed, args.val_fraction)
-    tokenizer = (JamoTokenizer if args.tokenizer == "jamo" else CharTokenizer).from_examples(train)
+    if args.tokenizer == "bpe":
+        tokenizer = SubwordTokenizer.from_examples(train, max_merges=args.bpe_merges)
+    else:
+        tokenizer = (JamoTokenizer if args.tokenizer == "jamo" else CharTokenizer).from_examples(train)
     config = ModelConfig(
         vocab_size=tokenizer.vocab_size,
         context=args.context,
@@ -89,6 +103,7 @@ def _train(args):
     model = PapitiTransformer(config)  # Randomly initialized, never downloaded.
     training = [tokenizer.sequence(x, config.context) for x in train]
     validation = [tokenizer.sequence(x, config.context) for x in valid]
+    validation_characters = sum(len(x.assistant) + 1 for x in valid)
     loader = DataLoader(
         training,
         batch_size=args.batch_size,
@@ -117,10 +132,12 @@ def _train(args):
             tokens = int(targets.ne(-100).sum())
             total += float(loss.detach()) * tokens
             count += tokens
-        metrics = _evaluate(model, validation, args.batch_size)
+        metrics = _evaluate(model, validation, args.batch_size, validation_characters)
         print(f"epoch={epoch} train_nll={total/count:.4f} "
               f"heldout_nll={metrics['nll']:.4f} "
-              f"heldout_ppl={metrics['perplexity']:.3f}")
+              f"heldout_ppl={metrics['perplexity']:.3f} "
+              f"heldout_char_nll={metrics['char_nll']:.4f} "
+              f"heldout_char_ppl={metrics['char_perplexity']:.3f}")
         if metrics["nll"] < best_nll:
             best_nll = metrics["nll"]
             epochs_no_improvement = 0
@@ -135,6 +152,8 @@ def _train(args):
                 "heldout_perplexity": metrics["perplexity"],
                 "initialization": "random_from_scratch",
                 "tokenizer_type": args.tokenizer,
+                "heldout_char_nll": metrics["char_nll"],
+                "heldout_char_perplexity": metrics["char_perplexity"],
             })
         else:
             epochs_no_improvement += 1
@@ -155,8 +174,9 @@ def _eval(args):
     if digest != metadata["source_sha256"]:
         raise ValueError("dataset hash changed; evaluation split is no longer comparable")
     validation = [tokenizer.sequence(x, model.config.context) for x in valid]
+    validation_characters = sum(len(x.assistant) + 1 for x in valid)
     print(f"held-out validation (groups unseen in training): "
-          f"{_evaluate(model, validation, args.batch_size)}")
+          f"{_evaluate(model, validation, args.batch_size, validation_characters)}")
 
 
 def _chat(args):
@@ -164,12 +184,22 @@ def _chat(args):
     from papiti_lm.model import generate, load_checkpoint
     model, tokenizer, metadata = load_checkpoint(args.checkpoint)
     print(f"Papiti scratch Transformer | trained epoch {metadata.get('epoch', '?')}")
+    from papiti_lm.arithmetic import try_arithmetic
+
+    def respond(message: str) -> str:
+        if args.math_tool:
+            computed = try_arithmetic(message)
+            if computed is not None:
+                return computed  # Explicit deterministic calculator, NOT LM reasoning.
+        return generate(
+            model, tokenizer, message, max_new_tokens=args.max_new_tokens,
+            temperature=args.temperature, top_k=args.top_k,
+            repetition_penalty=args.repetition_penalty, seed=args.seed
+        )
+    if args.math_tool:
+        print("optional calculator enabled for simple arithmetic (not neural)")
     if args.message is not None:
-        print(generate(model, tokenizer, args.message,
-                       max_new_tokens=args.max_new_tokens,
-                       temperature=args.temperature, top_k=args.top_k,
-                       repetition_penalty=args.repetition_penalty,
-                       seed=args.seed))
+        print(respond(args.message))
         return
     print("type /quit to leave")
     while True:
@@ -181,11 +211,7 @@ def _chat(args):
             break
         if not message.strip():
             continue
-        print("papiti> " + generate(
-            model, tokenizer, message, max_new_tokens=args.max_new_tokens,
-            temperature=args.temperature, top_k=args.top_k,
-            repetition_penalty=args.repetition_penalty, seed=args.seed
-        ))
+        print("papiti> " + respond(message))
 
 
 def _serve(args):
@@ -196,6 +222,7 @@ def _serve(args):
     import os
     import uvicorn
     os.environ["PAPITI_LM_CHECKPOINT"] = args.checkpoint
+    os.environ["PAPITI_LM_ARITHMETIC"] = "1" if args.math_tool else "0"
     uvicorn.run("papiti_lm.server:app", host="127.0.0.1", port=args.port)
 
 
@@ -208,7 +235,8 @@ def main(argv=None):
     train.add_argument("--data", default="training/papiti_demo_dialogues.jsonl")
     train.add_argument("--checkpoint", default="artifacts/papiti_language_v0_1.pt")
     train.add_argument("--epochs", type=int, default=12)
-    train.add_argument("--tokenizer", choices=("char", "jamo"), default="char")
+    train.add_argument("--tokenizer", choices=("char", "jamo", "bpe"), default="char")
+    train.add_argument("--bpe-merges", type=int, default=256)
     train.add_argument("--patience", type=int, default=0, help="early stop after N unimproved validation epochs; 0 disables")
     train.add_argument("--batch-size", type=int, default=8)
     train.add_argument("--learning-rate", type=float, default=0.001)
@@ -234,11 +262,15 @@ def main(argv=None):
     chat.add_argument("--top-k", type=int, default=24)
     chat.add_argument("--repetition-penalty", type=float, default=1.0)
     chat.add_argument("--seed", type=int, default=None)
+    chat.add_argument("--math-tool", action="store_true",
+                      help="opt-in deterministic arithmetic tool, not learned reasoning")
     chat.set_defaults(func=_chat)
 
     serve = actions.add_parser("serve", help="loopback OpenAI-compatible inference")
     serve.add_argument("--checkpoint", default="artifacts/papiti_language_v0_1.pt")
     serve.add_argument("--port", type=int, default=8765)
+    serve.add_argument("--math-tool", action="store_true",
+                       help="opt-in arithmetic tool for loopback API")
     serve.set_defaults(func=_serve)
     args = parser.parse_args(argv)
     return args.func(args)

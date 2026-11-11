@@ -9,7 +9,7 @@ from pathlib import Path
 
 from papiti_lm.corpus import (
     ASSISTANT, BOS, EOS, UNK, USER,
-    CharTokenizer, JamoTokenizer, Example, load_examples, split_by_group,
+    CharTokenizer, JamoTokenizer, SubwordTokenizer, Example, load_examples, split_by_group,
 )
 
 
@@ -84,6 +84,19 @@ class CorpusTests(unittest.TestCase):
         self.assertEqual(tokenizer.decode(tokenizer.encode("한글 테스트!")), "한글 테스트!")
         self.assertLess(tokenizer.vocab_size, 200)
 
+    def test_bpe_is_train_only_and_roundtrip_for_korean(self):
+        examples = [Example("a", "안녕하세요", "반가워요!"),
+                    Example("b", "안녕하세요!", "좋은 하루 보내요."),
+                    Example("c", "안녕", "반가워!")]
+        tok = SubwordTokenizer.from_examples(examples, max_merges=24)
+        for example in examples:
+            for value in (example.user, example.assistant):
+                self.assertEqual(tok.decode(tok.encode(value)), value)
+        self.assertEqual(tok.encode("☃"), [UNK])
+        self.assertTrue(tok.merges)
+        tok2 = SubwordTokenizer(tok.characters, tok.merges)
+        self.assertEqual(tok2.encode("안녕하세요!"), tok.encode("안녕하세요!"))
+
     def test_bundled_demo_is_loadable(self):
         path = Path(__file__).resolve().parents[1] / "training/papiti_demo_dialogues.jsonl"
         examples = load_examples(path)
@@ -92,6 +105,21 @@ class CorpusTests(unittest.TestCase):
         tokenizer = CharTokenizer.from_examples(train)
         for item in train + valid:
             tokenizer.sequence(item, context=192)
+
+
+class CalculatorTests(unittest.TestCase):
+    def test_arithmetic_is_explicit_and_never_eval(self):
+        from papiti_lm.arithmetic import try_arithmetic
+        self.assertEqual(try_arithmetic("1+1은?"), "2야.")
+        self.assertEqual(try_arithmetic("1 + 1 =?"), "2야.")
+        self.assertEqual(try_arithmetic("(3+4)*2는?"), "14야.")
+        self.assertEqual(try_arithmetic("0.1+0.2은?"), "0.3야.")
+        self.assertEqual(try_arithmetic("7/2는 얼마야?"), "3.5야.")
+        self.assertEqual(try_arithmetic("1/0은?"), "0으로 나눌 수 없어.")
+        self.assertEqual(try_arithmetic("2**10은?"), "이 계산식은 아직 지원하지 않아.")
+        self.assertIsNone(try_arithmetic("안녕"))
+        self.assertIsNone(try_arithmetic("__import__('os').system('echo hello')"))
+        self.assertIsNone(try_arithmetic("1+1은?\nprint(7)"))
 
 
 @unittest.skipUnless(importlib.util.find_spec("torch"), "optional torch not installed in web CI")
@@ -114,6 +142,50 @@ class TransformerSmokeTests(unittest.TestCase):
             result = chat(request)
         self.assertEqual(result["choices"][0]["message"]["content"], "반가워")
         self.assertEqual(mock_generate.call_args.kwargs["max_new_tokens"], 128)
+
+    def test_bpe_checkpoint_reload_and_seeded_generation(self):
+        import torch
+        from papiti_lm.model import (
+            ModelConfig, PapitiTransformer, generate, load_checkpoint, save_checkpoint
+        )
+        rows = [Example("demo", "안녕하세요", "반가워요!"),
+                Example("demo", "고마워요", "천만에요!")]
+        tok = SubwordTokenizer.from_examples(rows, max_merges=18)
+        torch.manual_seed(3)
+        model = PapitiTransformer(ModelConfig(
+            vocab_size=tok.vocab_size, context=64,
+            d_model=32, heads=4, layers=1, dropout=0
+        ))
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "bpe.pt"
+            save_checkpoint(path, model, tok, {"epoch": 2})
+            loaded, second, metadata = load_checkpoint(path)
+            self.assertIsInstance(second, SubwordTokenizer)
+            self.assertEqual(tok.merges, second.merges)
+            self.assertEqual(tok.encode("안녕하세요"), second.encode("안녕하세요"))
+            self.assertEqual(metadata["epoch"], 2)
+            self.assertEqual(
+                generate(loaded, second, "안녕", max_new_tokens=10, seed=42),
+                generate(loaded, second, "안녕", max_new_tokens=10, seed=42),
+            )
+
+    def test_opt_in_calculator_bypasses_model_generation(self):
+        import os
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from papiti_lm import MODEL_NAME
+        from papiti_lm.server import ChatRequest, Message, chat
+        request = ChatRequest(
+            model=MODEL_NAME,
+            messages=[Message(role="user", content="1+1은?")],
+        )
+        with patch.dict(os.environ, {"PAPITI_LM_ARITHMETIC": "1"}), \
+             patch("papiti_lm.server._loaded",
+                   return_value=(object(), SimpleNamespace(vocab_size=100))), \
+             patch("papiti_lm.model.generate") as model_generate:
+            answer = chat(request)
+        self.assertEqual(answer["choices"][0]["message"]["content"], "2야.")
+        model_generate.assert_not_called()
 
     def test_jamo_checkpoint_reload_and_repetition_penalty(self):
         import torch

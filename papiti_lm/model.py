@@ -14,7 +14,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from papiti_lm import MODEL_NAME
-from papiti_lm.corpus import ASSISTANT, BOS, EOS, PAD, UNK, USER, CharTokenizer, JamoTokenizer
+from papiti_lm.corpus import ASSISTANT, BOS, EOS, PAD, UNK, USER, CharTokenizer, JamoTokenizer, SubwordTokenizer
 
 
 @dataclass(frozen=True)
@@ -179,7 +179,14 @@ def save_checkpoint(
             "model_name": MODEL_NAME,
             "config": asdict(model.config),
             "characters": tokenizer.characters,
-            "tokenizer_type": "jamo" if isinstance(tokenizer, JamoTokenizer) else "char",
+            "tokenizer_type": (
+                "bpe" if isinstance(tokenizer, SubwordTokenizer)
+                else "jamo" if isinstance(tokenizer, JamoTokenizer) else "char"
+            ),
+            "bpe_merges": (
+                [list(pair) for pair in tokenizer.merges]
+                if isinstance(tokenizer, SubwordTokenizer) else []
+            ),
             "state_dict": model.state_dict(),
             "metadata": metadata,
         }, temporary)
@@ -196,7 +203,11 @@ def load_checkpoint(path: str | Path, device: str = "cpu"):
     if checkpoint.get("model_name") != MODEL_NAME:
         raise ValueError("checkpoint belongs to a different model")
     tokenizer_type = checkpoint.get("tokenizer_type", "char")
-    if tokenizer_type == "jamo":
+    if tokenizer_type == "bpe":
+        tokenizer = SubwordTokenizer(
+            checkpoint["characters"], checkpoint.get("bpe_merges", [])
+        )
+    elif tokenizer_type == "jamo":
         tokenizer = JamoTokenizer(checkpoint["characters"])
     elif tokenizer_type == "char":
         tokenizer = CharTokenizer(checkpoint["characters"])

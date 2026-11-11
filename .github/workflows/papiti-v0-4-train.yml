@@ -1,0 +1,86 @@
+name: Papiti v0.4 Korean subword + calculator
+
+on:
+  pull_request:
+    paths:
+      - "papiti_lm/**"
+      - "tests/test_papiti_lm.py"
+      - ".github/workflows/papiti-v0-4-train.yml"
+      - "Makefile"
+  push:
+    branches: [main]
+    paths:
+      - "papiti_lm/**"
+      - "tests/test_papiti_lm.py"
+      - ".github/workflows/papiti-v0-4-train.yml"
+      - "Makefile"
+  workflow_dispatch:
+
+jobs:
+  train-and-compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install CPU PyTorch and light API dependencies
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch
+          python -m pip install fastapi uvicorn
+      - name: Test parser, BPE tokenizer, old checkpoints and API compatibility
+        run: python -m unittest tests.test_papiti_lm -v
+      - name: Arithmetic provenance smoke (deterministic, not trained)
+        run: |
+          python -c 'from papiti_lm.arithmetic import try_arithmetic; assert try_arithmetic("1+1은?") == "2야."; assert try_arithmetic("0.1+0.2은?") == "0.3야."'
+      - name: Reproduce v0.3 jamo control on same data and heldout groups
+        run: |
+          python -m papiti_lm train \
+            --data training/papiti_dialogues_v0_3.jsonl \
+            --checkpoint /tmp/papiti-v0-3-reproduced.pt \
+            --epochs 30 --patience 7 --batch-size 16 --tokenizer jamo \
+            --d-model 128 --heads 4 --layers 2 --context 192 --seed 42
+          python -m papiti_lm eval \
+            --data training/papiti_dialogues_v0_3.jsonl \
+            --checkpoint /tmp/papiti-v0-3-reproduced.pt
+      - name: Train Papiti v0.4 from random weights with word-boundary BPE
+        run: |
+          python -m papiti_lm train \
+            --data training/papiti_dialogues_v0_3.jsonl \
+            --checkpoint artifacts/papiti_language_v0_4.pt \
+            --epochs 30 --patience 7 --batch-size 16 --tokenizer bpe \
+            --bpe-merges 256 \
+            --d-model 128 --heads 4 --layers 2 --context 192 --seed 42
+          python -m papiti_lm eval \
+            --data training/papiti_dialogues_v0_3.jsonl \
+            --checkpoint artifacts/papiti_language_v0_4.pt
+      - name: Compare cross-tokenizer character-normalized negative log-likelihood
+        run: |
+          python - <<'PY'
+          from papiti_lm.model import load_checkpoint
+          _, _, prev = load_checkpoint("/tmp/papiti-v0-3-reproduced.pt")
+          _, _, next_ = load_checkpoint("artifacts/papiti_language_v0_4.pt")
+          print(f"v0.3 char NLL: {prev['heldout_char_nll']:.5f}; char PPL: {prev['heldout_char_perplexity']:.3f}")
+          print(f"v0.4 char NLL: {next_['heldout_char_nll']:.5f}; char PPL: {next_['heldout_char_perplexity']:.3f}")
+          print("Note: lower is better, but the tokenizer experiment may lose.")
+          PY
+      - name: Sample v0.4 without arithmetic tool (true language model only)
+        run: |
+          python -m papiti_lm chat --checkpoint artifacts/papiti_language_v0_4.pt \
+            --message "안녕" --seed 7 --max-new-tokens 48 --temperature 0.65 --top-k 12 --repetition-penalty 1.1
+          python -m papiti_lm chat --checkpoint artifacts/papiti_language_v0_4.pt \
+            --message "고마워" --seed 7 --max-new-tokens 48 --temperature 0.65 --top-k 12 --repetition-penalty 1.1
+          python -m papiti_lm chat --checkpoint artifacts/papiti_language_v0_4.pt \
+            --message "방금 야구에서 역전승을 했어!" --seed 7 --max-new-tokens 48 --temperature 0.65 --top-k 12 --repetition-penalty 1.1
+      - name: Sample v0.4 arithmetic tool separately
+        run: |
+          python -m papiti_lm chat --checkpoint artifacts/papiti_language_v0_4.pt \
+            --message "1+1은?" --math-tool
+      - name: Upload learned v0.4 model checkpoint
+        uses: actions/upload-artifact@v4
+        with:
+          name: papiti-v0-4-trained-weights
+          path: artifacts/papiti_language_v0_4.pt
+          if-no-files-found: error
+          retention-days: 7
