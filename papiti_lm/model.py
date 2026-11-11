@@ -116,8 +116,10 @@ def generate(
         raise ValueError("max_new_tokens must be 1..256")
     if not 0 <= temperature <= 2.0:
         raise ValueError("temperature must be 0..2")
-    if not 1 <= top_k <= tokenizer.vocab_size:
-        raise ValueError("invalid top_k")
+    if not 1 <= top_k <= 65536:
+        raise ValueError("top_k must be positive and bounded")
+    # Small demo vocabularies may contain fewer items than the default top_k.
+    # The actual sampling set is clamped to logits.numel() below.
     device = next(model.parameters()).device
     # Preserve role delimiters, trimming only oldest user characters.
     message = tokenizer.encode(user)
