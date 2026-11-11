@@ -82,7 +82,9 @@ class TransformerSmokeTests(unittest.TestCase):
                       Message(role="user", content="안녕")],
             max_tokens=512,
         )
-        with patch("papiti_lm.server._loaded", return_value=(object(), object())), \
+        from types import SimpleNamespace
+        dummy_tokenizer = SimpleNamespace(vocab_size=50)
+        with patch("papiti_lm.server._loaded", return_value=(object(), dummy_tokenizer)), \
              patch("papiti_lm.model.generate", return_value="반가워") as mock_generate:
             result = chat(request)
         self.assertEqual(result["choices"][0]["message"]["content"], "반가워")
