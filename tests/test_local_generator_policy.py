@@ -178,7 +178,7 @@ class LocalGenerationPolicyTests(unittest.TestCase):
                 _extract_ollama_chat(bad)
 
     def test_local_mode_preserves_semantic_gate(self):
-        with patch.dict(os.environ, {"FLYGPT_LOCAL_ONLY": "1"}, clear=True), patch(
+        with patch.dict(os.environ, {"FLYGPT_LOCAL_ONLY": "1", "FLYGPT_GENERATOR_MODEL": "papiti-local-fixture:1b"}, clear=True), patch(
             "generator_runtime.urllib.request.build_opener"
         ) as build_opener:
             runtime = GeneratorRuntime()
