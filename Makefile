@@ -1,4 +1,19 @@
-.PHONY: run native hybrid fast local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural enable-trained-router disable-trained-router download-full-neuron-data train-full-neuron-router enable-full-neuron-router disable-full-neuron-router install-full-neuron-router help stop
+.PHONY: papiti-lm-train papiti-lm-eval papiti-lm-chat papiti-lm-serve run native hybrid fast local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural enable-trained-router disable-trained-router download-full-neuron-data train-full-neuron-router enable-full-neuron-router disable-full-neuron-router install-full-neuron-router help stop
+
+# Explicit opt-in scratch language-model experiment; never invoked by make run.
+PAPITI_PYTHON ?= $(if $(wildcard .venv-papiti/bin/python),.venv-papiti/bin/python,python3)
+
+papiti-lm-train:
+	@$(PAPITI_PYTHON) -m papiti_lm train
+
+papiti-lm-eval:
+	@$(PAPITI_PYTHON) -m papiti_lm eval
+
+papiti-lm-chat:
+	@$(PAPITI_PYTHON) -m papiti_lm chat
+
+papiti-lm-serve:
+	@$(PAPITI_PYTHON) -m papiti_lm serve
 
 run:
 	@bash scripts/run_all.sh
@@ -87,6 +102,10 @@ disk:
 
 help:
 	@echo "FlyGPT development commands"
+	@echo "  make papiti-lm-train  Train Papiti Transformer from scratch (opt-in)"
+	@echo "  make papiti-lm-eval   Evaluate held-out groups"
+	@echo "  make papiti-lm-chat   Chat with local Papiti weights"
+	@echo "  make papiti-lm-serve  Serve localhost Papiti checkpoint"
 	@echo "  make run         Start configured generator, backend, and frontend"
 	@echo "  make run        Papiti-native replies by default, no local or hosted LLM"
 	@echo "  make native     Force deterministic Papiti-native response mode"

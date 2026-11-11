@@ -51,11 +51,31 @@ FLYGPT_HYBRID_MODEL=YOUR_LOCAL_MODEL_NAME
 
 The model endpoint must be loopback. **No model is downloaded or started**
 automatically by `make hybrid`; no hosted endpoint, API key, or previous
-legacy generator configuration is implicitly reused. This is a routing bridge for a
-**future Papiti-trained model**, not a claim that an original language model
-has already been trained. It reuses the existing bounded-task and output
+legacy generator configuration is implicitly reused. This is a routing bridge; a separate experimental from-scratch Transformer
+implementation is documented below. No language weights are shipped or
+trained automatically. It reuses the existing bounded-task and output
 validation gates for local model responses. An optional model may be slow
 or hallucinate, so test before relying on its answers.
+
+## Papiti scratch Transformer v0.1 (experimental)
+
+A separately initialized character-level causal Transformer can now be trained
+from scratch with an explicitly supplied rights-cleared conversation corpus.
+The bundled 48 original demo pairs are for pipeline checks only and **will not
+produce a reliable conversational assistant**.
+
+See [Papiti's original Transformer training guide](docs/papiti-own-transformer.md).
+
+```bash
+# First install CPU PyTorch, fastapi and uvicorn in .venv-papiti
+make papiti-lm-train
+make papiti-lm-eval
+make papiti-lm-chat
+make papiti-lm-serve
+```
+
+The tiny model is not a MaleCNS language generator. Website Native mode remains
+the default, and Hybrid needs an explicit local endpoint and checkpoint.
 
 To return to the pure deterministic experiment, use `make native`.
 

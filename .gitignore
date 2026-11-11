@@ -34,3 +34,9 @@ data/full_neuron_previous_env.json
 
 # Local evaluation reports (may include diagnostic prompt text)
 reports/fly001_*.json
+
+# Papiti independent language-model experiment (local-only artifacts and private corpora)
+.venv-papiti/
+artifacts/papiti_language_*.pt
+artifacts/papiti_language_*.pt.tmp
+data/papiti_*private*.jsonl

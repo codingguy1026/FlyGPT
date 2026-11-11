@@ -1,0 +1,48 @@
+{"group":"greetings","user":"안녕!","assistant":"안녕! 오늘은 어떤 이야기를 나눠 볼까?"}
+{"group":"greetings","user":"좋은 아침이야","assistant":"좋은 아침! 오늘은 무엇을 해 볼까?"}
+{"group":"greetings","user":"반가워 파피티","assistant":"나도 반가워! 어떤 주제가 궁금해?"}
+{"group":"greetings","user":"잘 자","assistant":"편안한 밤 보내! 다음에 또 이야기하자."}
+{"group":"thanks","user":"도와줘서 고마워","assistant":"도움이 됐다니 다행이야!"}
+{"group":"thanks","user":"고맙다!","assistant":"천만에! 또 필요한 일이 있으면 알려 줘."}
+{"group":"thanks","user":"정말 감사해","assistant":"별말씀을! 도움이 되어서 기뻐."}
+{"group":"thanks","user":"설명해 줘서 고마워","assistant":"이해하는 데 도움이 됐다면 좋겠어."}
+{"group":"school","user":"오늘 시험을 봤어","assistant":"시험 보느라 수고했어. 어떤 과목이었어?"}
+{"group":"school","user":"숙제가 많아","assistant":"할 일이 많구나. 하나씩 정리해 볼까?"}
+{"group":"school","user":"새로운 과목을 배웠어","assistant":"재미있었겠다! 어떤 내용이었어?"}
+{"group":"school","user":"발표를 준비하고 있어","assistant":"발표 주제를 먼저 정리해 보면 좋겠어."}
+{"group":"sports","user":"오늘 축구 이겼어!","assistant":"축하해! 경기에서 가장 재미있던 순간은 뭐였어?"}
+{"group":"sports","user":"농구 경기에서 승리했어","assistant":"와, 승리했구나! 점수는 어떻게 됐어?"}
+{"group":"sports","user":"야구를 보러 갔어","assistant":"현장에서 보면 더 신나지! 어느 팀 경기였어?"}
+{"group":"sports","user":"내일 달리기 대회야","assistant":"응원할게! 무리하지 말고 준비한 만큼 해 봐."}
+{"group":"music","user":"음악 듣고 있어","assistant":"어떤 노래를 듣고 있어?"}
+{"group":"music","user":"새로운 음악을 발견했어","assistant":"좋겠다! 어떤 장르야?"}
+{"group":"music","user":"피아노를 배우고 싶어","assistant":"처음에는 쉬운 멜로디부터 연습할 수 있어."}
+{"group":"music","user":"노래를 추천해 줘","assistant":"어떤 분위기의 노래를 좋아해?"}
+{"group":"books","user":"소설을 읽는 중이야","assistant":"어떤 이야기가 펼쳐지고 있어?"}
+{"group":"books","user":"책을 끝까지 읽었어","assistant":"완독했구나! 가장 인상 깊은 장면은 뭐였어?"}
+{"group":"books","user":"글을 써 보고 싶어","assistant":"좋아! 어떤 인물이 등장하는 이야기야?"}
+{"group":"books","user":"이야기 제목이 고민이야","assistant":"주요 사건이나 분위기를 알려 줄래?"}
+{"group":"coding","user":"파이썬 공부 중이야","assistant":"좋아! 지금 배우는 기능은 뭐야?"}
+{"group":"coding","user":"코드에서 오류가 났어","assistant":"오류 메시지와 코드를 보여 주면 함께 살펴볼게."}
+{"group":"coding","user":"웹사이트를 만들고 싶어","assistant":"어떤 기능을 가진 사이트를 생각하고 있어?"}
+{"group":"coding","user":"프로그램을 완성했어","assistant":"완성했다니 멋지네! 직접 시험해 봤어?"}
+{"group":"food","user":"점심 먹었어","assistant":"뭘 먹었어? 맛있었어?"}
+{"group":"food","user":"새로운 요리를 해 봤어","assistant":"어떤 음식을 만들었어?"}
+{"group":"food","user":"오늘 저녁 메뉴가 고민이야","assistant":"좋아하는 재료가 있어?"}
+{"group":"food","user":"과일을 좋아해","assistant":"어떤 과일을 가장 좋아해?"}
+{"group":"weather","user":"밖에 비가 와","assistant":"비 오는 날이네. 우산은 챙겼어?"}
+{"group":"weather","user":"날씨가 맑아","assistant":"햇살이 좋은 날인가 봐!"}
+{"group":"weather","user":"바람이 많이 불어","assistant":"바람이 세구나. 밖에 나갈 땐 조심해."}
+{"group":"weather","user":"오늘 추워","assistant":"따뜻하게 입는 게 좋겠어."}
+{"group":"feelings","user":"오늘 기분이 좋아","assistant":"기분 좋은 일이 있었구나! 무슨 일이야?"}
+{"group":"feelings","user":"속상한 일이 있어","assistant":"속상했겠다. 괜찮다면 이야기해 줘."}
+{"group":"feelings","user":"조금 긴장돼","assistant":"긴장되는 일이 있구나. 준비할 수 있는 것부터 해 보자."}
+{"group":"feelings","user":"오늘은 신나는 날이야","assistant":"좋은 소식이 있나 봐! 들려줄래?"}
+{"group":"hobbies","user":"그림을 그리고 있어","assistant":"무엇을 그리고 있어?"}
+{"group":"hobbies","user":"게임을 만들고 싶어","assistant":"어떤 규칙을 가진 게임이야?"}
+{"group":"hobbies","user":"사진 찍는 게 좋아","assistant":"어떤 풍경을 촬영하는 걸 좋아해?"}
+{"group":"hobbies","user":"새 취미를 찾고 있어","assistant":"평소에 좋아하는 활동부터 생각해 보자."}
+{"group":"curiosity","user":"우주는 정말 넓어?","assistant":"우주는 엄청나게 넓어. 무엇이 가장 궁금해?"}
+{"group":"curiosity","user":"로봇은 어떻게 움직여?","assistant":"센서와 프로그램으로 주변을 파악하며 움직일 수 있어."}
+{"group":"curiosity","user":"바닷물은 왜 짤까?","assistant":"강물이 운반한 여러 물질이 바다에 쌓이기 때문이야."}
+{"group":"curiosity","user":"달은 왜 모양이 달라져?","assistant":"태양빛을 받는 달의 부분을 보는 각도가 달라지기 때문이야."}
