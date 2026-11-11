@@ -10,6 +10,7 @@ import re
 from typing import Any
 
 from semantic_planner import trusted_fact_fallback
+from affect_reactions import AFFECT_REACTIONS, detect_personal_affect
 
 
 _SOCIAL: dict[str, tuple[str, str]] = {
@@ -19,6 +20,10 @@ _SOCIAL: dict[str, tuple[str, str]] = {
     "acknowledge_presence": ("응, 이야기할 준비가 됐어.", "I'm ready to chat."),
     "request_specific_task": ("어떤 도움이 필요한지 알려줘.", "What would you like help with?"),
     "return_welcome": ("나도 반가워!", "Nice to meet you too!"),
+    "acknowledge_personal_sports_win": (
+        "축하해! 몇 대 몇으로 이겼어?",
+        "Congrats! What was the score?",
+    ),
 }
 
 
@@ -64,6 +69,16 @@ def realize_native(
         if act in {"introduce_flygpt", "describe_supported_features", "explain_malecns"}:
             # This validates fact IDs, exact text, provenance, ordering and language.
             return trusted_fact_fallback(plan)
+
+        if route == "general" and act in AFFECT_REACTIONS:
+            reaction = AFFECT_REACTIONS[act]
+            style = plan.get("style")
+            if (detect_personal_affect(message) != act
+                    or not isinstance(style, dict)
+                    or style.get("tone") != reaction["tone"]
+                    or _units(plan, "communicative_act") != [reaction["plan_value"]]):
+                return None
+            return reaction["ko" if ko else "en"]
 
         if act in _SOCIAL and _units(plan, "communicative_act"):
             return _SOCIAL[act][0 if ko else 1]

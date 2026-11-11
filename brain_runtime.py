@@ -5,6 +5,7 @@ import re
 from typing import Any
 
 from semantic_planner import compose_fact_plan
+from affect_reactions import AFFECT_REACTIONS, detect_personal_affect
 
 
 class FlyBrainRuntime:
@@ -91,6 +92,17 @@ class FlyBrainRuntime:
         re.IGNORECASE,
     )
     _EMOTICON_RE = re.compile(r"^[\sㅋㅎㅠㅜㅇㅅ^._;:()<>/=+\-]{1,24}$")
+    # Narrow first-person/school sports celebration. This is a user-reported
+    # experience, NOT a request for live research or a verified match result.
+    # Anchor the entire utterance so questions, external news and mixed tasks
+    # continue through the learned router.
+    _PERSONAL_SPORTS_WIN_RE = re.compile(
+        r"^(?:(?:나|내가|오늘|우리\s*반|저희\s*반|우리\s*팀|학교에서)\s*){1,3}"
+        r"(?:축구|농구|야구|배구|피구|반대항전)"
+        r"(?:\s*경기)?\s*"
+        r"(?:이겼어|이겼어요|이겼다|이김|승리했어|승리했어요|승리함)"
+        r"[!~.ㅋㅎ\s]*$"
+    )
 
     # Conservative, anchored phrases: do not guess the meaning of arbitrary
     # general questions or let the downstream LLM invent an answer plan.
@@ -219,6 +231,39 @@ class FlyBrainRuntime:
                     ],
                 }
             )
+            return plan
+
+        if self._PERSONAL_SPORTS_WIN_RE.fullmatch(text):
+            plan.update({
+                "ready": True,
+                "speech_act": "acknowledge_personal_sports_win",
+                "content_units": [{
+                    "kind": "communicative_act",
+                    "value": (
+                        "Congratulate the user on their reported personal sports win. "
+                        "Ask what the score was. Do not invent a score, external "
+                        "evidence, or other match details."
+                    ),
+                }],
+            })
+            return plan
+
+        affect_act = detect_personal_affect(text)
+        if affect_act is not None:
+            reaction = AFFECT_REACTIONS[affect_act]
+            plan.update({
+                "ready": True,
+                "speech_act": affect_act,
+                "content_units": [{
+                    "kind": "communicative_act",
+                    "value": reaction["plan_value"],
+                }],
+                "style": {
+                    "language": self._language_hint(text),
+                    "length": "short",
+                    "tone": reaction["tone"],
+                },
+            })
             return plan
 
         if self._THANKS_RE.fullmatch(text):
