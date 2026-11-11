@@ -509,6 +509,26 @@ def auth_me(request: Request):
     return {"user": _require_user(request)}
 
 
+@app.get("/api/neurons/{body_id}/skeleton")
+def neuron_skeleton(request: Request, body_id: int):
+    """Authenticated, bounded anatomical geometry for the morphology explorer."""
+    _require_user(request)
+    if not (0 < body_id < 2**63):
+        raise HTTPException(status_code=422, detail="Invalid neuron body ID")
+    try:
+        connectome = get_connectome()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="neuPrint is not configured") from exc
+    if connectome.dataset != "male-cns:v1.0":
+        raise HTTPException(status_code=503, detail="MaleCNS v1.0 dataset required")
+    try:
+        return connectome.skeleton_geometry(body_id, max_segments=4000)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="No usable skeleton for this neuron") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Could not load a neuPrint skeleton") from exc
+
+
 @app.get("/api/router/graph")
 def router_graph(request: Request):
     _require_user(request)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import json
+import math
 import os
 import threading
 import time
@@ -154,6 +155,67 @@ class MaleCNSConnectome:
             record["body_id"]: record
             for raw in rows.to_dict("records")
             if (record := annotation_record(raw))
+        }
+
+    def skeleton_geometry(self, body_id: int, *, max_segments: int = 4000) -> dict[str, Any]:
+        """Return a bounded sample of a real neuPrint SWC neuron skeleton.
+
+        Coordinates are anatomical dataset coordinates, not router activations.
+        Segments are child-parent coordinate pairs; never connect unrelated
+        fragments or synthesize geometry when a skeleton is absent.
+        """
+        if type(body_id) is not int or not (0 < body_id < 2**63):
+            raise ValueError("body_id must be a positive integer")
+        if type(max_segments) is not int or not (1 <= max_segments <= 5000):
+            raise ValueError("max_segments must be between 1 and 5000")
+
+        frame = self.client.fetch_skeleton(body_id, format="pandas", heal=False)
+        required = {"rowId", "link", "x", "y", "z"}
+        if frame is None or not required.issubset(frame.columns):
+            raise ValueError("neuPrint returned no supported skeleton columns")
+
+        positions: dict[int, tuple[float, float, float]] = {}
+        parents: dict[int, int] = {}
+        for row_id, parent_id, raw_x, raw_y, raw_z in frame[
+            ["rowId", "link", "x", "y", "z"]
+        ].itertuples(index=False, name=None):
+            try:
+                xyz = (float(raw_x), float(raw_y), float(raw_z))
+                identifier = int(row_id)
+                parent = int(parent_id)
+            except (ValueError, TypeError, OverflowError):
+                continue
+            if identifier <= 0 or not all(math.isfinite(n) for n in xyz):
+                continue
+            positions[identifier] = xyz
+            parents[identifier] = parent
+
+        segments: list[list[float]] = []
+        for child_id, parent_id in parents.items():
+            if parent_id == child_id or parent_id not in positions:
+                continue
+            a = positions[child_id]
+            b = positions[parent_id]
+            segments.append([*a, *b])
+        count = len(segments)
+        stride = max(1, math.ceil(count / max_segments))
+        sampled = segments[::stride][:max_segments]
+        if positions:
+            bounds = {
+                "min": [min(x[i] for x in positions.values()) for i in range(3)],
+                "max": [max(x[i] for x in positions.values()) for i in range(3)],
+            }
+        else:
+            bounds = {"min": [0.0, 0.0, 0.0], "max": [0.0, 0.0, 0.0]}
+        return {
+            "source": "neuPrint SWC",
+            "dataset": self.dataset,
+            "body_id": str(body_id),
+            "total_segments": count,
+            "shown_segments": len(sampled),
+            "sampled": len(sampled) < count,
+            "bounds": bounds,
+            "segments": sampled,
         }
 
     @staticmethod
