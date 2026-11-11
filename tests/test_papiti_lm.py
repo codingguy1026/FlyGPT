@@ -71,6 +71,23 @@ class CorpusTests(unittest.TestCase):
 
 @unittest.skipUnless(importlib.util.find_spec("torch"), "optional torch not installed in web CI")
 class TransformerSmokeTests(unittest.TestCase):
+    def test_hybrid_openai_adapter_accepts_default_512_budget(self):
+        from unittest.mock import patch
+        from papiti_lm import MODEL_NAME
+        from papiti_lm.server import ChatRequest, Message, chat
+
+        request = ChatRequest(
+            model=MODEL_NAME,
+            messages=[Message(role="system", content="a plan"),
+                      Message(role="user", content="안녕")],
+            max_tokens=512,
+        )
+        with patch("papiti_lm.server._loaded", return_value=(object(), object())), \
+             patch("papiti_lm.model.generate", return_value="반가워") as mock_generate:
+            result = chat(request)
+        self.assertEqual(result["choices"][0]["message"]["content"], "반가워")
+        self.assertEqual(mock_generate.call_args.kwargs["max_new_tokens"], 128)
+
     def test_causality_gradient_generation_and_safe_reload(self):
         import torch
         from papiti_lm.model import (
