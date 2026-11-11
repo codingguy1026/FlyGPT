@@ -23,12 +23,9 @@ unsolved questions**. Those requests receive a transparent limitation notice.
 MaleCNS routes task types; the fly connectome itself does not learn Korean or
 produce human language.
 
-The existing HTTP/LLM provider remains available as a deliberate rollback.
-Set `FLYGPT_GENERATOR_MODE=http` in your local `.env`, then use
-`make local` for Ollama or configure the hosted provider. No local model
-is deleted by this code change: after testing native mode in Codespaces,
-you can remove an unused installed model separately with
-`ollama rm qwen3:4b-instruct` (only if nothing else uses it).
+The optional HTTP language generator remains available only when explicitly
+configured. Native and Hybrid modes do not select or download pretrained
+models. Previously installed model files must be removed separately.
 
 ## Papiti Hybrid v0.1 (experimental, opt-in)
 
@@ -54,14 +51,13 @@ FLYGPT_HYBRID_MODEL=YOUR_LOCAL_MODEL_NAME
 
 The model endpoint must be loopback. **No model is downloaded or started**
 automatically by `make hybrid`; no hosted endpoint, API key, or previous
-Qwen configuration is implicitly reused. This is a routing bridge for a
+legacy generator configuration is implicitly reused. This is a routing bridge for a
 **future Papiti-trained model**, not a claim that an original language model
 has already been trained. It reuses the existing bounded-task and output
 validation gates for local model responses. An optional model may be slow
 or hallucinate, so test before relying on its answers.
 
 To return to the pure deterministic experiment, use `make native`.
-The standalone Native PR must be merged before this stacked hybrid PR.
 
 As of v0.10.0, interactive connectome queries target the **Janelia MaleCNS v1.0**
 dataset through the official neuPrint service instead of requiring local
@@ -245,7 +241,7 @@ authorize invented current events or citations, and all existing grounding
 checks for atomic project facts remain active.
 
 This removes a structural refusal, **not** the limits of the underlying model.
-The bundled 0.5B local Qwen model can still make incorrect deductions in
+A small local language model can still make incorrect deductions in
 multi-constraint logic puzzles. Use a more capable configured generator for
 reliable complex reasoning, and independently check important results.
 
@@ -419,47 +415,32 @@ python -m unittest tests.test_semantic_composition -v
 
 ## Answer generation
 
-### Strictly local LLM generation (first independence milestone)
+### Explicit, strictly local generation
 
-FlyGPT can run its language realization layer **without a hosted LLM API**.
-Install Ollama and the local Qwen3 4B Instruct model once (initial downloads need network):
+`make run` defaults to Papiti Native. `make hybrid` is native-first and
+accepts only a separately configured loopback model. Neither mode downloads
+or selects a pretrained language model on its own.
 
-```bash
-bash scripts/setup_ollama_generator.sh
-make local
+To use a model already installed in Ollama, configure your ignored local
+`.env` with its exact name:
+
+```dotenv
+FLYGPT_GENERATOR_MODE=http
+FLYGPT_LOCAL_ONLY=1
+FLYGPT_LOCAL_MODEL=YOUR_INSTALLED_MODEL_NAME
 ```
 
-Or set `FLYGPT_LOCAL_ONLY=1` in `.env`, then run `make run`.
-The mode defaults to `http://127.0.0.1:11434/v1/chat/completions`
-and model `qwen3:4b-instruct` (override with `FLYGPT_LOCAL_MODEL`
-or `FLYGPT_GENERATOR_MODEL`). The generator refuses non-loopback URLs,
-ignores hosted API keys, disables HTTP proxies and redirects, and never
-falls back to a hosted language model. A broken local model returns an error
-rather than using a cloud service. Check `/api/generator/status` for
-`local_only` and `local_endpoint_allowed`.
+Run `make local`. For `make fast`, set `FLYGPT_FAST_MODEL` to an
+installed model name first. A missing model fails with a clear error;
+the app never pulls model weights at startup. The optional
+`scripts/setup_ollama_generator.sh` helper likewise uses only an
+explicitly chosen, already-installed model.
 
-**Scope:** Only LLM generation is local. MaleCNS data queries can still use
-neuPrint, and optional Brave Search still uses its online API. This is **not**
-a fully offline app. The current fly-brain `mouth_only_v1` semantic gate also
-rejects open-ended conversations it cannot plan; installing a local LLM does
-not, by itself, make the fly router ChatGPT-equivalent. The default Qwen3
-4B Instruct model is a local language-generation experiment, not a guarantee
-of better answers. Its Ollama download is about 2.5 GB, with additional RAM
-needed at runtime. CPU-only Codespaces instances may exceed the existing
-chat-generation timeout. Memory, planning, latency and local-model quality
-need separate evaluation.
-
-To try the new model directly, run `make local` and check the generator model
-reported on startup or at `/api/generator/status`. For a live check, ask
-`안녕` and `너 누구야?` in the chat, then inspect response time and any
-`[GEN] semantic_output_rejected` log entries. `make stability` only checks
-HTTP health and cannot establish language quality. Hosted LLM settings remain
-unchanged; `make local` never calls a hosted LLM generator.
-
-**Rollback:** stop the server and set `FLYGPT_LOCAL_MODEL=qwen2.5:0.5b-instruct`
-(or `FLYGPT_GENERATOR_MODEL=qwen2.5:0.5b-instruct` when that variable is
-explicitly set) in your local `.env`, then run `make local` again. Remove the
-override to return to Qwen3 4B. Do not commit local API keys.
+Local-only generation rejects hosted URLs and hosted fallbacks. MaleCNS
+queries and optional research still may use external services, and the
+semantic gate cannot solve arbitrary open-ended problems. `make native`
+restores the deterministic path. Unused Ollama weights must be removed
+separately with `ollama rm`, not by changing GitHub code.
 
 FlyGPT can forward generative routes to an OpenAI-compatible
 chat-completions endpoint.
