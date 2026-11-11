@@ -25,9 +25,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install CPU PyTorch
+      - name: Install CPU PyTorch and lightweight API test dependencies
         run: |
           python -m pip install --index-url https://download.pytorch.org/whl/cpu torch
+          python -m pip install fastapi uvicorn
       - name: Validate v0.2 data and model tests
         run: python -m unittest tests.test_papiti_lm -v
       - name: Train one epoch control (fresh weights)
