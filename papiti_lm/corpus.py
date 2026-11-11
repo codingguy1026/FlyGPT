@@ -180,12 +180,16 @@ class SubwordTokenizer(CharTokenizer):
                for pair in self.merges):
             raise ValueError("invalid BPE merges")
 
+    @staticmethod
+    def _chunks(text: str) -> list[list[str]]:
+        return _bpe_chunks(text)
+
     @classmethod
     def from_examples(cls, examples: list[Example], max_merges: int = 256):
         if not 0 <= max_merges <= 1024:
             raise ValueError("max_merges must be 0..1024")
         texts = [text for row in examples for text in (row.user, row.assistant)]
-        chunks = [part for text in texts for part in _bpe_chunks(text)]
+        chunks = [part for text in texts for part in cls._chunks(text)]
         base = set(char for text in texts for char in text)
         merges: list[tuple[str, str]] = []
         for _ in range(max_merges):
@@ -209,7 +213,7 @@ class SubwordTokenizer(CharTokenizer):
 
     def encode(self, text: str) -> list[int]:
         output: list[int] = []
-        for chunk in _bpe_chunks(text):
+        for chunk in self._chunks(text):
             for pair in self.merges:
                 chunk = _merge_pair(chunk, pair)
             output.extend(self.char_to_id.get(token, UNK) for token in chunk)
@@ -217,3 +221,15 @@ class SubwordTokenizer(CharTokenizer):
 
     def decode(self, tokens: list[int]) -> str:
         return super().decode(tokens)
+
+
+class DigitSubwordTokenizer(SubwordTokenizer):
+    """Learn Korean BPE pieces while treating every ASCII digit as its own token.
+
+    This is a change in tokenization, NOT an arithmetic evaluator.
+    Generated numbers are autoregressively predicted by the learned network.
+    """
+
+    @staticmethod
+    def _chunks(text: str) -> list[list[str]]:
+        return [list(part) for part in re.findall(r"[0-9]|\s+|[^0-9\s]+", text)]

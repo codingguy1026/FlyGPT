@@ -1,7 +1,19 @@
-.PHONY: papiti-lm-train-v0.4 papiti-lm-eval-v0.4 papiti-lm-chat-v0.4 papiti-lm-serve-v0.4 papiti-lm-train-v0.3 papiti-lm-eval-v0.3 papiti-lm-chat-v0.3 papiti-lm-serve-v0.3 papiti-lm-train-v0.2 papiti-lm-eval-v0.2 papiti-lm-chat-v0.2 papiti-lm-serve-v0.2 papiti-lm-train papiti-lm-eval papiti-lm-chat papiti-lm-serve run native hybrid fast local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural enable-trained-router disable-trained-router download-full-neuron-data train-full-neuron-router enable-full-neuron-router disable-full-neuron-router install-full-neuron-router help stop
+.PHONY: papiti-lm-train-v0.5 papiti-lm-eval-v0.5 papiti-lm-chat-v0.5 papiti-lm-train-v0.4 papiti-lm-eval-v0.4 papiti-lm-chat-v0.4 papiti-lm-serve-v0.4 papiti-lm-train-v0.3 papiti-lm-eval-v0.3 papiti-lm-chat-v0.3 papiti-lm-serve-v0.3 papiti-lm-train-v0.2 papiti-lm-eval-v0.2 papiti-lm-chat-v0.2 papiti-lm-serve-v0.2 papiti-lm-train papiti-lm-eval papiti-lm-chat papiti-lm-serve run native hybrid fast local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural enable-trained-router disable-trained-router download-full-neuron-data train-full-neuron-router enable-full-neuron-router disable-full-neuron-router install-full-neuron-router help stop
 
 # Explicit opt-in scratch language-model experiment; never invoked by make run.
 PAPITI_PYTHON ?= $(if $(wildcard .venv-papiti/bin/python),.venv-papiti/bin/python,python3)
+
+# v0.5 is explicitly model-only. No math-tool and no answer mapping at runtime.
+# Training labels are generated before model training; reserved operand pairs
+# are never used for optimization and are evaluated without answer injection.
+papiti-lm-train-v0.5:
+	@$(PAPITI_PYTHON) -m papiti_lm.v0_5 train
+
+papiti-lm-eval-v0.5:
+	@$(PAPITI_PYTHON) -m papiti_lm.v0_5 eval
+
+papiti-lm-chat-v0.5:
+	@$(PAPITI_PYTHON) -m papiti_lm.v0_5 chat
 
 # Papiti v0.4: word-boundary-aware BPE, comparable char-normalized metrics,
 # plus an explicitly separate deterministic arithmetic tool for 1+1 questions.
@@ -143,6 +155,9 @@ disk:
 
 help:
 	@echo "FlyGPT development commands"
+	@echo "  make papiti-lm-train-v0.5  Train pure Korean + synthetic-math model"
+	@echo "  make papiti-lm-eval-v0.5   Evaluate truly unseen math prompts"
+	@echo "  make papiti-lm-chat-v0.5   Chat with only v0.5 learned Transformer"
 	@echo "  make papiti-lm-train-v0.4  Train Korean BPE Transformer from scratch"
 	@echo "  make papiti-lm-eval-v0.4   Evaluate v0.4 same-group held-out corpus"
 	@echo "  make papiti-lm-chat-v0.4   Chat with v0.4 + opt-in calculator"

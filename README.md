@@ -57,6 +57,31 @@ trained automatically. It reuses the existing bounded-task and output
 validation gates for local model responses. An optional model may be slow
 or hallucinate, so test before relying on its answers.
 
+## Papiti v0.5: **model-only** Korean + learned arithmetic experiment
+
+Papiti v0.5 eliminates the v0.4 calculator from this version's inference
+path entirely. Every response, **including math answers**, is predicted
+directly by a fresh, random-initialized Transformer. The model receives
+separate Korean dialogue training and 3,000 generated, supervised
+two-digit addition examples; 168 operand pairs (including `1+1`
+and `23+47`) are **excluded from training** so its arithmetic
+generalization can be tested honestly. Correct results are **not
+guaranteed**. This uses no Qwen/GPT/Ollama pretrained weights.
+
+```bash
+make papiti-lm-train-v0.5
+make papiti-lm-eval-v0.5
+make papiti-lm-chat-v0.5
+```
+
+This independently trained checkpoint and launcher do **not** call any
+runtime arithmetic parser, hardcoded response dictionary, tool router or
+pretrained model. Its output may be wrong, and the eval command prints
+every correct and incorrect held-out probe. The older v0.1-v0.4
+experiments and the FlyGPT Native/Hybrid default entrypoints remain
+available for historical comparison. See
+[the v0.5 experiment notes](docs/papiti-language-v0-5.md).
+
 ## Papiti v0.4: Korean subword model + explicit arithmetic calculator
 
 Papiti's v0.4 is a separate **from-scratch** Transformer experiment that learns
