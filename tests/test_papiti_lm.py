@@ -59,6 +59,17 @@ class CorpusTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "exceeds context"):
             tokenizer.sequence(self.examples[0], context=4)
 
+    def test_extended_v0_2_data_is_deduplicated_and_holdout_is_grouped(self):
+        path = Path(__file__).resolve().parents[1] / "training/papiti_dialogues_v0_2.jsonl"
+        examples = load_examples(path)
+        self.assertEqual(len(examples), 225)
+        self.assertEqual(len({item.group for item in examples}), 22)
+        train, valid = split_by_group(examples, seed=42)
+        self.assertFalse({item.group for item in train} & {item.group for item in valid})
+        tokenizer = CharTokenizer.from_examples(train)
+        for item in train + valid:
+            tokenizer.sequence(item, context=192)
+
     def test_bundled_demo_is_loadable(self):
         path = Path(__file__).resolve().parents[1] / "training/papiti_demo_dialogues.jsonl"
         examples = load_examples(path)
