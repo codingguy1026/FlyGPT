@@ -355,7 +355,7 @@ class GeneratorRuntime:
         self.native_mode = mode == "native"
         self.hybrid_mode = mode == "hybrid"
         # Hybrid is opt-in and accepts only a dedicated, loopback language
-        # generator. No default Qwen model, auto-pull, or hosted API.
+        # generator. No implicit local model, auto-pull, or hosted API.
         self.local_only = self.hybrid_mode or (
             enabled(os.environ.get("FLYGPT_LOCAL_ONLY")) and not self.native_mode
         )
@@ -722,7 +722,7 @@ class GeneratorRuntime:
             )
         native_url = _ollama_native_url(self.url)
         if native_url is not None:
-            # Apply the CPU configuration that loaded Qwen3 4B on Codespaces.
+            # Use conservative CPU settings for an explicitly configured local model.
             # Raw Ollama /api/chat accepts these runtime model options.
             body = {
                 "model": model,

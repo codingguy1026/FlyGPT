@@ -37,11 +37,11 @@ class PapitiHybridTests(unittest.TestCase):
         self.assertIsNone(result.model)
         self.assertTrue(runtime.status()["hybrid_model_configured"])
 
-    def test_unconfigured_hybrid_fails_closed_without_qwen_or_network(self):
+    def test_unconfigured_hybrid_fails_closed_without_legacy_model_or_network(self):
         with patch.dict(os.environ, {
             "FLYGPT_GENERATOR_MODE": "hybrid",
             "FLYGPT_GENERATOR_URL": "https://untrusted.example/v1/chat/completions",
-            "FLYGPT_GENERATOR_MODEL": "qwen3:4b-instruct",
+            "FLYGPT_GENERATOR_MODEL": "papiti-local-fixture:1b",
             "GEMINI_API_KEY": "stale-key",
         }, clear=True):
             runtime = GeneratorRuntime()

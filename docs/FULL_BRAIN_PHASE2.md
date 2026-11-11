@@ -3,7 +3,7 @@
 This is an experimental **offline** brain-graph engine. It runs a weighted,
 directed signal-propagation calculation across the full released weights table,
 restricted to **curated annotated neuronal bodies**. It does not replace the
-256-node trainable FlyGraphRouter or the Qwen language model. It is not wired
+256-node trainable FlyGraphRouter or an optional language generator. It is not wired
 into \`/api/chat\`, and does not claim to model biological electrical firing.
 
 The previously audited dataset had **151,856,684 connection rows**,

@@ -7,6 +7,13 @@ on:
       - "training/papiti_demo_dialogues.jsonl"
       - "tests/test_papiti_lm.py"
       - ".github/workflows/papiti-lm-smoke.yml"
+  push:
+    branches: [main]
+    paths:
+      - "papiti_lm/**"
+      - "training/papiti_demo_dialogues.jsonl"
+      - "tests/test_papiti_lm.py"
+      - ".github/workflows/papiti-lm-smoke.yml"
   workflow_dispatch:
 
 jobs:

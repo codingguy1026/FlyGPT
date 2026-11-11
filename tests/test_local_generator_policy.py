@@ -73,7 +73,7 @@ class LocalGenerationPolicyTests(unittest.TestCase):
             with self.subTest(url=url):
                 self.assertFalse(is_local_generator_url(url))
 
-    def test_local_mode_defaults_and_ignores_hosted_settings(self):
+    def test_local_mode_requires_explicit_model_and_ignores_hosted_settings(self):
         with patch.dict(os.environ, {
             "FLYGPT_LOCAL_ONLY": "1",
             "GEMINI_API_KEY": "very-secret",
@@ -83,11 +83,11 @@ class LocalGenerationPolicyTests(unittest.TestCase):
         }, clear=True):
             runtime = GeneratorRuntime()
             status = runtime.status()
-        self.assertTrue(runtime.configured)
+        self.assertFalse(runtime.configured)
         self.assertTrue(status["local_only"])
         self.assertTrue(status["local_endpoint_allowed"])
         self.assertEqual(runtime.provider_name, "ollama-local")
-        self.assertEqual(runtime.model, "qwen3:4b-instruct")
+        self.assertEqual(runtime.model, "")
         self.assertEqual(runtime.url, "http://127.0.0.1:11434/v1/chat/completions")
         self.assertIsNone(runtime.reasoning_effort)
         self.assertEqual(runtime.api_key, "")
@@ -119,7 +119,7 @@ class LocalGenerationPolicyTests(unittest.TestCase):
         opener.open.return_value = _Response()
         with patch.dict(os.environ, {
             "FLYGPT_LOCAL_ONLY": "on",
-            "FLYGPT_GENERATOR_MODEL": "qwen2.5:0.5b-instruct",
+            "FLYGPT_GENERATOR_MODEL": "papiti-local-fixture:1b",
         }, clear=True), patch(
             "generator_runtime.urllib.request.build_opener", return_value=opener
         ) as build_opener, patch(
@@ -178,7 +178,7 @@ class LocalGenerationPolicyTests(unittest.TestCase):
                 _extract_ollama_chat(bad)
 
     def test_local_mode_preserves_semantic_gate(self):
-        with patch.dict(os.environ, {"FLYGPT_LOCAL_ONLY": "1"}, clear=True), patch(
+        with patch.dict(os.environ, {"FLYGPT_LOCAL_ONLY": "1", "FLYGPT_GENERATOR_MODEL": "papiti-local-fixture:1b"}, clear=True), patch(
             "generator_runtime.urllib.request.build_opener"
         ) as build_opener:
             runtime = GeneratorRuntime()

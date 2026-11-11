@@ -34,7 +34,7 @@ def prepare(text: str, route: str = "general") -> dict:
 def runtime() -> GeneratorRuntime:
     with patch.dict(
         os.environ,
-        {"FLYGPT_LOCAL_ONLY": "1", "FLYGPT_GENERATOR_MODEL": "qwen2.5:0.5b-instruct"},
+        {"FLYGPT_LOCAL_ONLY": "1", "FLYGPT_GENERATOR_MODEL": "papiti-local-fixture:1b"},
         clear=True,
     ):
         return GeneratorRuntime()
@@ -44,7 +44,7 @@ def generated(text: str) -> GenerationResult:
     return GenerationResult(
         used=True,
         provider="ollama-local",
-        model="qwen2.5:0.5b-instruct",
+        model="papiti-local-fixture:1b",
         answer=text,
         latency_ms=15,
     )

@@ -8,7 +8,7 @@ def realize_verified(answer, generator):
     meta = {"stage": "verified_language_realization_v1", "attempted": False,
             "accepted": False, "fallback": True, "model": getattr(generator, "model", None)}
     # Hybrid default: verified mathematical/logical replies return immediately.
-    # Set FLYGPT_VERIFIED_REALIZER_MODE=always to explicitly request Qwen.
+    # Set FLYGPT_VERIFIED_REALIZER_MODE=always to request a configured generator.
     mode = os.getenv("FLYGPT_VERIFIED_REALIZER_MODE", "auto").strip().lower()
     if mode not in {"auto", "always", "off"}:
         mode = "auto"

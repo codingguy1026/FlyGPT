@@ -1,6 +1,6 @@
 .PHONY: papiti-lm-train papiti-lm-eval papiti-lm-chat papiti-lm-serve run native hybrid fast local stable doctor stability reclaim disk train-setup train-v0.4 train-v0.5 train-role-experiment compare-role-experiment train-full-structural enable-trained-router disable-trained-router download-full-neuron-data train-full-neuron-router enable-full-neuron-router disable-full-neuron-router install-full-neuron-router help stop
 
-# An explicit, opt-in scratch language-model experiment; never invoked by make run.
+# Explicit opt-in scratch language-model experiment; never invoked by make run.
 PAPITI_PYTHON ?= $(if $(wildcard .venv-papiti/bin/python),.venv-papiti/bin/python,python3)
 
 papiti-lm-train:
@@ -102,16 +102,16 @@ disk:
 
 help:
 	@echo "FlyGPT development commands"
-	@echo "  make papiti-lm-train  Train a tiny Papiti Transformer from scratch (explicit)"
-	@echo "  make papiti-lm-eval   Held-out evaluation of local Papiti checkpoint"
-	@echo "  make papiti-lm-chat   Single-turn chat using Papiti's trained weights"
-	@echo "  make papiti-lm-serve  Serve experimental loopback inference on port 8765"
+	@echo "  make papiti-lm-train  Train Papiti Transformer from scratch (opt-in)"
+	@echo "  make papiti-lm-eval   Evaluate held-out groups"
+	@echo "  make papiti-lm-chat   Chat with local Papiti weights"
+	@echo "  make papiti-lm-serve  Serve localhost Papiti checkpoint"
 	@echo "  make run         Start configured generator, backend, and frontend"
 	@echo "  make run        Papiti-native replies by default, no local or hosted LLM"
 	@echo "  make native     Force deterministic Papiti-native response mode"
 	@echo "  make hybrid     Native-first responses; optional explicitly configured loopback model"
-	@echo "  make fast       Optional smaller Ollama LLM for open-ended chat"
-	@echo "  make local      Optional strictly local LLM via Ollama (ignore hosted API keys)"
+	@echo "  make fast       Local LLM with explicit installed FLYGPT_FAST_MODEL"
+	@echo "  make local      Local LLM with an explicitly installed model"
 	@echo "  make stable      Build + serve production frontend without backend hot reload"
 	@echo "  make doctor      Diagnose frontend, backend, proxy and Codespaces URL"
 	@echo "  make stability   Sample frontend/backend/proxy six times for intermittent failures"

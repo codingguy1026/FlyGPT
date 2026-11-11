@@ -41,7 +41,7 @@ def state_for(message: str, route: str = "general") -> dict:
 
 def model_answer(text: str) -> GenerationResult:
     return GenerationResult(
-        used=True, provider="ollama-local", model="qwen2.5:0.5b-instruct",
+        used=True, provider="ollama-local", model="papiti-local-fixture:1b",
         answer=text, latency_ms=20,
     )
 
@@ -134,7 +134,7 @@ class LocalizedGenerationTests(unittest.TestCase):
     def runtime(self):
         with patch.dict(os.environ, {
             "FLYGPT_LOCAL_ONLY": "1",
-            "FLYGPT_GENERATOR_MODEL": "qwen2.5:0.5b-instruct",
+            "FLYGPT_GENERATOR_MODEL": "papiti-local-fixture:1b",
         }, clear=True):
             return GeneratorRuntime()
 

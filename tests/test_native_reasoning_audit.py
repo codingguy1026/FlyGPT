@@ -1,4 +1,4 @@
-"""Contract tests for the standalone Qwen-free capability audit."""
+"""Contract tests for the standalone LLM-free capability audit."""
 from __future__ import annotations
 
 import json
@@ -6,10 +6,10 @@ import os
 import unittest
 from unittest.mock import patch
 
-from scripts.audit_qwen_free_reasoning import ForbiddenGenerator, run_audit
+from scripts.audit_native_reasoning import ForbiddenGenerator, run_audit
 
 
-class QwenFreeReasoningAuditTests(unittest.TestCase):
+class NativeReasoningAuditTests(unittest.TestCase):
     def test_fixed_proofs_and_guardrails_pass_without_llm(self) -> None:
         report = run_audit()
         self.assertEqual(report["status"], "PASS", report)

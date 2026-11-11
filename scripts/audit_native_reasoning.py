@@ -1,7 +1,7 @@
-"""Offline audit of Qwen-free reasoning, without making neural-reasoning claims.
+"""Offline audit of LLM-free reasoning, without making neural-reasoning claims.
 
 Run from the repository root:
-    python -m scripts.audit_qwen_free_reasoning
+    python -m scripts.audit_native_reasoning
 
 This exercises bounded production solvers and the semantic planner without
 starting FastAPI, downloading a checkpoint, or contacting an LLM. These are
@@ -40,7 +40,7 @@ SEATING_PUZZLE = (
 
 
 class ForbiddenGenerator:
-    """An assertion trap to ensure verified output never silently uses Qwen."""
+    """An assertion trap to ensure verified output never silently uses a language generator."""
 
     model = "disabled-in-audit"
     configured = True
@@ -153,7 +153,7 @@ def run_audit() -> dict:
 
     passed = all(case["passed"] for case in cases) and generator.calls == 0
     return {
-        "audit": "qwen_free_reasoning_v1",
+        "audit": "native_reasoning_v1",
         "status": "PASS" if passed else "FAIL",
         "kind": "offline_fixed_regression_probes",
         "llm_available": False,
