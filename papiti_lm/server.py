@@ -25,7 +25,7 @@ class Message(BaseModel):
 class ChatRequest(BaseModel):
     model: str
     messages: list[Message] = Field(min_length=1, max_length=32)
-    max_tokens: int = Field(default=96, ge=1, le=256)
+    max_tokens: int = Field(default=96, ge=1, le=8192)
     temperature: float = Field(default=0.8, ge=0, le=2)
     stream: bool = False
 
@@ -59,7 +59,7 @@ def chat(request: ChatRequest):
         model, tokenizer = _loaded()
         # v0.1 only learned single-turn examples: system/history ignored, not understood.
         text = generate(
-            model, tokenizer, users[-1], max_new_tokens=request.max_tokens,
+            model, tokenizer, users[-1], max_new_tokens=min(request.max_tokens, 128),
             temperature=request.temperature, top_k=min(24, tokenizer.vocab_size)
         )
     except (OSError, ValueError, RuntimeError) as exc:
