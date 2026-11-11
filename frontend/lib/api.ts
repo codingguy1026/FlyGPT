@@ -153,6 +153,27 @@ export type GraphResponse = {
   edges: GraphEdge[];
 };
 
+export type NeuronSkeletonResponse = {
+  source: string;
+  dataset: string;
+  body_id: string;
+  total_segments: number;
+  shown_segments: number;
+  sampled: boolean;
+  bounds: { min: [number, number, number]; max: [number, number, number] };
+  segments: [number, number, number, number, number, number][];
+};
+
+export function getNeuronSkeleton(bodyId: string): Promise<NeuronSkeletonResponse> {
+  if (!/^\d{1,16}$/.test(bodyId) || Number(bodyId) <= 0) {
+    return Promise.reject(new Error("올바른 숫자 Body ID를 입력해 주세요."));
+  }
+  return requestJson<NeuronSkeletonResponse>(
+    `/api/neurons/${encodeURIComponent(bodyId)}/skeleton`,
+    { cache: "no-store" },
+  );
+}
+
 export type HealthResponse = {
   status: string;
   app_version?: string;
