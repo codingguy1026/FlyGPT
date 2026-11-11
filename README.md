@@ -54,14 +54,36 @@ FLYGPT_HYBRID_MODEL=YOUR_LOCAL_MODEL_NAME
 
 The model endpoint must be loopback. **No model is downloaded or started**
 automatically by `make hybrid`; no hosted endpoint, API key, or previous
-Qwen configuration is implicitly reused. This is a routing bridge for a
-**future Papiti-trained model**, not a claim that an original language model
-has already been trained. It reuses the existing bounded-task and output
+Qwen configuration is implicitly reused. This is a routing bridge; see the experimental scratch Transformer below.
+It does not automatically train or ship any language weights. It reuses the existing bounded-task and output
 validation gates for local model responses. An optional model may be slow
 or hallucinate, so test before relying on its answers.
 
+## Papiti scratch Transformer v0.1 (research, not pretrained)
+
+Papiti now has a separate **character-level causal Transformer implementation**
+whose weights start at random initialization. Train it yourself using an
+explicit, rights-cleared dialogue corpus, evaluate on held-out topic groups,
+then optionally use the **loopback-only** OpenAI-compatible adapter with
+`make hybrid`. A 48-line manually authored demo dataset is supplied only
+for verifying the training pipeline; it is far too small for reliable dialogue.
+
+Detailed setup, training, chat, and local-server instructions:
+[Papiti original Transformer research experiment](docs/papiti-own-transformer.md).
+
+```bash
+# after installing CPU PyTorch, fastapi, uvicorn in .venv-papiti
+make papiti-lm-train
+make papiti-lm-eval
+make papiti-lm-chat
+make papiti-lm-serve
+```
+
+This model is not trained on MaleCNS neurons, and no pretrained checkpoint
+or data is fetched or shipped. The website keeps Native mode by default;
+this experiment never enables itself without explicit configuration.
+
 To return to the pure deterministic experiment, use `make native`.
-The standalone Native PR must be merged before this stacked hybrid PR.
 
 As of v0.10.0, interactive connectome queries target the **Janelia MaleCNS v1.0**
 dataset through the official neuPrint service instead of requiring local
