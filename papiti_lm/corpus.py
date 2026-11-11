@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import json
 import random
+import re
 import unicodedata
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -136,3 +138,82 @@ class JamoTokenizer(CharTokenizer):
 
     def decode(self, tokens: list[int]) -> str:
         return unicodedata.normalize("NFC", super().decode(tokens))
+
+
+def _bpe_chunks(value: str) -> list[list[str]]:
+    """Split words and whitespace; never learn merges across word boundaries."""
+    return [list(part) for part in re.findall(r"\s+|\S+", value)]
+
+
+def _merge_pair(chunks: list[str], pair: tuple[str, str]) -> list[str]:
+    merged: list[str] = []
+    index = 0
+    while index < len(chunks):
+        if index + 1 < len(chunks) and (chunks[index], chunks[index + 1]) == pair:
+            merged.append(chunks[index] + chunks[index + 1])
+            index += 2
+        else:
+            merged.append(chunks[index])
+            index += 1
+    return merged
+
+
+class SubwordTokenizer(CharTokenizer):
+    """Small, train-only BPE over Unicode NFC Korean syllables and punctuation.
+
+    It never emits a standalone decomposed Hangul jamo token unless a jamo was
+    explicitly present in training text. Unknown codepoints still use UNK.
+    Learned whole-character pieces make Korean spacing and short recurring
+    phrases available as units rather than forcing every syllable to be
+    assembled from component jamo.
+    """
+
+    def __init__(self, tokens: list[str], merges: list[tuple[str, str]]):
+        if any(not token or len(token) > 12 for token in tokens):
+            raise ValueError("invalid BPE token")
+        if len(set(tokens)) != len(tokens):
+            raise ValueError("duplicate BPE token")
+        self.characters = sorted(tokens)  # Consistent with checkpoint format v1.
+        self.char_to_id = {token: i + RESERVED for i, token in enumerate(self.characters)}
+        self.merges = [tuple(pair) for pair in merges]
+        if any(len(pair) != 2 or pair[0] + pair[1] not in self.char_to_id
+               for pair in self.merges):
+            raise ValueError("invalid BPE merges")
+
+    @classmethod
+    def from_examples(cls, examples: list[Example], max_merges: int = 256):
+        if not 0 <= max_merges <= 1024:
+            raise ValueError("max_merges must be 0..1024")
+        texts = [text for row in examples for text in (row.user, row.assistant)]
+        chunks = [part for text in texts for part in _bpe_chunks(text)]
+        base = set(char for text in texts for char in text)
+        merges: list[tuple[str, str]] = []
+        for _ in range(max_merges):
+            counts: Counter[tuple[str, str]] = Counter()
+            for chunk in chunks:
+                if chunk and not all(char.isspace() for char in chunk):
+                    counts.update(zip(chunk, chunk[1:]))
+            candidates = [
+                (frequency, pair)
+                for pair, frequency in counts.items()
+                if frequency >= 3 and len(pair[0] + pair[1]) <= 12
+            ]
+            if not candidates:
+                break
+            # Deterministic frequency-first, Unicode lexical tie-break.
+            best_pair = max(candidates, key=lambda item: (item[0], item[1]))[1]
+            merges.append(best_pair)
+            base.add(best_pair[0] + best_pair[1])
+            chunks = [_merge_pair(chunk, best_pair) for chunk in chunks]
+        return cls(sorted(base), merges)
+
+    def encode(self, text: str) -> list[int]:
+        output: list[int] = []
+        for chunk in _bpe_chunks(text):
+            for pair in self.merges:
+                chunk = _merge_pair(chunk, pair)
+            output.extend(self.char_to_id.get(token, UNK) for token in chunk)
+        return output
+
+    def decode(self, tokens: list[int]) -> str:
+        return super().decode(tokens)

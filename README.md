@@ -57,6 +57,29 @@ trained automatically. It reuses the existing bounded-task and output
 validation gates for local model responses. An optional model may be slow
 or hallucinate, so test before relying on its answers.
 
+## Papiti v0.4: Korean subword model + explicit arithmetic calculator
+
+Papiti's v0.4 is a separate **from-scratch** Transformer experiment that learns
+Korean multi-syllable **BPE tokens only from the training partition**, rather
+than emitting isolated decomposed jamo. It uses the exact same 721-dialogue,
+group-held-out corpus as v0.3 so character-normalized held-out loss can be
+compared fairly. This is still too small to prove conversational fluency.
+
+The optional standalone v0.4 chat and local API also provide a **clearly
+separate deterministic arithmetic calculator** for simple expressions such
+as `1+1은?`. This does not mean the language model learned arithmetic.
+
+```bash
+make papiti-lm-train-v0.4
+make papiti-lm-eval-v0.4
+make papiti-lm-chat-v0.4
+```
+
+The GitHub Actions experiment compares new training with the v0.3 jamo
+baseline on the same split and uploads its best checkpoint separately.
+See [Papiti v0.4 setup, metrics and limitations](docs/papiti-language-v0-4.md).
+Older models and FlyGPT's normal Native/Hybrid defaults are unchanged.
+
 ## Papiti v0.3: Korean syllable composition and 721 dialogue examples
 
 Papiti v0.3 remains a self-trained **randomly initialized** Transformer,

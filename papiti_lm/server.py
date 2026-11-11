@@ -57,11 +57,16 @@ def chat(request: ChatRequest):
     try:
         from papiti_lm.model import generate
         model, tokenizer = _loaded()
-        # v0.1 only learned single-turn examples: system/history ignored, not understood.
-        text = generate(
-            model, tokenizer, users[-1], max_new_tokens=min(request.max_tokens, 128),
-            temperature=request.temperature, top_k=min(24, tokenizer.vocab_size)
-        )
+        # This is still single-turn generation: system/history are ignored.
+        text = None
+        if os.environ.get("PAPITI_LM_ARITHMETIC") == "1":
+            from papiti_lm.arithmetic import try_arithmetic
+            text = try_arithmetic(users[-1])
+        if text is None:
+            text = generate(
+                model, tokenizer, users[-1], max_new_tokens=min(request.max_tokens, 128),
+                temperature=request.temperature, top_k=min(24, tokenizer.vocab_size)
+            )
     except (OSError, ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=503, detail="model inference unavailable") from exc
     if not text.strip():
