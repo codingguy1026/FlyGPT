@@ -63,6 +63,34 @@ jobs:
               print(row)
           print('Research-only, NOT release-ready:', not report['release_ready'])
           PY
+      - name: Exercise ACTUAL Hybrid with trained checkpoint (not mocks)
+        run: |
+          python - <<'PY'
+          import json, os, sys
+          from brain_runtime import FlyBrainRuntime
+          from generator_runtime import GeneratorRuntime
+          os.environ.update({
+              "FLYGPT_GENERATOR_MODE": "hybrid",
+              "FLYGPT_HYBRID_SPEAKER": "v0.6.1",
+              "FLYGPT_HYBRID_SPEECH_PYTHON": sys.executable,
+              "FLYGPT_HYBRID_SPEECH_CHECKPOINT": "artifacts/papiti_language_v0_6_1.pt",
+          })
+          brain, runtime = FlyBrainRuntime(), GeneratorRuntime()
+          accepted=0
+          for text in ("안녕", "고마워", "잘 가", "너 누구야?"):
+              state=brain.plan(
+                  route_info={"route":"general","accepted":True,"confidence":0.95,"margin":0.8},
+                  dispatch={"route":"general"}, message=text,
+              )
+              state=brain.finalize(state)
+              result=runtime.generate(text, "general", brain_state=state)
+              print(json.dumps({"prompt":text,"provider":result.provider,
+                                "answer":result.answer,"finish_reason":result.finish_reason,
+                                "fallback_reason":result.error}, ensure_ascii=False), flush=True)
+              accepted += result.provider=="papiti-hybrid-v0.6.1"
+          print("REAL NEURAL HYBRID ACCEPTED:",accepted, "/4", flush=True)
+          assert accepted>0, "Model did not produce any accepted social replies; fix training before merge"
+          PY
       - name: Publish short-lived model checkpoint and inspection evidence
         if: always()
         uses: actions/upload-artifact@v4
