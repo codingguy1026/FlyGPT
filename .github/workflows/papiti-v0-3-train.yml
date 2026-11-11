@@ -1,0 +1,72 @@
+name: Papiti v0.3 Korean language training
+
+on:
+  pull_request:
+    paths:
+      - "training/papiti_dialogues_v0_3.jsonl"
+      - "papiti_lm/**"
+      - "tests/test_papiti_lm.py"
+      - ".github/workflows/papiti-v0-3-train.yml"
+  push:
+    branches: [main]
+    paths:
+      - "training/papiti_dialogues_v0_3.jsonl"
+      - "papiti_lm/**"
+      - "tests/test_papiti_lm.py"
+      - ".github/workflows/papiti-v0-3-train.yml"
+  workflow_dispatch:
+
+jobs:
+  train-korean:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install CPU PyTorch and API test dependencies
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch
+          python -m pip install fastapi uvicorn
+      - name: Validate corpus, jamo tokenizer, model and backward compatibility
+        run: python -m unittest tests.test_papiti_lm -v
+      - name: Baseline with one epoch (same v0.3 data/split)
+        run: |
+          python -m papiti_lm train \
+            --data training/papiti_dialogues_v0_3.jsonl \
+            --checkpoint /tmp/papiti-v0-3-epoch1.pt \
+            --epochs 1 --batch-size 16 --tokenizer jamo \
+            --d-model 128 --heads 4 --layers 2 --context 192 --seed 42
+          python -m papiti_lm eval \
+            --data training/papiti_dialogues_v0_3.jsonl \
+            --checkpoint /tmp/papiti-v0-3-epoch1.pt
+      - name: Train original Transformer from scratch on 721 dialogues
+        run: |
+          python -m papiti_lm train \
+            --data training/papiti_dialogues_v0_3.jsonl \
+            --checkpoint artifacts/papiti_language_v0_3.pt \
+            --epochs 30 --patience 7 --batch-size 16 --tokenizer jamo \
+            --d-model 128 --heads 4 --layers 2 --context 192 --seed 42
+          python -m papiti_lm eval \
+            --data training/papiti_dialogues_v0_3.jsonl \
+            --checkpoint artifacts/papiti_language_v0_3.pt
+      - name: Reproducible v0.3 conversational probes
+        run: |
+          echo "=== epoch 1: 안녕 ==="
+          python -m papiti_lm chat --checkpoint /tmp/papiti-v0-3-epoch1.pt --message "안녕" --seed 7 --max-new-tokens 72 --temperature 0.7 --top-k 16 --repetition-penalty 1.12
+          echo "=== best checkpoint: 안녕 ==="
+          python -m papiti_lm chat --checkpoint artifacts/papiti_language_v0_3.pt --message "안녕" --seed 7 --max-new-tokens 72 --temperature 0.7 --top-k 16 --repetition-penalty 1.12
+          echo "=== best checkpoint: 고마워 ==="
+          python -m papiti_lm chat --checkpoint artifacts/papiti_language_v0_3.pt --message "고마워" --seed 7 --max-new-tokens 72 --temperature 0.7 --top-k 16 --repetition-penalty 1.12
+          echo "=== best checkpoint: 새로운 인사 ==="
+          python -m papiti_lm chat --checkpoint artifacts/papiti_language_v0_3.pt --message "반갑네 파피티야!" --seed 7 --max-new-tokens 72 --temperature 0.7 --top-k 16 --repetition-penalty 1.12
+          echo "=== best checkpoint: new sports chat ==="
+          python -m papiti_lm chat --checkpoint artifacts/papiti_language_v0_3.pt --message "방금 야구에서 기적 같은 승리를 했어!" --seed 7 --max-new-tokens 72 --temperature 0.7 --top-k 16 --repetition-penalty 1.12
+      - name: Upload trained checkpoint
+        uses: actions/upload-artifact@v4
+        with:
+          name: papiti-v0-3-trained-weights
+          path: artifacts/papiti_language_v0_3.pt
+          if-no-files-found: error
+          retention-days: 7

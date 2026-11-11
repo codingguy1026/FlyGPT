@@ -14,7 +14,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from papiti_lm import MODEL_NAME
-from papiti_lm.corpus import ASSISTANT, BOS, EOS, PAD, UNK, USER, CharTokenizer
+from papiti_lm.corpus import ASSISTANT, BOS, EOS, PAD, UNK, USER, CharTokenizer, JamoTokenizer
 
 
 @dataclass(frozen=True)
@@ -107,6 +107,7 @@ def generate(
     max_new_tokens: int = 96,
     temperature: float = 0.8,
     top_k: int = 24,
+    repetition_penalty: float = 1.0,
     seed: int | None = None,
 ) -> str:
     """Autoregressively sample a new answer; no canned answers or lookup."""
@@ -118,6 +119,8 @@ def generate(
         raise ValueError("temperature must be 0..2")
     if not 1 <= top_k <= 65536:
         raise ValueError("top_k must be positive and bounded")
+    if not 1 <= repetition_penalty <= 2:
+        raise ValueError("repetition_penalty must be between 1 and 2")
     # Small demo vocabularies may contain fewer items than the default top_k.
     # The actual sampling set is clamped to logits.numel() below.
     device = next(model.parameters()).device
@@ -137,6 +140,14 @@ def generate(
         )
         logits = model(window)[0, -1].clone()
         logits[[PAD, BOS, USER, ASSISTANT, UNK]] = -float("inf")
+        # Optional repetition penalty acts on generated output only. Never
+        # suppress characters because they appeared in the user's prompt.
+        if repetition_penalty > 1.0:
+            for token in set(produced[-32:]):
+                if logits[token] >= 0:
+                    logits[token] /= repetition_penalty
+                else:
+                    logits[token] *= repetition_penalty
         if temperature == 0:
             next_token = int(logits.argmax())
         else:
@@ -168,6 +179,7 @@ def save_checkpoint(
             "model_name": MODEL_NAME,
             "config": asdict(model.config),
             "characters": tokenizer.characters,
+            "tokenizer_type": "jamo" if isinstance(tokenizer, JamoTokenizer) else "char",
             "state_dict": model.state_dict(),
             "metadata": metadata,
         }, temporary)
@@ -183,7 +195,13 @@ def load_checkpoint(path: str | Path, device: str = "cpu"):
         raise ValueError("unsupported checkpoint")
     if checkpoint.get("model_name") != MODEL_NAME:
         raise ValueError("checkpoint belongs to a different model")
-    tokenizer = CharTokenizer(checkpoint["characters"])
+    tokenizer_type = checkpoint.get("tokenizer_type", "char")
+    if tokenizer_type == "jamo":
+        tokenizer = JamoTokenizer(checkpoint["characters"])
+    elif tokenizer_type == "char":
+        tokenizer = CharTokenizer(checkpoint["characters"])
+    else:
+        raise ValueError("unsupported tokenizer type")
     config = ModelConfig(**checkpoint["config"])
     if config.vocab_size != tokenizer.vocab_size:
         raise ValueError("checkpoint vocabulary/config mismatch")
