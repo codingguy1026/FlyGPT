@@ -5,6 +5,7 @@ import re
 from typing import Any
 
 from semantic_planner import compose_fact_plan
+from affect_reactions import AFFECT_REACTIONS, detect_personal_affect
 
 
 class FlyBrainRuntime:
@@ -244,6 +245,24 @@ class FlyBrainRuntime:
                         "evidence, or other match details."
                     ),
                 }],
+            })
+            return plan
+
+        affect_act = detect_personal_affect(text)
+        if affect_act is not None:
+            reaction = AFFECT_REACTIONS[affect_act]
+            plan.update({
+                "ready": True,
+                "speech_act": affect_act,
+                "content_units": [{
+                    "kind": "communicative_act",
+                    "value": reaction["plan_value"],
+                }],
+                "style": {
+                    "language": self._language_hint(text),
+                    "length": "short",
+                    "tone": reaction["tone"],
+                },
             })
             return plan
 
