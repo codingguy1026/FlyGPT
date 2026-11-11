@@ -88,7 +88,7 @@ class TransformerSmokeTests(unittest.TestCase):
         inputs, labels = tokenizer.sequence(records[0], 48)
         padded = torch.tensor([inputs])
         alternative = padded.clone()
-        alternative[0, -1] = tokenizer.encode("!")[0]
+        alternative[0, -1] = tokenizer.encode("안")[0]
         with torch.inference_mode():
             initial = model(padded)
             changed = model(alternative)
