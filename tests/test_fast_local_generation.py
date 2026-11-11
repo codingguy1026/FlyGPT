@@ -69,7 +69,7 @@ class FastLocalGenerationTests(unittest.TestCase):
         with patch.dict(os.environ, {
             "FLYGPT_LOCAL_ONLY": "1",
             "FLYGPT_GENERATOR_URL": "http://127.0.0.1:11434/v1/chat/completions",
-            "FLYGPT_GENERATOR_MODEL": "qwen3:4b-instruct",
+            "FLYGPT_GENERATOR_MODEL": "papiti-local-fixture:1b",
             "FLYGPT_GENERATOR_MAX_TOKENS": "384",
         }, clear=True), patch("generator_runtime.urllib.request.build_opener") as opener:
             opener.return_value.open.side_effect = fake_open
@@ -79,7 +79,7 @@ class FastLocalGenerationTests(unittest.TestCase):
         self.assertTrue(result.used)
         self.assertEqual(result.answer, "안녕하세요!")
         self.assertEqual(len(captured), 1)
-        self.assertEqual(captured[0]["model"], "qwen3:4b-instruct")
+        self.assertEqual(captured[0]["model"], "papiti-local-fixture:1b")
         self.assertIs(captured[0]["think"], False)
         self.assertEqual(captured[0]["options"]["num_predict"], 64)
         self.assertEqual(result.ollama_metrics["eval_count"], 9)
