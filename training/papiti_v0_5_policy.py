@@ -97,8 +97,11 @@ class FullMaleCNSPolicy(nn.Module):
         normalized = F.normalize(keys.float(), dim=1, eps=1e-8)
         self.register_buffer("neuron_ids", neuron_ids.long().clone())
         self.register_buffer("keys", normalized.clone())
-        self.register_buffer("population_mean", normalized.mean(dim=0))
-        self.register_buffer("population_gram", normalized.T @ normalized / len(normalized))
+        # Every neuron has an individually trainable positive contribution,
+        # including the 217 official neurons without eligible directed edges.
+        # Structural keys stay anchored to genuine graph pretraining; action
+        # supervision updates these population gains for ALL 166700 neurons.
+        self.neuron_gain_logits = nn.Parameter(torch.zeros(len(neuron_ids)))
         dimension = normalized.shape[1]
 
         self.encoder = nn.Sequential(
@@ -114,8 +117,14 @@ class FullMaleCNSPolicy(nn.Module):
 
     def full_population_state(self, q: torch.Tensor) -> torch.Tensor:
         query = F.normalize(q, dim=1, eps=1e-8)
-        numerator = self.population_mean[None, :] + STRENGTH * (query @ self.population_gram)
-        denominator = 1 + STRENGTH * (query @ self.population_mean)[:, None]
+        gains = 2.0 * torch.sigmoid(self.neuron_gain_logits)
+        weighted_keys = self.keys * gains[:, None]
+        total_gain = gains.sum()
+        # All-neuron weighted moments, with autograd reaching every gain.
+        mean = weighted_keys.sum(dim=0) / total_gain
+        gram = self.keys.T @ weighted_keys / total_gain
+        numerator = mean[None, :] + STRENGTH * (query @ gram)
+        denominator = 1 + STRENGTH * (query @ mean)[:, None]
         return numerator / denominator
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
