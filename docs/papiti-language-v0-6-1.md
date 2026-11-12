@@ -49,6 +49,23 @@ Disable the new speaker without changing Native or historical HTTP Hybrid:
 
     FLYGPT_HYBRID_SPEAKER=legacy make hybrid
 
+## Off-topic response prevention
+
+The tiny v0.6.1 speaker is now attempted only for speech acts represented
+in its supervised training corpus (greetings, thanks, farewells, a small
+set of project facts, specific social prompts, and exact math values).
+A public-history request that produces a research/status semantic packet
+is **not** a learned storytelling skill. In particular, the speaker must
+never turn a no-evidence/search plan into a memorized FlyGPT introduction.
+Missing-source and missing-memory replies are checked for the intended
+negative-status meaning instead of merely containing Korean characters.
+
+Other semantic packets can be spoken only by an explicitly configured
+local general-purpose language model under the existing evidence gate.
+Without one, the API reports `hybrid_speaker_unsupported` and renders
+an explanatory failure. This fixes false success reporting; it does not
+add historical storytelling competence to v0.6.1.
+
 ## Neural-only Hybrid policy
 
 The Hybrid conversation generator now requires real language-model output.
