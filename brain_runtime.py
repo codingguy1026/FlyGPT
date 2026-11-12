@@ -477,13 +477,67 @@ class FlyBrainRuntime:
                     ],
                 )
             else:
-                # Raw search context is evidence, not a finished thought. Keep strict
-                # mouth-only mode closed until an upstream semantic extractor turns it
-                # into atomic claims.
-                plan = dict(final.get("utterance_plan") or {})
-                plan["speech_act"] = "research_semantics_pending"
-                plan["ready"] = False
-                final["utterance_plan"] = plan
+                if final.get("route") == "research":
+                    # Backward compatibility: the historical bounded-task
+                    # Research mode can still pass retrieved evidence to its
+                    # optional generator. Hybrid evidence-first uses GENERAL
+                    # execution with a strict sourced-excerpt mouth plan.
+                    plan = dict(final.get("utterance_plan") or {})
+                    plan["speech_act"] = "research_semantics_pending"
+                    plan["ready"] = False
+                    final["utterance_plan"] = plan
+                    final["evidence"] = evidence
+                    if final.get("accepted"):
+                        final["task_plan"] = {
+                            "contract": "bounded_task_v1",
+                            "ready": True,
+                            "route": "research",
+                            "language": str((plan.get("style") or {}).get("language", "match_user")),
+                            "grounding": "retrieved_sources",
+                        }
+                    return final
+                # Do not invent facts from search snippets or promote them to
+                # verified knowledge. The upstream Python brain may choose
+                # exact, attributed excerpts as evidence to *report*, never
+                # as unquestioned answers to the original question.
+                from urllib.parse import urlsplit
+                excerpts = []
+                for source in sources[:3]:
+                    if not isinstance(source, dict):
+                        continue
+                    url = str(source.get("url") or "").strip()
+                    parsed = urlsplit(url)
+                    if parsed.scheme != "https" or not parsed.hostname:
+                        continue
+                    raw_snippets = source.get("snippets") or []
+                    if not isinstance(raw_snippets, list):
+                        continue
+                    snippet = next(
+                        (" ".join(str(item).split()) for item in raw_snippets
+                         if isinstance(item, str) and item.strip()), "",
+                    )
+                    if not snippet:
+                        continue
+                    excerpts.append({
+                        "kind": "retrieved_web_excerpt",
+                        "value": snippet[:380],
+                        "url": url,
+                        "source_title": str(source.get("title") or parsed.hostname)[:100],
+                        "provenance": "unverified_web_snippet",
+                    })
+                if excerpts:
+                    self._set_evidence_plan(
+                        final, speech_act="report_retrieved_web_evidence",
+                        content_units=excerpts, length="medium",
+                    )
+                else:
+                    self._set_evidence_plan(
+                        final, speech_act="report_no_external_evidence",
+                        content_units=[{
+                            "kind": "status",
+                            "value": "No safely attributable web excerpt was available.",
+                        }],
+                    )
         elif retrieval in {"exact_math", "exact_math_if_available"}:
             text = (tool_context or "").strip()
             available = bool(text)

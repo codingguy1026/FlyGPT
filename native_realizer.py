@@ -75,6 +75,39 @@ def realize_native(
                 return "ㅋㅋㅋ" if ko else "Haha!"
             return "응!" if ko else "Yep!"
 
+        if act == "report_retrieved_web_evidence":
+            # Search results are evidence excerpts, NOT established facts.
+            # Never claim that a search result retrained the neural network.
+            from urllib.parse import urlsplit
+            units = plan.get("content_units")
+            if not isinstance(units, list) or not 1 <= len(units) <= 3:
+                return None
+            outputs = []
+            for unit in units:
+                if (not isinstance(unit, dict)
+                        or unit.get("kind") != "retrieved_web_excerpt"
+                        or unit.get("provenance") != "unverified_web_snippet"):
+                    return None
+                value, url = unit.get("value"), unit.get("url")
+                if not isinstance(value, str) or not isinstance(url, str):
+                    return None
+                if len(value) > 380 or not value.strip():
+                    return None
+                parsed = urlsplit(url)
+                if parsed.scheme != "https" or not parsed.hostname:
+                    return None
+                # Present a bounded attributed quote, not a newly verified claim.
+                clean = re.sub(r"<[^>]*>", "", value).strip()
+                if not clean:
+                    return None
+                outputs.append(f"• {clean[:380]}\n  출처: {url}" if ko
+                               else f"• {clean[:380]}\n  Source: {url}")
+            head = ("검색된 자료에서 다음 내용을 찾았어. "
+                    "아직 사실 전체를 독립 검증한 것은 아니야:"
+                    if ko else
+                    "These are attributed search excerpts, not independently verified conclusions:")
+            return head + "\n" + "\n".join(outputs)
+
         if act == "report_no_memory" and _units(plan, "status"):
             return ("관련된 이전 대화를 찾지 못했어." if ko
                     else "I couldn't find a relevant earlier conversation.")

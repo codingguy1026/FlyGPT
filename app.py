@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from connectome import MaleCNSConnectome
 from brain_runtime import FlyBrainRuntime
 from semantic_route_guard import apply_semantic_route_override
+from evidence_need import decide_evidence, no_gate_route
 from seating_solver import solve_linear_seating
 from symbolic_reasoner import solve_truth_teller_puzzle
 from constraint_reasoner import solve_integer_constraints
@@ -1154,6 +1155,30 @@ def chat_endpoint(req: ChatRequest, request: Request):
         route = predict_route(msg, user["id"])
         router_ms = round((time.perf_counter() - router_started) * 1000)
 
+        # Hybrid no longer uses MaleCNS task *categories* to grant permission
+        # to talk or to browse. Preserve its genuine predictions as advisory
+        # diagnostics while an evidence-first Python policy chooses retrieval.
+        hybrid_evidence_first = (
+            _generator.hybrid_mode
+            and os.environ.get("FLYGPT_HYBRID_EVIDENCE_FIRST", "1").strip().lower()
+                not in {"0", "false", "off"}
+        )
+        if hybrid_evidence_first:
+            if route is not None:
+                route = no_gate_route(route)
+            else:
+                # The old categorical router is not a dependency for
+                # evidence-first Hybrid conversation. Keep a truthful empty
+                # advisory record rather than synthesizing model confidence.
+                route = no_gate_route({
+                    "route": "unavailable",
+                    "confidence": 0.0,
+                    "margin": 0.0,
+                    "accepted": False,
+                    "top_routes": [],
+                    "model": "unavailable",
+                })
+
         if route is not None:
             _emit_live_trace({
                 "type": "route",
@@ -1334,6 +1359,25 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 dispatch=result.to_dict(),
                 message=msg,
             )
+            if hybrid_evidence_first:
+                # "Not trained" is not directly observable from neural
+                # weights. Search only when a factual answer lacks a grounded
+                # upstream plan and verified local evidence.
+                decision = decide_evidence(
+                    msg,
+                    ready_plan=bool(
+                        (brain_state.get("utterance_plan") or {}).get("ready")
+                    ),
+                    verified_local_evidence=any(
+                        hit.get("status") == "verified"
+                        for hit in knowledge_hits if isinstance(hit, dict)
+                    ),
+                )
+                brain_state["evidence_decision"] = decision.to_dict()
+                if decision.search:
+                    brain_state["retrieval"] = "research"
+                elif decision.memory:
+                    brain_state["retrieval"] = "memory"
 
             if result.status == "uncertain":
                 return response_with_router(
@@ -1602,6 +1646,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 "knowledge_hits": knowledge_hits,
                 "knowledge_learned": knowledge_learned,
                 "research": research_data,
+                "evidence_decision": brain_state.get("evidence_decision"),
                 "web_verified_facts": web_verified_facts,
                 "timings": {
                     "router_ms": router_ms,

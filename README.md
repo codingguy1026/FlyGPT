@@ -37,6 +37,16 @@ The optional HTTP language generator remains available only when explicitly
 configured. Native and Hybrid modes do not select or download pretrained
 models. Previously installed model files must be removed separately.
 
+## Hybrid evidence-first conversation (new experimental option)
+
+In Hybrid, the router's category/confidence is diagnostic only. An
+evidence-need policy, not a category, determines whether a public factual
+question requires Brave Search. Personal announcements are never searched
+automatically, and private memory stays private. Search excerpts carry
+source links and are not misrepresented as trained language-model knowledge.
+This does not automatically teach new weights to the speaker. See
+[the evidence-first design and limits](docs/hybrid-evidence-first.md).
+
 ## Papiti Hybrid v0.6.1 neural speech (experimental)
 
 In Hybrid, the **MaleCNS router and Python reasoning engine still decide

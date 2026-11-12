@@ -63,10 +63,18 @@ def check_candidate(plan: dict[str, Any], answer: str) -> str | None:
         if not source.startswith(prefix) or answer.strip() != source[len(prefix):].strip():
             return "exact_result_not_preserved"
     protected = {"grounded_project_fact", "verified_knowledge",
-                 "user_asserted_context", "retrieved_memory"}
+                 "user_asserted_context", "retrieved_memory",
+                 "retrieved_web_excerpt"}
     for unit in units:
         if unit["kind"] in protected and unit["value"] not in answer:
             return "semantic_content_not_preserved"
+    # The caller can only show retrieved material with source attribution.
+    if speech_act == "report_retrieved_web_evidence":
+        for unit in units:
+            url = unit.get("url")
+            if (not isinstance(url, str) or not url.startswith("https://")
+                    or url not in answer):
+                return "web_source_attribution_missing"
     language = str((plan.get("style") or {}).get("language") or "")
     if language == "ko" and not re.search(r"[가-힣ㄱ-ㅎㅏ-ㅣ]", answer):
         if speech_act != "state_exact_math_result":
