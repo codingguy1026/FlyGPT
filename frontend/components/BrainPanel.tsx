@@ -5,6 +5,7 @@ import type { GraphResponse, RouterResult, TraceFrame, NeuronKind, NeuronAnnotat
 import { getRouterGraph, getRouterAnnotations } from "@/lib/api";
 import RoutePanel from "./RoutePanel";
 import NeuronMorphologyExplorer from "./NeuronMorphologyExplorer";
+import NeuralUniverseRouterView from "./NeuralUniverseRouterView";
 
 const NEURON_KINDS: { kind: NeuronKind; label: string; color: string }[] = [
   { kind: "sensory", label: "감각", color: "#73e7f4" },
@@ -54,6 +55,7 @@ export default function BrainPanel({ open, onClose, router, phase, requestId }: 
   const [annotationRetry, setAnnotationRetry] = useState(0);
   const [mapMode, setMapMode] = useState<"activity" | "types">("activity");
   const [explorerOpen, setExplorerOpen] = useState(false);
+  const [universeOpen, setUniverseOpen] = useState(false);
   const [kindFilter, setKindFilter] = useState<NeuronKind | "all">("all");
 
   useEffect(() => {
@@ -142,6 +144,21 @@ export default function BrainPanel({ open, onClose, router, phase, requestId }: 
 
   if (!open) return null;
 
+  if (universeOpen) {
+    return (
+      <aside className="brainPanel neuronLabPanel" aria-label="Neural Universe 3D 라우터">
+        <header className="brainHeader">
+          <div><div className="eyebrow">SCHEMATIC 3D · VERIFIED ROUTER TRACE</div><h2>Neural Universe</h2></div>
+          <div className="brainHeaderActions">
+            <button type="button" className="neuronLabSwitch" onClick={() => setUniverseOpen(false)}>← 라우터 지도</button>
+            <button type="button" className="iconButton" onClick={onClose} aria-label="Brain 패널 닫기">×</button>
+          </div>
+        </header>
+        {graph ? <NeuralUniverseRouterView graph={graph} router={router} /> : <div className="brainEmpty">라우터 그래프 로딩 중...</div>}
+      </aside>
+    );
+  }
+
   if (explorerOpen) {
     return (
       <aside className="brainPanel neuronLabPanel" aria-label="MaleCNS 3D 뉴런 탐험실">
@@ -168,6 +185,7 @@ export default function BrainPanel({ open, onClose, router, phase, requestId }: 
           <h2>Neural Activity Monitor</h2>
         </div>
         <div className="brainHeaderActions">
+          <button type="button" className="neuronLabSwitch" onClick={() => setUniverseOpen(true)}>라우터 3D ↗</button>
           <button type="button" className="neuronLabSwitch" onClick={() => setExplorerOpen(true)}>
             뉴런 3D ↗
           </button>
