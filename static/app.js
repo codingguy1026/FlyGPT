@@ -41,7 +41,12 @@ async function loadSystemStatus() {
     }
 
     if (routerBadge) {
-      if (data.model_available) {
+      if (data.papiti_v05?.enabled) {
+        routerBadge.textContent = data.papiti_v05.checkpoint_present
+          ? 'BRAIN · MaleCNS v0.5' : 'V0.5 MODEL MISSING';
+        routerBadge.dataset.state = data.papiti_v05.checkpoint_present ? 'ready' : 'error';
+        routerBadge.title = 'Category-free full 166,700-neuron policy';
+      } else if (data.model_available) {
         const modelName = String(data.model_path || '').split('/').pop() || 'router';
         routerBadge.textContent = 'BRAIN · ' + modelName.replace('fly_router_', '').replace('.pt', '');
         routerBadge.dataset.state = data.router_error ? 'error' : 'ready';
@@ -353,8 +358,16 @@ function drawBrain() {
 function renderRoute(router) {
   if (!router) return;
 
-  routeName.textContent = router.route;
-  routeConfidence.textContent = `${(router.confidence * 100).toFixed(1)}%`;
+  if (router.category_free) {
+    const selected = router.selected_capabilities || [];
+    routeName.textContent = selected.length
+      ? 'v0.5 · ' + selected.join(' + ')
+      : 'v0.5 · no external tools';
+    routeConfidence.textContent = '166,700 neurons';
+  } else {
+    routeName.textContent = router.route;
+    routeConfidence.textContent = `${(router.confidence * 100).toFixed(1)}%`;
+  }
   routeBars.innerHTML = '';
 
   (router.top_routes || []).forEach((item) => {
@@ -554,10 +567,18 @@ chatForm.addEventListener('submit', async (event) => {
     const metaItems = [];
 
     if (data.router) {
-      metaItems.push({
-        text: `${data.router.route} · ${(data.router.confidence * 100).toFixed(1)}%`,
-        state: data.router.confidence >= 0.55 ? 'ready' : 'warning',
-      });
+      if (data.router.category_free) {
+        const selected = data.router.selected_capabilities || [];
+        metaItems.push({
+          text: 'MaleCNS v0.5 · ' + (selected.length ? selected.join(' + ') : 'no tools'),
+          state: 'ready',
+        });
+      } else {
+        metaItems.push({
+          text: `${data.router.route} · ${(data.router.confidence * 100).toFixed(1)}%`,
+          state: data.router.confidence >= 0.55 ? 'ready' : 'warning',
+        });
+      }
 
       if (data.router.model) {
         metaItems.push({

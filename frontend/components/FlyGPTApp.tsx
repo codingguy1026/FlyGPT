@@ -232,7 +232,8 @@ export default function FlyGPTApp({
   const online = !healthError && health?.status === "ok";
 
   const modelLabel = useMemo(
-    () => formatRouterModel(health?.model_path),
+    () => formatRouterModel(health?.papiti_v05?.enabled
+      ? "papiti-v0.5-category-free-166700" : health?.model_path),
     [health],
   );
 
@@ -284,7 +285,7 @@ export default function FlyGPTApp({
           role: "assistant",
           content: response.answer,
           meta,
-          learning: response.router
+          learning: response.router && !response.router.category_free
             ? {
                 prompt: text,
                 route: response.router.route,
@@ -621,8 +622,10 @@ export default function FlyGPTApp({
             </span>
             {router && (
               <button className="routeChip" type="button" onClick={() => setTelemetryOpen(true)}>
-                <span>{router.route}</span>
-                <strong>{router.semantic_override ? "rule" : (router.confidence * 100).toFixed(0) + "%"}</strong>
+                <span>{router.category_free ? "MaleCNS v0.5" : router.route}</span>
+                <strong>{router.category_free ? "multi-tool"
+                  : router.semantic_override ? "rule"
+                  : (router.confidence * 100).toFixed(0) + "%"}</strong>
               </button>
             )}
             <button className="telemetryToggle" type="button" onClick={() => setTelemetryOpen((value) => !value)}>
@@ -639,11 +642,15 @@ export default function FlyGPTApp({
           </div>
           <div>
             <span>ROUTER</span>
-            <strong>{router?.n_nodes ? router.n_nodes + " nodes" : health?.model_available ? "checkpoint ready" : "standby"}</strong>
+            <strong>{health?.papiti_v05?.enabled
+              ? (health.papiti_v05.checkpoint_present ? "v0.5 · 166,700 nodes" : "v0.5 model missing")
+              : router?.n_nodes ? router.n_nodes + " nodes"
+              : health?.model_available ? "checkpoint ready" : "standby"}</strong>
           </div>
           <div>
             <span>TRACE</span>
-            <strong>{router?.steps ? router.steps + " propagation steps" : "awaiting signal"}</strong>
+            <strong>{router?.category_free ? "structural policy · no live firing"
+              : router?.steps ? router.steps + " propagation steps" : "awaiting signal"}</strong>
           </div>
           <div>
             <span>GENERATOR</span>
@@ -805,7 +812,7 @@ export default function FlyGPTApp({
               {router && (
                 <>
                   <span>•</span>
-                  <span>{router.route}</span>
+                  <span>{router.category_free ? "v0.5 · multi-tool" : router.route}</span>
                 </>
               )}
             </div>
@@ -828,7 +835,7 @@ export default function FlyGPTApp({
           phase={monitorPhase}
           pending={sending}
           routerNodes={traceRouter?.n_nodes ?? router?.n_nodes ?? null}
-          fullPopulationActive={health?.full_population_router?.active ?? false}
+          fullPopulationActive={Boolean(health?.papiti_v05?.enabled || health?.full_population_router?.active)}
         />
         <details className="observatoryRouterTrace">
           <summary>실제 라우터 추론 기록 펼치기</summary>

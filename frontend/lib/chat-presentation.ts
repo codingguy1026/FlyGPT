@@ -5,6 +5,7 @@ export function formatRouterModel(raw?: string | null) {
   if (!raw) return "Router pending";
 
   const filename = raw.split("/").pop() || raw;
+  if (filename.startsWith("papiti-v0.5-")) return "Router v0.5 · 166,700 neurons";
   let version = filename
     .replace(/^fly_router_/, "")
     .replace(/\.pt$/, "");
@@ -21,7 +22,13 @@ export function buildMessageMeta(response: ChatResponse): MessageMeta[] {
         meta.push({ text: "VERIFIED · ALL ARRANGEMENTS", tone: "good" });
       }
       if (response.router) {
-        if (response.router.semantic_override) {
+        if (response.router.category_free) {
+          const tools = response.router.selected_capabilities ?? [];
+          meta.push({
+            text: "v0.5 · " + (tools.length ? tools.join(" + ") : "no tools"),
+            tone: "good",
+          });
+        } else if (response.router.semantic_override) {
           meta.push({
             text: response.router.route + " · semantic rule",
             tone: "good",

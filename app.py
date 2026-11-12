@@ -36,6 +36,8 @@ from route_learning import RouteLearningStore
 from knowledge_store import KnowledgeStore
 from research_runtime import BraveResearchRuntime, validated_fact_candidates
 from auth_store import AuthStore, SESSION_TTL_SECONDS
+from papiti_v05_chat import run_v05_chat, v05_enabled
+from papiti_v05_runtime import DEFAULT_CHECKPOINT, get_v05_policy
 
 
 APP_VERSION = "0.12.6"
@@ -660,6 +662,15 @@ def health():
         "model_available": model_path.is_file(),
         "router_initialized": _router is not None,
         "router_error": _router_error,
+        "papiti_v05": {
+            "enabled": v05_enabled(),
+            "checkpoint_present": Path(
+                os.environ.get("FLYGPT_V05_MODEL_PATH", DEFAULT_CHECKPOINT)
+            ).is_file(),
+            "category_free": True,
+            "model_label": "papiti-v0.5-category-free-166700",
+            "live_biological_firing": False,
+        },
         "full_population_router": {
             "enabled": os.environ.get("FLYGPT_ENABLE_FULL_POPULATION_ROUTER") == "1",
             "active": bool(_router is not None and
@@ -1155,6 +1166,53 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 data=result,
                 route=None,
                 session_id=session_id,
+            )
+
+        # The active v0.5 path replaces six-way task classification for
+        # ordinary chats. Historical MaleCNS neuron inspection endpoints above
+        # remain intact. Never synthesize a v0.5 label from a v0.4 prediction.
+        if v05_enabled():
+            _emit_live_trace({"type": "status", "phase": "router_loading"})
+            checkpoint_path = os.environ.get("FLYGPT_V05_MODEL_PATH", DEFAULT_CHECKPOINT)
+            try:
+                policy = get_v05_policy(checkpoint_path)
+            except Exception as exc:
+                # Fail CLOSED rather than silently routing with v0.4.
+                print(f"[V05] policy_load_failed type={type(exc).__name__}", flush=True)
+                return response_with_router(
+                    answer=(
+                        "🪰 파피티 v0.5 메인 라우터가 활성화됐지만 166,700뉴런 "
+                        "체크포인트를 검증해 불러올 수 없어. "
+                        "모델 설치 상태를 확인하거나 v0.5 전환 스위치를 꺼 줘."
+                    ),
+                    response_type="papiti_v05_unavailable",
+                    data={
+                        "v05_error_code": "checkpoint_unavailable",
+                        "ui_meta": {"mode": "v0.5 · checkpoint unavailable",
+                                    "router_model": "papiti-v0.5-unavailable",
+                                    "app_version": APP_VERSION},
+                    },
+                    route=None, session_id=session_id,
+                )
+            _emit_live_trace({"type": "status", "phase": "generation"})
+            result_v05 = run_v05_chat(
+                msg, policy=policy, memory=_memory, research=_research,
+                generator=_generator, session_id=session_id,
+                recent_context=memory_context, knowledge_context=knowledge_context,
+                budget_seconds=CHAT_REQUEST_BUDGET_SECONDS - CHAT_RESPONSE_RESERVE_SECONDS,
+            )
+            _emit_live_trace({
+                "type": "route", "route": "multi_action",
+                "confidence": 0.0, "accepted": True,
+                "semantic_override": False, "model": policy.name,
+                "category_free": True,
+                "selected_capabilities": result_v05["route"]["selected_capabilities"],
+            })
+            return response_with_router(
+                answer=result_v05["answer"],
+                response_type=result_v05["response_type"],
+                data=result_v05["data"], route=result_v05["route"],
+                session_id=session_id, timings=result_v05["timings"],
             )
 
         _emit_live_trace({"type": "status", "phase": "router_loading"})

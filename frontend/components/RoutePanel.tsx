@@ -9,13 +9,18 @@ export default function RoutePanel({ router }: Props) {
     <section className="routeCard">
       <div className="routeCardTop">
         <div>
-          <div className="eyebrow">ROUTE DECISION</div>
+          <div className="eyebrow">{router?.category_free ? "CAPABILITY DECISIONS" : "ROUTE DECISION"}</div>
           <div className="routeName">
-            {router?.route ?? "Waiting for a question"}
+            {router?.category_free
+              ? (router.selected_capabilities?.join(" + ") || "No external tools")
+              : (router?.route ?? "Waiting for a question")}
           </div>
         </div>
         <div className="routeConfidence">
-          {router?.semantic_override ? "semantic rule" : router ? `${(router.confidence * 100).toFixed(1)}%` : "—"}
+          {router?.category_free
+            ? "166,700 neurons"
+            : router?.semantic_override ? "semantic rule"
+            : router ? `${(router.confidence * 100).toFixed(1)}%` : "—"}
         </div>
       </div>
 

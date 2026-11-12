@@ -154,6 +154,14 @@ enable-full-neuron-router:
 disable-full-neuron-router:
 	@bash scripts/disable_full_neuron_router.sh
 
+# v0.5 category-free multi-tool policy (all 166700 official neurons).
+# Separate from the old full-population *six-category* research router.
+enable-papiti-v05:
+	@bash scripts/enable_papiti_v05.sh
+
+disable-papiti-v05:
+	@bash scripts/disable_papiti_v05.sh
+
 # Explicit offline command. Never run the full ~1 GB source scan on app startup.
 train-full-structural:
 	@.venv-train/bin/python training/train_full_connectome.py --epochs 1
@@ -176,6 +184,8 @@ disk:
 
 help:
 	@echo "FlyGPT development commands"
+	@echo "  make enable-papiti-v05   Verify and use the 166700-neuron category-free MAIN chat router"
+	@echo "  make disable-papiti-v05  Roll back to previous chat router and generator settings"
 	@echo "  make papiti-lm-train-v0.6  Train staged Korean + sourced mathematics curriculum"
 	@echo "  make papiti-lm-eval-v0.6   Score untouched tests and one-epoch control"
 	@echo "  make papiti-lm-chat-v0.6   Pure Transformer inference"

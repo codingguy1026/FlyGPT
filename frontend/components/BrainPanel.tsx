@@ -144,6 +144,30 @@ export default function BrainPanel({ open, onClose, router, phase, requestId }: 
 
   if (!open) return null;
 
+  // The full-population v0.5 policy provides exact aggregate structural
+  // representations, NOT per-neuron live firing traces. Showing the legacy
+  // 256-cell animation here would misrepresent which brain answered.
+  if (router?.category_free) {
+    return (
+      <aside className="brainPanel" aria-label="MaleCNS v0.5 정책 상태">
+        <header className="brainHeader">
+          <div>
+            <div className="eyebrow">MALECNS v0.5 · FULL POPULATION</div>
+            <h2>166,700 Neurons · Policy View</h2>
+          </div>
+          <div className="brainHeaderActions">
+            <button type="button" className="iconButton" onClick={onClose} aria-label="Brain 패널 닫기">×</button>
+          </div>
+        </header>
+        <RoutePanel router={router} />
+        <div className="brainEmpty">
+          전체 신경망의 구조 표현을 활용한 기능 선택 결과입니다.
+          실제 초파리 뉴런 발화나 실시간 활성화 지도는 아닙니다.
+        </div>
+      </aside>
+    );
+  }
+
   if (universeOpen) {
     return (
       <aside className="brainPanel neuronLabPanel" aria-label="Neural Universe 3D 라우터">

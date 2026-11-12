@@ -106,6 +106,23 @@ export default function ConnectomePreview({ router, pending, live, phase, onExpa
     : hasTrace ? "TRACE UNAVAILABLE"
     : "AWAITING SIGNAL";
 
+  if (router?.category_free) {
+    return (
+      <section className="connectomePreview" aria-label="MaleCNS v0.5 기능 선택 결과">
+        <div className="connectomePreviewTop">
+          <div><span>MALECNS v0.5</span><strong>166,700-neuron policy</strong></div>
+          <button type="button" onClick={onExpand} aria-label="기능 선택 상세 화면 열기">DETAIL ↗</button>
+        </div>
+        <div className="connectomeGraphEmpty" role="status">
+          {router.selected_capabilities?.length
+            ? "선택된 기능: " + router.selected_capabilities.join(", ")
+            : "외부 기능을 사용하지 않기로 판단했습니다."}
+          <div>이 모델은 뉴런별 실제 발화 기록을 제공하지 않습니다.</div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="connectomePreview" aria-label="MaleCNS 라우터 신경망 미리보기">
       <div className="connectomePreviewTop">
