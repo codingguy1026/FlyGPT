@@ -21,6 +21,11 @@ export type RouterResult = {
   model?: string;
   route: string;
   confidence: number;
+  model_version?: string;
+  confidence_kind?: "not_applicable" | string;
+  category_free?: boolean;
+  capability_scores?: Record<string, number>;
+  selected_capabilities?: string[];
   top_routes?: RouteScore[];
   trace?: TraceFrame[];
   n_nodes?: number;
@@ -180,6 +185,13 @@ export type HealthResponse = {
   model_path?: string;
   model_available?: boolean;
   router_initialized?: boolean;
+  papiti_v05?: {
+    enabled?: boolean;
+    checkpoint_present?: boolean;
+    category_free?: boolean;
+    model_label?: string;
+    live_biological_firing?: boolean;
+  };
   connectome?: {
     provider?: string;
     dataset?: string;
