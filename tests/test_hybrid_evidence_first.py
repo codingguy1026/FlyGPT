@@ -154,6 +154,8 @@ class EvidenceFirstEndToEndTests(unittest.TestCase):
             "FLYGPT_GENERATOR_MODE": "hybrid",
             "FLYGPT_HYBRID_SPEAKER": "v0.6.1",
             "FLYGPT_HYBRID_EVIDENCE_FIRST": "1",
+            "FLYGPT_HYBRID_URL": "",
+            "FLYGPT_HYBRID_MODEL": "",
         }, clear=False):
             runtime = GeneratorRuntime()
             with patch.object(api, "_require_user", return_value={"id": "fake-user"}), \
@@ -182,12 +184,12 @@ class EvidenceFirstEndToEndTests(unittest.TestCase):
     def test_unknown_public_question_fetches_sources_even_if_router_rejects(self):
         response, count = self.call_hybrid("왜 하늘이 파래?", research_result())
         self.assertEqual(count, 1)
-        self.assertIn("햇빛이 공기 분자에 산란", response["answer"])
-        self.assertIn("https://example.org/science/sky", response["answer"])
+        self.assertIn("언어 모델", response["answer"])
+        self.assertIn("https://example.org/science/sky", str(response["data"]["research"]))
         self.assertEqual(response["data"]["evidence_decision"]["reason"],
                          "unanswered_public_question")
-        self.assertEqual(response["data"]["generation"]["provider"],
-                         "papiti-hybrid-native")
+        self.assertEqual(response["data"]["generation"]["error_code"],
+                         "hybrid_speaker_missing")
 
     def test_historical_story_invitation_retrieves_sourced_material(self):
         historically_grounded = ResearchResult(
@@ -208,15 +210,15 @@ class EvidenceFirstEndToEndTests(unittest.TestCase):
             historically_grounded,
         )
         self.assertEqual(search_count, 1)
-        self.assertIn("한 역사적 사건에 관한 출처", response["answer"])
-        self.assertIn("https://example.org/history/incident", response["answer"])
+        self.assertIn("언어 모델", response["answer"])
+        self.assertIn("https://example.org/history/incident", str(response["data"]["research"]))
         self.assertNotIn("이 자유형 질문은 아직 직접 풀 수 없어", response["answer"])
         self.assertEqual(
             response["data"]["evidence_decision"]["reason"],
             "unanswered_grounded_story_request",
         )
-        # This is a *sourced Native excerpt*, not a generated story.
-        self.assertEqual(response["data"]["generation"]["provider"], "papiti-hybrid-native")
+        # Search still runs, but no Native excerpt impersonates neural speech.
+        self.assertEqual(response["data"]["generation"]["error_code"], "hybrid_speaker_missing")
 
     def test_no_web_sources_reports_missing_evidence(self):
         unavailable = ResearchResult(
@@ -225,7 +227,9 @@ class EvidenceFirstEndToEndTests(unittest.TestCase):
         )
         response, count = self.call_hybrid("왜 하늘이 파래?", unavailable)
         self.assertEqual(count, 1)
-        self.assertIn("확인된 최신 자료가 없어", response["answer"])
+        self.assertEqual(response["data"]["generation"]["error_code"],
+                         "hybrid_speaker_missing")
+        self.assertIn("언어 모델", response["answer"])
 
 
 if __name__ == "__main__":

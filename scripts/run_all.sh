@@ -12,8 +12,8 @@ if [[ -f ".env" ]]; then
 fi
 
 STABLE_MODE=0
-# Native is the default: the fly router stays active, but no LLM is started.
-export FLYGPT_GENERATOR_MODE="${FLYGPT_GENERATOR_MODE:-native}"
+# Default to real Hybrid neural speech; Native remains an explicit opt-in.
+export FLYGPT_GENERATOR_MODE="${FLYGPT_GENERATOR_MODE:-hybrid}"
 for argument in "$@"; do
   case "$argument" in
     --local-only)
@@ -237,7 +237,7 @@ else
         echo "   Generation is labeled neural only when it passes meaning-preservation checks."
       else
         echo "⚠️  v0.6.1 speech weights missing: $SPEECH_CKPT"
-        echo "   Until installed, Hybrid explicitly labels Native fallback responses."
+        echo "   Hybrid will report missing weights instead of using Native prose."
         echo "   Train first: make papiti-lm-train-v0.6.1 (CPU PyTorch needed)."
       fi
     fi
@@ -373,7 +373,7 @@ echo "✅ FlyGPT frontend and API proxy ready on port 3000"
 if [[ "$FLYGPT_GENERATOR_MODE" == "native" ]]; then
   echo "   Generator: Papiti Native v1 (no LLM)"
 elif [[ "$FLYGPT_GENERATOR_MODE" == "hybrid" ]]; then
-  echo "   Generator: MaleCNS/Python brain -> ${FLYGPT_HYBRID_SPEAKER:-v0.6.1} speech (native fallback)"
+  echo "   Generator: MaleCNS/Python brain -> ${FLYGPT_HYBRID_SPEAKER:-v0.6.1} speech (neural required; no Native prose fallback)"
 elif [[ "$USE_OLLAMA" -eq 1 ]]; then
   echo "   Generator: Ollama :11434 / $MODEL"
 else

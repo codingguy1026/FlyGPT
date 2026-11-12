@@ -604,6 +604,13 @@ def generator_readiness():
     generator_status = _generator.status()
     if generator_status.get("native_mode"):
         return {"state": "native", "ready": True}
+    if generator_status.get("hybrid_mode"):
+        if generator_status.get("hybrid_speaker_checkpoint_present"):
+            # A checkpoint exists; only a real conversation can validate it.
+            return {"state": "hybrid_speaker_present", "ready": None}
+        if generator_status.get("hybrid_model_configured"):
+            return {"state": "hybrid_local_model_configured", "ready": None}
+        return {"state": "hybrid_model_missing", "ready": False}
     model = str(generator_status.get("model") or "")
     url = str(os.environ.get("FLYGPT_GENERATOR_URL", ""))
     local = (
@@ -1550,7 +1557,18 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 # Report actionable failures without exposing raw provider error
                 # bodies, credentials, or private request details in chat prose.
                 failure = generation.error_code or ""
-                if failure == "native_plan_unavailable":
+                if failure in {
+                    "hybrid_language_model_required", "hybrid_speaker_missing",
+                    "hybrid_neural_rejected", "hybrid_local_endpoint_blocked",
+                    "invalid_semantic_plan",
+                }:
+                    answer = (
+                        "🪰 실제 언어 모델이 이 응답을 생성하지 못했어. "
+                        "Hybrid v0.6.1 가중치와 로컬 모델 설정을 확인해 줘. "
+                        "Native 답변으로 대체하지 않았어."
+                    )
+                    mode_label = f"{result.route} · hybrid_language_model_unavailable"
+                elif failure == "native_plan_unavailable":
                     answer = "🪰 자체 응답 계획이 아직 준비되지 않았어. 지원하는 질문을 다시 시도해 줘."
                     mode_label = f"{result.route} · native_plan_unavailable"
                 elif failure == "timeout" or (

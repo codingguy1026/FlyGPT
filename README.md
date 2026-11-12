@@ -15,14 +15,14 @@ change `make run`, Native/Hybrid behavior, or earlier version commands.
 
 ## Papiti Native (experimental, no LLM)
 
-`make run` now starts **Papiti Native v1** by default. It keeps the MaleCNS
+`make native` starts **Papiti Native v1** explicitly. It keeps the MaleCNS
 task router and verified symbolic tools, but **does not start or download
 Ollama or call a hosted language model**. The new `native_realizer.py`
 renders validated conversation plans with deterministic Python logic.
 
 ```bash
-make run                # native by default, including make stable
-make native             # explicitly force native mode
+make run                # Hybrid neural speech by default
+make native             # explicitly force native deterministic mode
 python -m unittest tests.test_native_voice -v
 ```
 
@@ -66,10 +66,12 @@ Hybrid selects v0.6.1 as its preferred experimental speaker **only if a
 compatible local checkpoint is present**. Its outputs are labeled
 `papiti-hybrid-v0.6.1` when genuinely generated and accepted by semantic
 checks. Incorrect exact results, corrupted factual content, repeated text,
-missing checkpoints and model execution errors all use the already present
-Native path, labeled `papiti-hybrid-native`. No model, formula, or answer is
-downloaded or invented at startup. Unsupported open-ended tasks do not
-magically become solvable. To disable this experiment, set
+missing checkpoints and model execution errors are never presented as
+Native language replies in Hybrid. A separately configured, authorized
+loopback language model may answer eligible tasks; otherwise the request
+returns a visible language-model-unavailable status. No model, formula, or answer is
+downloaded or invented at startup. Unsupported open-ended tasks require an explicitly configured local model.
+v0.6.1 alone cannot reason about them. To disable this experiment, set
 `FLYGPT_HYBRID_SPEAKER=legacy`. See
 [the v0.6.1 experiment guide](docs/papiti-language-v0-6-1.md).
 
@@ -574,9 +576,14 @@ python -m unittest tests.test_semantic_composition -v
 
 ### Explicit, strictly local generation
 
-`make run` defaults to Papiti Native. `make hybrid` is native-first and
-accepts only a separately configured loopback model. Neither mode downloads
-or selects a pretrained language model on its own.
+`make run` defaults to Papiti Hybrid, with real neural speech required.
+`make hybrid` uses the local trained v0.6.1 speaker when a completed
+meaning packet is available. Neither launcher downloads or silently selects
+a pretrained language model. For unsupported open-ended prompts, configure
+a separate authorized loopback language model using
+`FLYGPT_HYBRID_URL` and `FLYGPT_HYBRID_MODEL`. Without one,
+Hybrid reports that generation is unavailable rather than returning
+Native fallback prose.
 
 To use a model already installed in Ollama, configure your ignored local
 `.env` with its exact name:
@@ -604,7 +611,8 @@ chat-completions endpoint.
 
 ### Gemini 3.8 Flash
 
-`make run` has a Gemini preset. Put the real key in the ignored local
+For explicit hosted HTTP mode, FlyGPT has a Gemini preset. Set
+`FLYGPT_GENERATOR_MODE=http` and put the real key in the ignored local
 `.env` file:
 
 ```bash

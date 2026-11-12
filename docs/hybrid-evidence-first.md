@@ -47,7 +47,8 @@ Retrieved snippets are not automatically verified facts. The Python brain
 builds a report_retrieved_web_evidence plan containing short, quoted
 source excerpts with HTTPS URLs. The existing v0.6.1 language model may only
 speak if its output faithfully preserves the exact evidence and attribution;
-otherwise a labeled Native fallback shows bounded, sourced excerpts.
+otherwise the generator reports a language-model-unavailable error.
+No Native prose is substituted for a failed neural response.
 It must never guess an unseen answer. These excerpts are not automatically
 folded into v0.6.1 training weights.
 
@@ -104,7 +105,8 @@ or family also remain private.
 **Honest boundary:** the existing v0.6.1 speaker has not been trained on
 arbitrary web excerpts or long-form narratives. This version removes the
 unhelpful "unsupported question" response when sourced material is available,
-but its currently dependable output is **attributed excerpts**, not a newly
-composed historical story. Without a configured Brave API key, it reports
-missing external evidence. A later speaker-training iteration would be
-needed for fluent sourced storytelling.
+and may reject those plans. Without a configured Brave API key, the
+brain cannot obtain current sources. If v0.6.1 rejects sourced speech and
+no alternate local model is configured, the user sees an explicit generation
+error rather than a Native excerpt. More training is needed for fluent
+sourced storytelling.
