@@ -45,6 +45,29 @@ _SENSITIVE_IDENTIFIER = re.compile(
 _CODE_TASK = re.compile(r"(?:코드|코딩|파이썬|오류|버그|프로그램|스크립트|정렬|함수|알고리즘|\b(?:python|javascript|debug|code|bug)\b)", re.I)
 _LOCAL_PROMPT = re.compile(r"(?:^|[\s,])(?:안녕|반가워|고마워|잘가|잘\s*가)(?:[!?.~\s]|$)", re.I)
 
+# Some factual requests are phrased as invitations, not interrogative
+# sentences: "흥미로운 역사 이야기를 하나 들려줘" needs *external grounding*.
+# Match a public factual topic AND a request to recount it; a bare story
+# request or an imaginative-fiction prompt must not trigger web access.
+_GROUNDED_STORY_TOPIC = re.compile(
+    r"(?:역사|역사적|세계사|한국사|실화|실제로\s*일어난|실제\s*사건|"
+    r"조선|고려|삼국시대|로마|중세|고대|근현대|"
+    r"\bhistor(?:y|ical)\b|\breal[- ]life\b|\btrue\s+stor(?:y|ies)\b)",
+    re.I,
+)
+_STORY_REQUEST = re.compile(
+    r"(?:들려\s*(?:줘|주세요)|이야기\s*해\s*(?:줘|주세요)|"
+    r"(?:일화|이야기|사건|에피소드)(?:를|을|도)?\s*(?:하나\s*)?"
+    r"(?:소개(?:해)?|알려|말해)\s*(?:줘|주세요)|"
+    r"듣고\s*싶|\btell\s+me\b|\bshare\b|\bstory\b)",
+    re.I,
+)
+_FICTION_REQUEST = re.compile(
+    r"(?:가상의|상상의|허구|소설|창작|지어\s*줘|만들어\s*줘|"
+    r"\bfiction(?:al)?\b|\bmade[- ]up\b|\binvent\b)",
+    re.I,
+)
+
 
 @dataclass(frozen=True)
 class EvidenceDecision:
@@ -76,7 +99,7 @@ def decide_evidence(
     if _NO_WEB.search(text):
         return EvidenceDecision(False, False, "user_disallowed_search")
     if (_PERSONAL.search(text) or _SENSITIVE_IDENTIFIER.search(text)
-            or re.search(r"(?:내가|나는|내s*친구|우리s*(?:집|가족|학교)|"
+            or re.search(r"(?:내가|나는|내\s*친구|우리\s*(?:집|가족|학교)|"
                          r"엄마|아빠|할머니|선생님)", text)):
         return EvidenceDecision(False, False, "private_context")
     if ready_plan:
@@ -89,14 +112,22 @@ def decide_evidence(
         return EvidenceDecision(False, False, "social")
     explicit = bool(_BROWSE_REQUEST.search(text))
     is_question = bool(_QUESTION.search(text))
-    # Statements such as "오늘 야구에서 역전승했어!" are not search queries.
-    if not (explicit or is_question):
+    grounded_story_request = (
+        bool(_GROUNDED_STORY_TOPIC.search(text))
+        and bool(_STORY_REQUEST.search(text))
+        and not bool(_FICTION_REQUEST.search(text))
+    )
+    # A historical *story request* needs factual sourcing even without a
+    # question mark, but creative fiction and personal news remain offline.
+    if not (explicit or is_question or grounded_story_request):
         return EvidenceDecision(False, False, "personal_statement_or_nonquestion")
     # A bare instruction to summarize or rewrite supplied content is local.
     if re.search(r"(?:요약해\s*줘|번역해\s*줘|다듬어\s*줘|고쳐\s*줘)", text) and not explicit:
         return EvidenceDecision(False, False, "transform_local_content")
     if len(text) > 200:
         return EvidenceDecision(False, False, "query_too_long_or_private")
+    if grounded_story_request and not explicit and not is_question:
+        return EvidenceDecision(True, False, "unanswered_grounded_story_request")
     return EvidenceDecision(True, False, "unanswered_public_question")
 
 
