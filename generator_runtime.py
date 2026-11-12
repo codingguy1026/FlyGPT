@@ -14,7 +14,7 @@ from typing import Any
 from semantic_planner import trusted_fact_fallback
 from native_realizer import realize_native
 from hybrid_speech import checkpoint_present as speech_checkpoint_present
-from hybrid_speech import generate_speech, check_candidate
+from hybrid_speech import generate_speech, check_candidate, supports_v061_plan
 from local_generator_policy import (
     DEFAULT_LOCAL_GENERATOR_URL,
     DEFAULT_LOCAL_MODEL,
@@ -1055,7 +1055,11 @@ class GeneratorRuntime:
 
             speaker_error = None
             if ready_plan and self.hybrid_speaker == "v0.6.1":
-                if speech_checkpoint_present():
+                if not supports_v061_plan(utterance_plan):
+                    # The tiny speaker was never trained for this meaning.
+                    # Do not run it and accept memorized introduction text.
+                    speaker_error = "unsupported_semantic_act"
+                elif speech_checkpoint_present():
                     try:
                         candidate = generate_speech(
                             utterance_plan,
@@ -1087,6 +1091,9 @@ class GeneratorRuntime:
                 if self.url and self.model and not self.local_endpoint_allowed:
                     failure = "hybrid_local_endpoint_blocked"
                     detail = "Hybrid model must use an authorized loopback endpoint"
+                elif speaker_error == "unsupported_semantic_act":
+                    failure = "hybrid_speaker_unsupported"
+                    detail = "v0.6.1 is not trained for this semantic task; configure a capable local language model"
                 elif speaker_error == "missing_checkpoint":
                     failure = "hybrid_speaker_missing"
                     detail = "v0.6.1 speech checkpoint is not installed"
