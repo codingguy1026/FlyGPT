@@ -52,3 +52,14 @@
   .neuronLabStats { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .neuronLabCanvas { height: 48vh; }
 }
+
+/* Neural Universe: schematic routing telemetry, not biological spike imaging */
+.neuralUniverseRouter { color:#c9e9df; padding:14px; display:grid; gap:12px; }
+.neuralUniverseHeader { display:flex; justify-content:space-between; gap:12px; font:700 11px ui-monospace,monospace; }
+.neuralUniverseHeader span { color:#68d6ba; }
+.neuralUniverseRouter svg { display:block; width:100%; max-height:55vh; border:1px solid #285148; border-radius:14px; background:radial-gradient(circle,#112f31,#07131b 75%); }
+.neuralUniverseControls { display:flex; flex-wrap:wrap; gap:6px; }
+.neuralUniverseControls button,.neuralUniverseTimeline button { border:1px solid #3c7868; border-radius:8px; padding:7px 10px; background:#12352e; color:#d4fff0; cursor:pointer; }
+.neuralUniverseTimeline { display:flex; align-items:center; gap:12px; font-size:12px; }
+.neuralUniverseTimeline input { flex:1; min-width:40px; }
+.neuralUniverseRouter p { margin:0; font-size:11px; line-height:1.6; color:#97b9af; }
