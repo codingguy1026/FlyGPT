@@ -58,6 +58,30 @@ class EvidenceNeedTests(unittest.TestCase):
             with self.subTest(question=question):
                 self.assertTrue(decide_evidence(question).search)
 
+    def test_grounded_story_invitation_searches_without_question_mark(self):
+        cases = (
+            "흥미로운 역사 이야기를 하나 들려줘.",
+            "재미있는 세계사 이야기 들려주세요",
+            "조선 시대의 일화 하나 소개해 줘",
+            "Tell me an interesting historical story.",
+        )
+        for request in cases:
+            with self.subTest(request=request):
+                decision = decide_evidence(request)
+                self.assertTrue(decision.search)
+                self.assertEqual(decision.reason, "unanswered_grounded_story_request")
+
+    def test_creative_stories_and_personal_anecdotes_do_not_leak_to_web(self):
+        for request in (
+            "재미있는 이야기 하나 들려줘",
+            "무서운 소설 이야기 지어 줘",
+            "가상의 역사 이야기를 만들어 줘",
+            "우리 가족의 역사 이야기를 들려줘",
+            "내 친구의 실제 이야기를 들려줘",
+        ):
+            with self.subTest(request=request):
+                self.assertFalse(decide_evidence(request).search)
+
     def test_already_grounded_or_user_banned_search(self):
         self.assertFalse(decide_evidence("왜 하늘이 파래?", ready_plan=True).search)
         self.assertFalse(decide_evidence("왜 하늘이 파래?", verified_local_evidence=True).search)
@@ -164,6 +188,35 @@ class EvidenceFirstEndToEndTests(unittest.TestCase):
                          "unanswered_public_question")
         self.assertEqual(response["data"]["generation"]["provider"],
                          "papiti-hybrid-native")
+
+    def test_historical_story_invitation_retrieves_sourced_material(self):
+        historically_grounded = ResearchResult(
+            query="흥미로운 역사 이야기를 하나 들려줘.",
+            provider="brave-llm-context",
+            sources=[WebSource(
+                url="https://example.org/history/incident",
+                title="Historical event",
+                hostname="example.org",
+                root_domain="example.org",
+                snippets=["한 역사적 사건에 관한 출처가 있는 설명입니다."],
+                age=[], authority=0.7,
+            )],
+            retrieved_at=1234,
+        )
+        response, search_count = self.call_hybrid(
+            "흥미로운 역사 이야기를 하나 들려줘.",
+            historically_grounded,
+        )
+        self.assertEqual(search_count, 1)
+        self.assertIn("한 역사적 사건에 관한 출처", response["answer"])
+        self.assertIn("https://example.org/history/incident", response["answer"])
+        self.assertNotIn("이 자유형 질문은 아직 직접 풀 수 없어", response["answer"])
+        self.assertEqual(
+            response["data"]["evidence_decision"]["reason"],
+            "unanswered_grounded_story_request",
+        )
+        # This is a *sourced Native excerpt*, not a generated story.
+        self.assertEqual(response["data"]["generation"]["provider"], "papiti-hybrid-native")
 
     def test_no_web_sources_reports_missing_evidence(self):
         unavailable = ResearchResult(

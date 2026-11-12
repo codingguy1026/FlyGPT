@@ -31,6 +31,7 @@ Examples:
 | Input | Decision |
 |---|---|
 | 오늘 야구에서 역전승했어! | No web request; conversational input |
+| 흥미로운 역사 이야기를 하나 들려줘 | Search for attributable historical material, even though not a question |
 | 왜 하늘이 파래? | Search when the brain lacks grounded evidence |
 | 최근 대구 뉴스 알려줘 | Search for current public information |
 | 내가 전에 정한 이름 기억해? | Look in private conversation memory only |
@@ -88,3 +89,22 @@ social-reaction plan the speaker may still report that it cannot handle the
 open-ended content. Supporting natural spontaneous congratulations requires
 additional upstream meaning plans and subsequent neural speech training.
 No canned congratulations or fabricated learned outputs are added here.
+
+## Grounded storytelling requests
+
+A user may request an external fact through an imperative rather than a
+question, e.g. "흥미로운 역사 이야기를 하나 들려줘". The evidence policy now
+detects invitations to recount **real historical content** and retrieves
+source material rather than treating them as nonquestions.
+
+Purely fictional creative writing ("가상의 역사 이야기를 만들어 줘") is not
+sent to a public search engine. Historical anecdotes about a user's friends
+or family also remain private.
+
+**Honest boundary:** the existing v0.6.1 speaker has not been trained on
+arbitrary web excerpts or long-form narratives. This version removes the
+unhelpful "unsupported question" response when sourced material is available,
+but its currently dependable output is **attributed excerpts**, not a newly
+composed historical story. Without a configured Brave API key, it reports
+missing external evidence. A later speaker-training iteration would be
+needed for fluent sourced storytelling.
