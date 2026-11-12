@@ -58,7 +58,7 @@ _GROUNDED_STORY_TOPIC = re.compile(
 _STORY_REQUEST = re.compile(
     r"(?:들려\s*(?:줘|주세요)|이야기\s*해\s*(?:줘|주세요)|"
     r"(?:일화|이야기|사건|에피소드)(?:를|을|도)?\s*(?:하나\s*)?"
-    r"(?:소개|알려|말해)\s*(?:줘|주세요)|"
+    r"(?:소개(?:해)?|알려|말해)\s*(?:줘|주세요)|"
     r"듣고\s*싶|\btell\s+me\b|\bshare\b|\bstory\b)",
     re.I,
 )
