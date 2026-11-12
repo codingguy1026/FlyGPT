@@ -1,0 +1,383 @@
+/* PAPITI ORBIT 2.0
+   A standalone brand layer applied after the legacy themes.
+   Do not alter routing, storage keys, SSE, account or graph contracts. */
+:root {
+  --papiti-pine: #173d37;
+  --papiti-pine-2: #235747;
+  --papiti-lime: #c5ef8b;
+  --papiti-canvas: #f6f7f1;
+  --papiti-sky: #b5dbec;
+  --papiti-ink: #213c36;
+  --papiti-muted: #6c7b72;
+  --papiti-line: #e3eae1;
+  --papiti-shadow: 0 14px 46px rgba(23,61,55,.07);
+}
+html { background: var(--papiti-canvas); }
+body {
+  background: var(--papiti-canvas);
+  color: var(--papiti-ink);
+  font-family: "Pretendard Variable", Pretendard, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.flightApp {
+  --bg: var(--papiti-canvas);
+  --surface: #fff;
+  --surface-strong: #fff;
+  --text: var(--papiti-ink);
+  --text-soft: var(--papiti-muted);
+  --line: var(--papiti-line);
+  --good: #3c8a65;
+  grid-template-columns: 252px minmax(0,1fr) !important;
+  background: var(--papiti-canvas);
+  color: var(--papiti-ink);
+}
+.flightApp .flightRail {
+  width: auto;
+  min-width: 0;
+  align-items: stretch;
+  padding: 26px 16px 18px;
+  border: 0;
+  background: var(--papiti-pine);
+  box-shadow: none;
+  color: #eff8ec;
+}
+.flightApp .railBrandFull {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 25px;
+  padding: 0 5px 24px;
+  border-bottom: 1px solid rgba(255,255,255,.14);
+}
+.flightApp .railBrand { width: 47px; height: 47px; margin: 0; flex: none; }
+.flightApp .railBrandLogo { width: 47px; height: 47px; border-radius: 13px; object-fit: contain; filter: none; }
+.flightApp .railBrandCopy { min-width: 0; }
+.flightApp .railBrandCopy strong {
+  color: #fff;
+  font: 780 26px/1.1 "Pretendard Variable", Inter, sans-serif;
+  letter-spacing: -.07em;
+}
+.flightApp .railBrandCopy span {
+  display: block;
+  margin-top: 5px;
+  color: #afcdbe;
+  font: 600 9px/1.2 Inter, sans-serif;
+  letter-spacing: .13em;
+}
+.flightApp .newFlightButton {
+  min-height: 49px;
+  padding: 0 15px;
+  background: var(--papiti-lime);
+  border: 1px solid transparent;
+  border-radius: 14px;
+  color: var(--papiti-pine);
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 790;
+}
+.flightApp .newFlightButton:hover { background: #d5f8a7; transform: none; }
+.flightApp .railNav { gap: 6px; margin: 17px 0 24px; }
+.flightApp .railButton {
+  width: 100%;
+  height: 43px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 0 12px;
+  color: #b7ccbf;
+  background: transparent;
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: 650;
+}
+.flightApp .railButton.active,
+.flightApp .railButton:hover {
+  color: #f6ffe9;
+  background: rgba(197,239,139,.13);
+  border-color: rgba(197,239,139,.10);
+  transform: none;
+}
+.flightApp .historySection { min-height: 0; border-top: 1px solid rgba(255,255,255,.12); }
+.flightApp .historyLabel { color: #a7c7b6; font-size: 10px; letter-spacing: .08em; }
+.flightApp .historyLabel b { color: var(--papiti-lime); background: rgba(197,239,139,.11); }
+.flightApp .historySearch {
+  background: rgba(255,255,255,.075);
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 10px;
+  color: #b8d3c2;
+}
+.flightApp .historySearch input { color: #f3fbf4; font-size: 11px; }
+.flightApp .historySearch input::placeholder { color: #adc5b7; }
+.flightApp .historyExport {
+  color: #cbe6d5;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  border-radius: 9px;
+}
+.flightApp .historyExport:hover:not(:disabled) { background: rgba(255,255,255,.12); }
+.flightApp .historyEmpty,
+.flightApp .historyItem small { color: #9bb9a9; }
+.flightApp .historyItem {
+  color: #d3e4d9;
+  border-radius: 10px;
+  font-size: 12px;
+}
+.flightApp .historyItem:hover,
+.flightApp .historyItem.active {
+  background: rgba(197,239,139,.11);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: none;
+}
+.flightApp .historyItem.active { box-shadow: inset 3px 0 var(--papiti-lime); }
+.flightApp .railAccount {
+  background: rgba(255,255,255,.055);
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 13px;
+}
+.flightApp .railAccountAvatar { background: var(--papiti-sky); color: var(--papiti-pine); border-radius: 11px; }
+.flightApp .railAccountCopy strong { color: #f6fff5; }
+.flightApp .railAccountCopy span, .flightApp .railSignOut { color: #a9c5b4; }
+.flightApp .flightWorkspace,
+.flightApp.isWelcome .flightWorkspace {
+  grid-template-rows: 72px minmax(0,1fr);
+  background: var(--papiti-canvas);
+}
+.flightApp .flightHeader {
+  padding-inline: clamp(18px,3vw,38px);
+  background: rgba(255,255,255,.94);
+  border-bottom: 1px solid var(--papiti-line);
+  box-shadow: none;
+}
+.flightApp .flightEyebrow { color: #6b8a77; font-size: 9px; letter-spacing: .12em; }
+.flightApp .flightTitle h1 { color: var(--papiti-ink); font-size: 17px; font-weight: 780; }
+.flightApp .connectionChip {
+  height: 33px;
+  border: 1px solid var(--papiti-line);
+  background: #f9fcf7;
+  color: #7d8d83;
+  text-transform: none;
+  font-size: 10px;
+}
+.flightApp .connectionChip.online { color: #267a51; background: #edf8e9; }
+.flightApp .connectionChip i { box-shadow: none; }
+.flightApp .routeChip { background: #eff5ee; color: #466458; border: 1px solid var(--papiti-line); }
+.flightApp .routeChip strong { color: #2d7058; }
+.flightApp .telemetryToggle {
+  display: inline-flex;
+  height: 35px;
+  gap: 8px;
+  align-items: center;
+  background: var(--papiti-pine);
+  color: #f9fff6;
+  border: 0;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 750;
+}
+.flightApp .telemetryToggle:hover { background: var(--papiti-pine-2); }
+.flightApp .labStatusStrip { display: none !important; }
+.flightApp .airCanvas {
+  background: radial-gradient(ellipse 60% 70% at 50% 30%, #edf6e9 0%, transparent 85%), var(--papiti-canvas);
+}
+.flightApp .airCanvas::before {
+  background-image: radial-gradient(#c2d9cb .7px,transparent .7px);
+  background-size: 30px 30px;
+  opacity: .26;
+}
+.flightApp .airCurrent { display: none; }
+.flightApp .flightConversation { width: min(835px,calc(100% - 36px)); padding-top: 30px; }
+.flightApp .messageBeacon { align-items: center; }
+.flightApp .messageBubble {
+  border: 1px solid var(--papiti-line);
+  box-shadow: var(--papiti-shadow);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.flightApp .flightMessage.assistant .messageBubble {
+  background: #fff;
+  color: var(--papiti-ink);
+  border-radius: 7px 19px 19px 19px;
+}
+.flightApp .flightMessage.assistant .messageBubble .messageText { color: var(--papiti-ink); }
+.flightApp .flightMessage.user .messageBubble {
+  color: #fafff4;
+  background: var(--papiti-pine-2);
+  border-color: var(--papiti-pine-2);
+  border-radius: 19px 19px 7px 19px;
+  box-shadow: 0 12px 26px rgba(23,61,55,.11);
+}
+.flightApp .flightMessage.user .messageBubble .messageText { color: #fafff4; }
+.flightApp .messageText { font-size: 14px; line-height: 1.75; }
+.flightApp .messageMeta { border-color: #e9eee9; }
+.flightApp .metaChip { color: #527365; background: #eff6ef; border-color: #dce8dc; font-size: 9px; }
+.flightApp .metaChip.good { color: #2d7655; background: #e8f7ec; }
+.flightApp .payloadActions button { color: #748a7d; }
+.flightApp .launchDock {
+  padding: 0 clamp(18px,3vw,38px) 18px;
+  background: linear-gradient(180deg,transparent,rgba(246,247,241,.98) 38%);
+}
+.flightApp .launchComposer {
+  width: min(830px,100%);
+  margin-inline: auto;
+  border: 1px solid #d7e4da;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 17px 55px rgba(30,68,49,.095);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.flightApp .composerCaption {
+  padding: 13px 17px 0;
+  color: #6d8775;
+  font-size: 11px;
+  font-weight: 690;
+}
+.flightApp .launchInputRow textarea { color: var(--papiti-ink); font-size: 14px; }
+.flightApp .launchInputRow textarea::placeholder { color: #8a9d91; }
+.flightApp .launchButton {
+  background: var(--papiti-pine);
+  border-radius: 12px;
+  color: #fff;
+  box-shadow: none;
+}
+.flightApp .launchButton:hover:not(:disabled) { background: #29644f; }
+.flightApp .dockStatus { color: #8c9d91; font-size: 9px; letter-spacing: 0; }
+.flightApp .welcomeLanding { width: min(810px,calc(100% - 36px)); }
+.flightApp .welcomeEmblem {
+  width: 94px;
+  height: 94px;
+  margin-bottom: 20px;
+  border: 1px solid #dce9d8;
+  border-radius: 28px;
+  color: var(--papiti-pine);
+  background: linear-gradient(140deg,#f7fff0,#e0f4cf);
+  box-shadow: 0 20px 50px rgba(58,123,79,.09);
+}
+.flightApp .welcomeEyebrow { color: #55836a; font-size: 10px; letter-spacing: .14em; }
+.flightApp .welcomeLanding h2 {
+  color: var(--papiti-pine);
+  font-size: clamp(30px,3.7vw,48px);
+  letter-spacing: -.07em;
+  margin: 16px 0 10px;
+}
+.flightApp .welcomeLanding p { color: #617e6d; font-size: 14px; line-height: 1.75; }
+.flightApp .welcomeStarters {
+  width: min(760px,100%);
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 12px;
+  margin: 30px auto 0;
+}
+.flightApp .starterCard {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-height: 125px;
+  padding: 18px;
+  text-align: left;
+  cursor: pointer;
+  border: 1px solid #e1e9df;
+  border-radius: 17px;
+  background: #fff;
+  color: var(--papiti-ink);
+  box-shadow: 0 9px 28px rgba(31,74,52,.045);
+  transition: transform .17s ease,border-color .17s ease,box-shadow .17s ease;
+}
+.flightApp .starterCard:hover { transform: translateY(-2px); border-color: #accba8; box-shadow: var(--papiti-shadow); }
+.flightApp .starterCard:focus-visible { outline: 3px solid var(--papiti-lime); outline-offset: 2px; }
+.flightApp .starterIcon { font-size: 20px; line-height: 1; }
+.flightApp .starterCard strong { color: var(--papiti-pine); font-size: 13px; font-weight: 780; }
+.flightApp .starterCard small { color: #789083; font-size: 11px; line-height: 1.5; }
+.flightApp.isWelcome .airCanvas { gap: 19px; padding-top: 24px; padding-bottom: 30px; }
+.flightApp .telemetryDock,
+.flightApp .telemetryDock:not(.open) {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(390px,100vw);
+  height: 100dvh;
+  z-index: 70;
+  padding: 24px 20px;
+  border: 0;
+  border-left: 1px solid var(--papiti-line);
+  border-radius: 0;
+  background: #fff;
+  box-shadow: -18px 0 60px rgba(12,39,29,.15);
+  transform: translateX(103%);
+  transition: transform .22s ease,visibility .22s ease;
+  visibility: hidden;
+  pointer-events: none;
+}
+.flightApp .telemetryDock.open { transform: translateX(0); visibility: visible; pointer-events: auto; }
+.flightApp .telemetryScrim {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 65;
+  border: 0;
+  background: rgba(14,40,30,.38);
+}
+.flightApp .dockClose { display: grid; color: var(--papiti-ink); background: #edf4ed; }
+.flightApp .telemetryHeader h2 { color: var(--papiti-ink); font: 780 20px/1.3 Inter,sans-serif; letter-spacing: -.04em; }
+.flightApp .telemetryHeader > div > span { color: #55836a; }
+.flightApp .telemetrySection,
+.flightApp .telemetryDetails { border-color: var(--papiti-line); color: var(--papiti-ink); }
+.flightApp .telemetryEmpty,
+.flightApp .sectionTitle small,
+.flightApp .systemGrid span { color: #708779; }
+.flightApp .systemGrid strong, .flightApp .sectionTitle { color: var(--papiti-ink); }
+.flightApp .telemetryDetails > summary { color: #527765; }
+.flightApp .routeMixRow > div { color: #536b5e; }
+.flightApp .routeMixRow strong { color: var(--papiti-ink); }
+.flightApp .routeMixRow > i { background: #e7efe8; }
+.flightApp .routeMixRow > i b { background: #63ad7d; }
+.flightApp .historyItem:focus-visible, .flightApp .newFlightButton:focus-visible {
+  outline: 2px solid var(--papiti-lime);
+  outline-offset: 2px;
+}
+.papitiMark { width: 64px; height: 64px; display: inline-grid; place-items: center; }
+.papitiMark svg { width: 100%; height: 100%; }
+.papitiMark.small { width: 37px; height: 37px; }
+.papitiMark .signalDot { transform-origin: 49px 20px; animation: papitiBreath 3.4s ease-in-out infinite; }
+@keyframes papitiBreath { 50% { opacity: .5; transform: scale(.75); } }
+.flightApp .messageBeacon .papitiMark { background: #e9f3e6; border-radius: 12px; padding: 4px; }
+.flightApp .authShell { background: var(--papiti-canvas); }
+.authShell { background: radial-gradient(circle at 50% 25%,#eaf6df,transparent 35rem),var(--papiti-canvas); color: var(--papiti-ink); }
+.authCard { background: #fff; border: 1px solid #dce8dc; border-radius: 23px; box-shadow: 0 22px 65px rgba(26,70,43,.10); }
+.authCard h1, .authCard h2 { color: var(--papiti-pine); }
+.authCard .authBrand span,.authCard .authIntro > span { color: #5d8670; }
+.authCard .authIntro p,.authCard .authFootnote { color: #718779; }
+.authCard .authSubmit { color: #fff; background: var(--papiti-pine); }
+.authCard .authTabs button.active { color: var(--papiti-pine); border-color: var(--papiti-pine); }
+@media (max-width: 1180px) {
+  .flightApp { grid-template-columns: 216px minmax(0,1fr) !important; }
+  .flightApp .flightRail { width: 216px; }
+}
+@media (max-width: 760px) {
+  .flightApp { grid-template-columns: minmax(0,1fr) !important; }
+  .flightApp .flightRail { width: min(285px,86vw); }
+  .flightApp .flightWorkspace,.flightApp.isWelcome .flightWorkspace { grid-template-rows: 64px minmax(0,1fr); }
+  .flightApp .flightHeader { padding-inline: 14px; }
+  .flightApp .flightTitle h1 { font-size: 15px; }
+  .flightApp .flightEyebrow { font-size: 7px; }
+  .flightApp .telemetryToggle { width: 36px; padding: 0; justify-content: center; }
+  .flightApp .telemetryToggle span { display: none; }
+  .flightApp .routeChip { display: none; }
+  .flightApp .flightConversation { width: calc(100% - 18px); }
+  .flightApp .welcomeStarters { grid-template-columns: 1fr; max-width: 370px; gap: 9px; margin-top: 20px; }
+  .flightApp .starterCard { min-height: 0; padding: 12px 14px; gap: 5px; }
+  .flightApp .starterIcon { font-size: 17px; }
+  .flightApp .welcomeEmblem { width: 68px; height: 68px; margin-bottom: 12px; }
+  .flightApp .welcomeLanding h2 { font-size: 30px; }
+  .flightApp .welcomeLanding p { font-size: 12px; }
+  .flightApp .launchDock,.flightApp.isWelcome .launchDock { padding: 0 12px 12px; }
+  .flightApp.isWelcome .airCanvas { justify-content: flex-start; padding: 24px 0 12px; }
+}
+@media (max-height: 720px) and (min-width: 761px) {
+  .flightApp.isWelcome .airCanvas { justify-content: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .papitiMark .signalDot { animation: none; }
+  .flightApp .starterCard { transition: none; }
+  .flightApp .telemetryDock { transition: none; }
+}
