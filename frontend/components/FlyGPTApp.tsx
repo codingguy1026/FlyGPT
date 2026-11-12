@@ -11,7 +11,7 @@ import {
 import BrainPanel from "./BrainPanel";
 import ConnectomePreview from "./ConnectomePreview";
 import FlyThinkingIndicator from "./FlyThinkingIndicator";
-import { Icon, FlyOrb } from "./FlightIdentity";
+import { Icon, PapitiMark } from "./FlightIdentity";
 import { THEMES } from "@/lib/flight-theme";
 import {
   activeChatKey, formatChatTime, INITIAL_MESSAGE, loadChatHistory,
@@ -75,8 +75,8 @@ export default function FlyGPTApp({
   const [sessionId, setSessionId] = useState("");
   const [conversationTitle, setConversationTitle] = useState("Untitled flight");
   const [themeId, setThemeId] = useState<(typeof THEMES)[number]["id"]>("bio");
-  const [mode, setMode] = useState<"ask" | "code" | "research">("ask");
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     const storedHistory = loadChatHistory(user.id);
@@ -251,8 +251,7 @@ export default function FlyGPTApp({
     setLiveRoute(null);
     setMonitorPhase("processing");
     setTraceRequestId((current) => current + 1);
-    // The desktop Brain preview is already present; narrow screens need the overlay.
-    if (window.matchMedia("(max-width: 1180px)").matches) setBrainOpen(true);
+    // Technical observatory is opt-in so chat keeps the user focused.
     setMessages((current) => [
       ...current,
       { id: makeId("user"), role: "user", content: text },
@@ -478,12 +477,6 @@ export default function FlyGPTApp({
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  function applyMode(next: "ask" | "code" | "research") {
-    setMode(next);
-    if (next === "code" && !input) setInput("다음 코드를 도와줘: ");
-    if (next === "research" && !input) setInput("다음 주제를 깊게 조사해줘: ");
-  }
-
   const topRoutes = router?.top_routes?.slice(0, 4) ?? [];
   const traceRouter = useMemo<RouterResult | null>(() => {
     if (!sending) return router;
@@ -504,15 +497,11 @@ export default function FlyGPTApp({
       <aside className={"flightRail" + (railOpen ? " open" : "")}>
         <div className="railBrandFull">
           <div className="railBrand">
-            <img
-              className="railBrandLogo"
-              src="/flygpt-logo.webp"
-              alt="FlyGPT logo"
-            />
+            <PapitiMark />
           </div>
           <div className="railBrandCopy">
-            <strong>FlyGPT</strong>
-            <span>MALECNS CONSOLE</span>
+            <strong>papiti.</strong>
+            <span>CURIOSITY IN MOTION</span>
           </div>
         </div>
 
@@ -528,17 +517,17 @@ export default function FlyGPTApp({
           </button>
           <button className="railButton" type="button" title="FlyGraph" onClick={() => { setBrainOpen(true); setRailOpen(false); }}>
             <Icon name="brain" size={18} />
-            <span>FlyGraph</span>
+            <span>신경 지도</span>
           </button>
           <button className="railButton" type="button" title="테마" onClick={() => { setTelemetryOpen(true); setRailOpen(false); }}>
             <Icon name="palette" size={18} />
-            <span>Telemetry</span>
+            <span>작동 기록</span>
           </button>
         </nav>
 
         <section className="historySection" aria-label="채팅 기록">
           <div className="historyLabel">
-            <span>RECENT FLIGHTS</span>
+            <span>최근 대화</span>
             <b>{historyQuery.trim() ? filteredChatHistory.length + "/" + chatHistory.length : chatHistory.length}</b>
           </div>
           <div className="historyTools">
@@ -619,15 +608,15 @@ export default function FlyGPTApp({
               <Icon name="menu" />
             </button>
             <div className="flightTitle">
-              <span className="flightEyebrow">MALECNS / LIVE SESSION</span>
-              <h1>{hasConversation ? conversationTitle : "FlyGPT"}</h1>
+              <span className="flightEyebrow">PAPITI / THINKING SPACE</span>
+              <h1>{hasConversation ? conversationTitle : "파피티"}</h1>
             </div>
           </div>
 
           <div className="headerTelemetry">
             <span className={"connectionChip " + (online ? "online" : "offline")}>
               <i />
-              {online ? "online" : healthError ? "offline" : "checking"}
+              {online ? "연결됨" : healthError ? "연결 끊김" : "확인 중"}
             </span>
             {router && (
               <button className="routeChip" type="button" onClick={() => setTelemetryOpen(true)}>
@@ -637,7 +626,7 @@ export default function FlyGPTApp({
             )}
             <button className="telemetryToggle" type="button" onClick={() => setTelemetryOpen((value) => !value)}>
               <Icon name="spark" size={18} />
-              <span>Brain</span>
+              <span>작동 기록</span>
             </button>
           </div>
         </header>
@@ -672,10 +661,26 @@ export default function FlyGPTApp({
           <section className="messageViewport" aria-label={hasConversation ? "대화 내용" : "새 대화 시작"}>
             {!hasConversation ? (
               <div className="welcomeLanding">
-                <div className="welcomeEmblem" aria-hidden="true"><Icon name="brain" size={27} /></div>
-                <span className="welcomeEyebrow">FLYGPT / MALECNS CONNECTOME</span>
-                <h2>무엇을 탐색해 볼까요?</h2>
-                <p>질문을 보내면 MaleCNS 기반 라우터가 경로를 선택하고,<br className="desktopOnly" /> 실제 실행 기록을 Brain에서 확인할 수 있어요.</p>
+                <div className="welcomeEmblem"><PapitiMark /></div>
+                <span className="welcomeEyebrow">HELLO, THIS IS PAPITI.</span>
+                <h2>오늘은 어떤 생각을 펼쳐볼까?</h2>
+                <p>작은 호기심부터 커다란 아이디어까지.<br className="desktopOnly" /> 질문 하나로 새로운 생각을 시작해 봐.</p>
+                <div className="welcomeStarters" aria-label="대화 시작 예시">
+                  {[
+                    { symbol: "✦", label: "가볍게 궁금한 것", detail: "흥미로운 이야기로 시작하기", prompt: "흥미로운 역사 이야기를 하나 들려줘." },
+                    { symbol: "⌘", label: "함께 만들기", detail: "코딩과 아이디어 발전시키기", prompt: "자바스크립트로 만들 만한 작은 프로젝트를 추천해줘." },
+                    { symbol: "◎", label: "깊게 알아보기", detail: "복잡한 개념도 차근차근", prompt: "신경망은 어떻게 학습하는지 쉽게 설명해줘." },
+                  ].map((item) => (
+                    <button className="starterCard" type="button" key={item.label} onClick={() => {
+                      setInput(item.prompt);
+                      composerRef.current?.focus();
+                    }}>
+                      <span className="starterIcon" aria-hidden="true">{item.symbol}</span>
+                      <strong>{item.label}</strong>
+                      <small>{item.detail}</small>
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : (
             <div className="flightConversation" role="log" aria-live="polite" aria-relevant="additions">
@@ -683,7 +688,7 @@ export default function FlyGPTApp({
                 <article key={message.id} className={"flightMessage " + message.role}>
                   {message.role === "assistant" && (
                     <div className="messageBeacon">
-                      <FlyOrb small />
+                      <PapitiMark small />
                       {index < conversationMessages.length - 1 && <span className="beaconTrail" />}
                     </div>
                   )}
@@ -731,7 +736,7 @@ export default function FlyGPTApp({
               {sending && (
                 <article className="flightMessage assistant">
                   <div className="messageBeacon">
-                    <FlyOrb small />
+                    <PapitiMark small />
                   </div>
                   <div className="messagePayload">
                     <div className="messageBubble flyThinkingBubble">
@@ -751,22 +756,8 @@ export default function FlyGPTApp({
 
           <footer className="launchDock">
             <form className="launchComposer" onSubmit={handleSubmit}>
-              <div className="modeStrip">
-                <button className={mode === "ask" ? "active" : ""} type="button" onClick={() => applyMode("ask")}>
-                  <Icon name="spark" size={14} />
-                  Ask
-                </button>
-                <button className={mode === "code" ? "active" : ""} type="button" onClick={() => applyMode("code")}>
-                  <Icon name="code" size={14} />
-                  Code
-                </button>
-                <button className={mode === "research" ? "active" : ""} type="button" onClick={() => applyMode("research")}>
-                  <Icon name="search" size={14} />
-                  Research
-                </button>
-              </div>
 
-              <div role="status" aria-live="polite" style={{ fontSize: 12, opacity: 0.8, padding: "4px 2px" }}>
+              <div className="composerCaption" role="status" aria-live="polite">
                 {generatorReadiness === "native" ? "🪰 파피티 자체 응답기 활성화 · LLM 미사용" :
                    generatorReadiness === "ready" ? "🟢 AI 모델 준비 완료" :
                   generatorReadiness === "loading" ? "🟡 AI 모델 준비 중 · 첫 답변이 느릴 수 있어요" :
@@ -777,6 +768,7 @@ export default function FlyGPTApp({
 
               <div className="launchInputRow">
                 <textarea
+                  ref={composerRef}
                   value={input}
                   onChange={(event) => setInput(event.target.value)}
                   onKeyDown={(event) => {
@@ -787,7 +779,7 @@ export default function FlyGPTApp({
                       }
                     }
                   }}
-                  placeholder="Signal something to FlyGPT…"
+                  placeholder="무엇이든 궁금한 걸 물어봐..."
                   rows={1}
                   disabled={sending}
                   aria-label="FlyGPT message"
@@ -823,8 +815,8 @@ export default function FlyGPTApp({
       <aside className={"telemetryDock" + (telemetryOpen ? " open" : "")}>
         <div className="telemetryHeader">
           <div>
-            <span>MALECNS / CONNECTOME</span>
-            <h2>Brain Observatory</h2>
+            <span>PAPITI / HOW IT WORKS</span>
+            <h2>작동 기록</h2>
           </div>
           <button className="dockClose" type="button" aria-label="Telemetry 닫기" onClick={() => setTelemetryOpen(false)}>
             <Icon name="close" />
@@ -924,8 +916,8 @@ export default function FlyGPTApp({
           <section className="settingsModal" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}>
             <div className="settingsModalHeader">
               <div>
-                <span>FLIGHT CONTROL</span>
-                <h2>Settings</h2>
+                <span>PAPITI / PREFERENCES</span>
+                <h2>설정</h2>
               </div>
               <button type="button" onClick={() => setSettingsOpen(false)}><Icon name="close" /></button>
             </div>

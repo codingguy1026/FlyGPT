@@ -60,3 +60,21 @@ export function FlyOrb({ small = false }: { small?: boolean }) {
   );
 }
 
+
+/** Papiti Orbit mark: one continuous thought-path and a small spark. */
+export function PapitiMark({ small = false }: { small?: boolean }) {
+  return (
+    <span className={"papitiMark" + (small ? " small" : "")} aria-hidden="true">
+      <svg viewBox="0 0 64 64" fill="none">
+        <path
+          d="M16 39C9 29 17 14 31 20C41 24 38 42 27 42C18 42 18 29 28 29C37 29 39 46 49 34"
+          stroke="#26765A"
+          strokeWidth="5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <circle className="signalDot" cx="49" cy="20" r="5" fill="#84C9DB" />
+      </svg>
+    </span>
+  );
+}

@@ -2,6 +2,7 @@
 
 import { type FormEvent, useEffect, useState } from "react";
 import FlyGPTApp from "./FlyGPTApp";
+import { PapitiMark } from "./FlightIdentity";
 import {
   getCurrentUser,
   login,
@@ -81,8 +82,8 @@ export default function AuthGate() {
     return (
       <main className="authShell">
         <div className="authLoading">
-          <img src="/flygpt-logo.webp" alt="" />
-          <span>MaleCNS console credential 확인 중...</span>
+          <PapitiMark />
+          <span>파피티에 연결하는 중...</span>
         </div>
       </main>
     );
@@ -93,10 +94,10 @@ export default function AuthGate() {
       <main className="authShell">
         <section className="authCard">
           <div className="authBrand">
-            <img src="/flygpt-logo.webp" alt="FlyGPT logo" />
+            <PapitiMark />
             <div>
               <span>CONNECTION CHECK</span>
-              <h1>FlyGPT</h1>
+              <h1>papiti.</h1>
             </div>
           </div>
           <div className="authIntro">
@@ -131,20 +132,20 @@ export default function AuthGate() {
     <main className="authShell">
       <section className="authCard">
         <div className="authBrand">
-          <img src="/flygpt-logo.webp" alt="FlyGPT logo" />
+          <PapitiMark />
           <div>
-            <span>JANELIA MALECNS INTERFACE</span>
-            <h1>FlyGPT</h1>
+            <span>CURIOSITY IN MOTION</span>
+            <h1>papiti.</h1>
           </div>
         </div>
 
         <div className="authIntro">
-          <span>{mode === "login" ? "WELCOME BACK" : "CREATE FLIGHT ID"}</span>
-          <h2>{mode === "login" ? "실험실 콘솔에 다시 접속." : "새 연구 세션 ID를 만들자."}</h2>
+          <span>{mode === "login" ? "WELCOME BACK" : "JOIN PAPITI"}</span>
+          <h2>{mode === "login" ? "다시 만나서 반가워!" : "파피티와 생각을 시작해 봐."}</h2>
           <p>
             {mode === "login"
-              ? "로그인하면 MaleCNS 라우터, 대화 기록, 실험 텔레메트리가 있는 flewGPT 작업공간으로 들어갑니다."
-              : "계정마다 채팅 기록과 flewGPT 메모리를 분리해 보관합니다."}
+              ? "로그인하면 이전 대화를 이어가고, 파피티의 다양한 기능을 이용할 수 있어."
+              : "계정마다 대화 기록과 기억을 분리해서 관리해."}
           </p>
         </div>
 

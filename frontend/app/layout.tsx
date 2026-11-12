@@ -5,12 +5,13 @@ import "./refinements.css";
 import "./liquid-refraction.css";
 import "./studio-theme.css";
 import "./neuron-explorer.css";
+import "./papiti-orbit.css";
 
 export const metadata: Metadata = {
-  title: "FlyGPT v0.7.1",
-  description: "Connectome-routed AI workspace",
+  title: "papiti. | 생각이 움직이는 공간",
+  description: "파피티, 호기심이 생각으로 연결되는 AI 대화 공간",
   icons: {
-    icon: "/flygpt-logo.webp",
+    icon: "/papiti-mark.svg",
   },
 };
 
