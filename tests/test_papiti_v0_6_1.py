@@ -103,16 +103,17 @@ class HybridIntegrationTests(unittest.TestCase):
         speaker.assert_called_once()
         http.assert_not_called()
 
-    def test_bad_neural_output_falls_back_with_honest_label(self):
+    def test_bad_neural_output_never_falls_back_to_native(self):
         with self._runtime():
             runtime = GeneratorRuntime()
             with patch("generator_runtime.speech_checkpoint_present", return_value=True), \
                  patch("generator_runtime.generate_speech", return_value="도움이 됐다니 됐다니 줘."):
                 result = runtime.generate("안녕", "general", brain_state=plan_for("안녕"))
-        self.assertEqual(result.provider, "papiti-hybrid-native")
-        self.assertEqual(result.finish_reason, "native_fallback_v0.6.1")
+        self.assertFalse(result.used)
+        self.assertIsNone(result.answer)
+        self.assertEqual(result.provider, "papiti-hybrid")
+        self.assertEqual(result.error_code, "hybrid_neural_rejected")
         self.assertIn("repetitive_speech", result.error)
-        self.assertIn("안녕", result.answer)
 
     def test_unresolved_request_never_promoted_to_neural_thought(self):
         with self._runtime():
@@ -122,7 +123,9 @@ class HybridIntegrationTests(unittest.TestCase):
                 result = runtime.generate("왜 하늘은 파래?", "general",
                                           brain_state=plan_for("왜 하늘은 파래?"))
         speaker.assert_not_called()
-        self.assertEqual(result.provider, "papiti-hybrid-native")
+        self.assertFalse(result.used)
+        self.assertIsNone(result.answer)
+        self.assertEqual(result.error_code, "hybrid_language_model_required")
 
     def test_verified_math_fails_closed_if_neural_changes_result(self):
         context = "Exact math tool result: 42"
@@ -135,8 +138,9 @@ class HybridIntegrationTests(unittest.TestCase):
                     brain_state=plan_for("6*7", "math", context),
                     tool_context=context,
                 )
-        self.assertEqual(result.provider, "papiti-hybrid-native")
-        self.assertEqual(result.answer, "🧮 42")
+        self.assertFalse(result.used)
+        self.assertIsNone(result.answer)
+        self.assertEqual(result.error_code, "hybrid_neural_rejected")
         self.assertIn("exact_result_not_preserved", result.error)
 
     def test_missing_checkpoint_does_not_claim_neural_generation(self):
@@ -145,7 +149,9 @@ class HybridIntegrationTests(unittest.TestCase):
             with patch("generator_runtime.speech_checkpoint_present", return_value=False), \
                  patch("generator_runtime.generate_speech") as speaker:
                 result = runtime.generate("안녕", "general", brain_state=plan_for("안녕"))
-        self.assertEqual(result.provider, "papiti-hybrid-native")
+        self.assertFalse(result.used)
+        self.assertIsNone(result.answer)
+        self.assertEqual(result.error_code, "hybrid_speaker_missing")
         speaker.assert_not_called()
 
 
