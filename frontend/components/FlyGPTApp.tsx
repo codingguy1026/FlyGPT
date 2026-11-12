@@ -251,8 +251,7 @@ export default function FlyGPTApp({
     setLiveRoute(null);
     setMonitorPhase("processing");
     setTraceRequestId((current) => current + 1);
-    // The desktop Brain preview is already present; narrow screens need the overlay.
-    if (window.matchMedia("(max-width: 1180px)").matches) setBrainOpen(true);
+    // Technical observatory is opt-in so chat keeps the user focused.
     setMessages((current) => [
       ...current,
       { id: makeId("user"), role: "user", content: text },
