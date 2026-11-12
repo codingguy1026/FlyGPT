@@ -20,6 +20,54 @@ ROOT = Path(__file__).resolve().parent
 DEFAULT_CHECKPOINT = ROOT / "artifacts" / "papiti_language_v0_6_1.pt"
 _REPEATED_WORD = re.compile(r"(?<!\w)([가-힣A-Za-z]{2,})\s+\1(?!\w)")
 
+# These speech acts have supervised examples in the small v0.6.1 corpus.
+# Other plans (notably live-search status and arbitrary sourced excerpts)
+# must go to a separately configured language model, not this tiny speaker.
+V061_TRAINED_SPEECH_ACTS = frozenset({
+    "return_greeting",
+    "acknowledge_thanks",
+    "return_farewell",
+    "return_welcome",
+    "request_specific_task",
+    "introduce_flygpt",
+    "describe_supported_features",
+    "explain_malecns",
+    "state_exact_math_result",
+})
+
+
+def supports_v061_plan(plan: dict[str, Any]) -> bool:
+    """Use the scratch speaker only for supervised, verifiable meaning types."""
+    if not isinstance(plan, dict) or plan.get("speech_act") not in V061_TRAINED_SPEECH_ACTS:
+        return False
+    try:
+        packet_text(plan)
+    except ValueError:
+        return False
+    return True
+
+
+def _preserves_missing_status(speech_act: str, answer: str) -> bool:
+    """Conservative language-aware guard for evidence/memory absence replies.
+
+    This is deliberately not a general semantic classifier. It rejects obvious
+    unrelated text, including the model's memorized project introduction.
+    """
+    if speech_act == "report_no_external_evidence":
+        subject_ko = r"자료|출처|정보|검색|근거|확인|검증|증거|알\s*수"
+        subject_en = r"source|evidence|information|search|verif|data|answer|know"
+    elif speech_act == "report_no_memory":
+        subject_ko = r"기억|이전|대화|기록|찾|과거"
+        subject_en = r"memory|previous|earlier|conversation|recall|find|found"
+    else:
+        return True
+    missing_ko = r"없|못|않|어렵|불가|부족|미확인|불가능|모르|제공할\s*수"
+    missing_en = r"\b(?:not|no|cannot|can't|unavailable|lack|insufficient|unable|don't|unknown)\b"
+    return bool(
+        (re.search(subject_ko, answer) and re.search(missing_ko, answer))
+        or (re.search(subject_en, answer, re.I) and re.search(missing_en, answer, re.I))
+    )
+
 
 def checkpoint_path() -> Path:
     path = os.environ.get("FLYGPT_HYBRID_SPEECH_CHECKPOINT", "").strip()
@@ -55,6 +103,8 @@ def check_candidate(plan: dict[str, Any], answer: str) -> str | None:
         return "repetitive_speech"
     speech_act = plan.get("speech_act")
     units = plan["content_units"]
+    if not _preserves_missing_status(str(speech_act), answer):
+        return "missing_status_semantics"
     if speech_act == "state_exact_math_result":
         if len(units) != 1 or units[0]["kind"] != "exact_result":
             return "invalid_exact_result"
