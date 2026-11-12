@@ -1,0 +1,124 @@
+name: Papiti v0.5 full MaleCNS category-free policy training
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/papiti-v0-5-full-malecns.yml'
+      - 'training/papiti_v0_5_policy.py'
+      - 'training/papiti_v0_5_policy_train.jsonl'
+      - 'training/papiti_v0_5_policy_holdout.jsonl'
+      - 'tests/test_papiti_v0_5_policy.py'
+      - 'training/full_population_router.py'
+      - 'training/train_full_connectome.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: papiti-v05-166700-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  full-neuron-policy:
+    name: Train entire 166700-neuron MaleCNS policy candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    env:
+      OMP_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install PyTorch + full MaleCNS data dependencies
+        run: |
+          python -m pip install 'torch>=2.4,<3' --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install 'numpy>=1.26,<3' 'pyarrow>=15,<23'
+      - name: Run category-free neural and data integrity tests
+        run: |
+          python -m py_compile training/papiti_v0_5_policy.py
+          python -m unittest tests.test_papiti_v0_5_policy -v
+          python - <<'PY'
+          from pathlib import Path
+          from training.papiti_v0_5_policy import load_policy_examples, enforce_unseen
+          training = load_policy_examples(Path('training/papiti_v0_5_policy_train.jsonl'))
+          holdout = load_policy_examples(Path('training/papiti_v0_5_policy_holdout.jsonl'))
+          enforce_unseen(training, holdout)
+          print('Training:', len(training), 'untouched holdout:', len(holdout))
+          PY
+      - name: Download complete official Janelia MaleCNS v1.0 source data
+        run: |
+          bash scripts/download_all_malecns_data.sh
+          ls -lh data/malecns_full/*.feather
+      - name: Structural pretraining on all eligible official directed edges
+        run: |
+          mkdir -p /tmp/papiti-v05-artifacts
+          python training/train_full_connectome.py \
+            --epochs 1 \
+            --embedding-dim 16 \
+            --batch-size 32768 \
+            --progress-every 500 \
+            --out /tmp/papiti-v05-artifacts/full-structural.pt
+      - name: Verify exact 166700 curated neurons before policy learning
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from training.full_population_router import load_all_structural_keys
+          ids, keys, meta = load_all_structural_keys(
+              Path('/tmp/papiti-v05-artifacts/full-structural.pt')
+          )
+          assert len(ids) == 166700, f'unexpected curated count: {len(ids)}'
+          assert keys.shape[0] == 166700
+          assert meta['full_source_scanned_every_epoch'] is True
+          print('Official MaleCNS curated neurons:', len(ids))
+          print('Neurons with positive edges:', meta['annotated_neurons_with_positive_edges'])
+          print('Unconnected neurons still included:', meta['isolated_or_unseen_annotated_neurons'])
+          print('Eligible directed edge rows:', meta['epoch_reports'][-1]['eligible_directed_connection_rows'])
+          PY
+      - name: Train independent tool-policy heads and individual 166700-neuron gains
+        run: |
+          python training/papiti_v0_5_policy.py \
+            --structural /tmp/papiti-v05-artifacts/full-structural.pt \
+            --epochs 100 \
+            --patience 20 \
+            --batch-size 24 \
+            --out /tmp/papiti-v05-artifacts/papiti-v0.5-category-free-166700.pt \
+            --report /tmp/papiti-v05-artifacts/metrics.json
+      - name: Verify heldout policy, full population and checkpoint provenance
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import torch
+          root = Path('/tmp/papiti-v05-artifacts')
+          ckpt = torch.load(root/'papiti-v0.5-category-free-166700.pt',
+                            map_location='cpu', weights_only=True)
+          report = json.loads((root/'metrics.json').read_text())
+          assert ckpt['format'] == 'papiti-v0.5-category-free-full-malecns'
+          assert ckpt['n_neurons'] == 166700
+          assert len(ckpt['model_state']['neuron_ids']) == 166700
+          assert len(ckpt['model_state']['neuron_gain_logits']) == 166700
+          assert ckpt['structural_metadata']['dataset'] == 'male-cns:v1.0'
+          assert ckpt['experimental_only'] and not ckpt['production_enabled']
+          assert report['holdout'] == 36
+          print(json.dumps(report['holdout_metrics'], indent=2))
+          print('Experimental checkpoint validated; deployment unchanged.')
+          PY
+      - name: Retain training report and isolated experimental checkpoint
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: papiti-v0-5-category-free-166700-experiment
+          path: |
+            /tmp/papiti-v05-artifacts/metrics.json
+            /tmp/papiti-v05-artifacts/papiti-v0.5-category-free-166700.pt
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Guard production configuration
+        if: always()
+        run: |
+          echo 'Only experimental candidate outputs. Existing production router and language model are unchanged.'

@@ -1,0 +1,128 @@
+{"input":"안녕, 오늘은 어떤 이야기를 나눌까?","tools":[]}
+{"input":"사과와 바나나는 어떤 점이 닮았어?","tools":[]}
+{"input":"꽃은 왜 여러 색깔로 피어?","tools":[]}
+{"input":"초파리가 연구에 중요한 이유를 설명해 줘","tools":[]}
+{"input":"학교생활을 소재로 재미있는 동화를 만들어 줘","tools":[]}
+{"input":"고양이가 말을 할 줄 안다면 어떤 말을 할까?","tools":[]}
+{"input":"우정에 대한 짧은 시를 써줘","tools":[]}
+{"input":"신기한 역사 사건을 하나 알려줘","tools":[]}
+{"input":"자기소개 없이 질문에 직접 답해줘","tools":[]}
+{"input":"사막과 초원의 차이를 간단하게 설명해","tools":[]}
+{"input":"사람이 웃는 이유를 쉽게 설명해 줘","tools":[]}
+{"input":"파이썬 리스트 컴프리헨션이 뭐야?","tools":[]}
+{"input":"다음 글을 자연스럽게 고쳐 줘: 나는 어제 학교를 갔다","tools":[]}
+{"input":"아래 문장을 두 줄로 요약해: 비가 그치고 해가 떴다. 아이들은 밖으로 나갔다.","tools":[]}
+{"input":"아시아의 주요 강을 설명해 줘","tools":[]}
+{"input":"달이 매일 다르게 보이는 이유는?","tools":[]}
+{"input":"중세 유럽 성의 기능을 알려줘","tools":[]}
+{"input":"이야기 분위기를 더 신비롭게 바꿔 줘","tools":[]}
+{"input":"오늘 기분이 복잡해서 그냥 이야기하고 싶어","tools":[]}
+{"input":"색깔을 소재로 동요 대신 짧은 이야기를 만들어줘","tools":[]}
+{"input":"어제 본 영화 장면을 상상해서 재해석해 줘","tools":[]}
+{"input":"바다와 호수는 어떤 공통점이 있니?","tools":[]}
+{"input":"간단한 React 컴포넌트 예시를 만들어줘","tools":[]}
+{"input":"나의 생각을 비판적으로 검토해 줘","tools":[]}
+{"input":"말을 길게 하지 말고 한 문장으로 대답해 줘","tools":[]}
+{"input":"사람들은 왜 음악을 좋아할까?","tools":[]}
+{"input":"새로운 가상 국가의 국기를 설명해 줘","tools":[]}
+{"input":"세계 평화의 필요성을 짧게 주장해 봐","tools":[]}
+{"input":"지금은 검색하지 말고 상식으로 대답해 줘","tools":[]}
+{"input":"아래 글의 핵심만 요약해: 도서관은 지식을 공유하는 곳이다.","tools":[]}
+{"input":"외교관이 하는 일을 알려줘","tools":[]}
+{"input":"러시아어 키릴 문자 발음을 기초부터 알려줘","tools":[]}
+{"input":"책을 읽는 습관을 만드는 방법이 궁금해","tools":[]}
+{"input":"학교 쓰레기 문제 해결 아이디어를 제안해 줘","tools":[]}
+{"input":"왜 물고기는 아가미로 숨을 쉬지?","tools":[]}
+{"input":"축구와 야구의 공통점을 알려줘","tools":[]}
+{"input":"보이는 정보 없이 사람을 추측해서는 안 되는 이유는?","tools":[]}
+{"input":"오늘 일기를 쓰려고 하는데 첫 문장을 추천해 줘","tools":[]}
+{"input":"내가 쓴 설명을 더 쉬운 표현으로 바꿔줘","tools":[]}
+{"input":"고대 로마의 공화정이 뭐였어?","tools":[]}
+{"input":"오늘 한국과 호주의 야구 경기 결과가 어떻게 됐어?","tools":["web_search"]}
+{"input":"지금 대구 날씨를 최신 정보로 확인해 줘","tools":["web_search"]}
+{"input":"2026년 대구국제고 원서 접수 일정이 나왔는지 찾아봐","tools":["web_search"]}
+{"input":"이번 주 새로운 AI 모델 출시 소식 알려줘","tools":["web_search"]}
+{"input":"오늘 원달러 환율을 검색해 줘","tools":["web_search"]}
+{"input":"방금 발표된 과학 뉴스 세 가지 알려 줘","tools":["web_search"]}
+{"input":"현재 한화 이글스 선수단 변동 사항 조사해 줘","tools":["web_search"]}
+{"input":"올해 최신 우주 탐사 결과를 찾아봐","tools":["web_search"]}
+{"input":"현재 대구 지역 축제 일정 확인해 줘","tools":["web_search"]}
+{"input":"지금 판매 중인 노트북 가격 비교해 줘","tools":["web_search"]}
+{"input":"현재 운영되는 GitHub API 변경 사항을 알아봐","tools":["web_search"]}
+{"input":"최근 발표된 언어 모델 평가 보고서를 찾아봐","tools":["web_search"]}
+{"input":"공식 사이트에서 새 입시 모집요강을 확인해 줘","tools":["web_search"]}
+{"input":"오늘 열리는 야구 경기가 어떤 게 있는지 찾아 줘","tools":["web_search"]}
+{"input":"최근 OpenAI API 가격이 바뀌었는지 확인해 줘","tools":["web_search"]}
+{"input":"올해 국제 학술대회 일정을 온라인에서 조사해 줘","tools":["web_search"]}
+{"input":"현재 국제 뉴스에서 논의되는 협약을 알려줘","tools":["web_search"]}
+{"input":"실시간 기차 시간표를 확인해야 해","tools":["web_search"]}
+{"input":"최신 파이썬 안정 버전이 몇인지 검색해 봐","tools":["web_search"]}
+{"input":"이 장소의 오늘 영업시간을 공식 홈페이지에서 확인해 줘","tools":["web_search"]}
+{"input":"온라인 자료로 최신 규정 개정 내역을 찾아줘","tools":["web_search"]}
+{"input":"오늘 대구 교통 상황 알려줘","tools":["web_search"]}
+{"input":"이번 달 천문 관측 행사 정보를 알아봐","tools":["web_search"]}
+{"input":"최근 KBO 선수 이적 발표가 있는지 찾아줘","tools":["web_search"]}
+{"input":"방금 공개된 회사 실적을 조회해 줘","tools":["web_search"]}
+{"input":"오늘 달러 대비 엔화 환율은 얼마야?","tools":["web_search"]}
+{"input":"우리 지난 대화에서 어떤 계획을 세웠지?","tools":["memory_lookup"]}
+{"input":"어제 내가 마지막으로 말한 게 뭐야?","tools":["memory_lookup"]}
+{"input":"지난번에 내가 정한 프로젝트 이름을 기억해?","tools":["memory_lookup"]}
+{"input":"아까 이야기한 그 책 제목을 다시 알려줘","tools":["memory_lookup"]}
+{"input":"내가 좋아한다고 했던 스포츠팀이 뭐야?","tools":["memory_lookup"]}
+{"input":"이전에 함께 만든 일정에서 첫 번째 단계가 뭐였지?","tools":["memory_lookup"]}
+{"input":"예전에 선택한 사이트 색상을 떠올려줘","tools":["memory_lookup"]}
+{"input":"지난번 설문 문항을 다시 보여줘","tools":["memory_lookup"]}
+{"input":"오늘 대화 중 내가 말한 목표를 요약해 줘","tools":["memory_lookup"]}
+{"input":"방금 네가 권했던 방법이 무엇이었어?","tools":["memory_lookup"]}
+{"input":"우리가 앞에서 정한 API 사용 계획 기억해?","tools":["memory_lookup"]}
+{"input":"내가 전 채팅에서 물었던 키릴문자 내용 다시 설명해 줘","tools":["memory_lookup"]}
+{"input":"저번에 이야기한 자기소개서 문장으로 돌아가자","tools":["memory_lookup"]}
+{"input":"전에 수정했던 버그가 어떤 거였는지 기억해?","tools":["memory_lookup"]}
+{"input":"예전에 정한 게임 이름을 그대로 써 줘","tools":["memory_lookup"]}
+{"input":"내가 나중에 하겠다고 말한 일이 뭐였지?","tools":["memory_lookup"]}
+{"input":"지난 세션에서 논의한 라우터 계획을 찾아 줘","tools":["memory_lookup"]}
+{"input":"내가 전에 고른 디자인 스타일을 적용해 줘","tools":["memory_lookup"]}
+{"input":"지난달 프로젝트 진행 상황을 기억해서 알려줘","tools":["memory_lookup"]}
+{"input":"아까 언급한 역사 사례를 다시 꺼내 줘","tools":["memory_lookup"]}
+{"input":"지난번에 네가 정리해 준 체크리스트를 보여줘","tools":["memory_lookup"]}
+{"input":"우리 대화에서 확정했던 규칙을 다시 말해줘","tools":["memory_lookup"]}
+{"input":"17 곱하기 23을 계산해 줘","tools":["calculator"]}
+{"input":"3.75와 8.2를 더하면 몇이야?","tools":["calculator"]}
+{"input":"144의 제곱근을 구해 줘","tools":["calculator"]}
+{"input":"시속 90킬로미터로 2시간 가면 몇 km야?","tools":["calculator"]}
+{"input":"12000원의 15퍼센트를 구해줘","tools":["calculator"]}
+{"input":"6명이 24개를 똑같이 나누면 한 명당 몇 개야?","tools":["calculator"]}
+{"input":"이 숫자들의 평균을 계산해: 12 18 25 45","tools":["calculator"]}
+{"input":"일차방정식 3x+7=31을 풀어줘","tools":["calculator"]}
+{"input":"2의 13제곱은 얼마야?","tools":["calculator"]}
+{"input":"3500원을 4번 지불하면 총 얼마야?","tools":["calculator"]}
+{"input":"20개 중 7개면 비율이 몇 퍼센트야?","tools":["calculator"]}
+{"input":"삼각형 밑변 12 높이 9일 때 넓이를 계산해줘","tools":["calculator"]}
+{"input":"1.5리터는 몇 밀리리터야?","tools":["calculator"]}
+{"input":"여행 경비가 78000원과 45000원이면 합계가 얼마야?","tools":["calculator"]}
+{"input":"반지름 5인 원의 넓이를 수치로 계산해 줘","tools":["calculator"]}
+{"input":"100에서 37을 빼고 6을 곱해 줘","tools":["calculator"]}
+{"input":"42와 56의 최대공약수 구해줘","tools":["calculator"]}
+{"input":"1/3과 1/6을 더해줘","tools":["calculator"]}
+{"input":"만원짜리 3장과 오천원짜리 4장의 총액은?","tools":["calculator"]}
+{"input":"작년 250명 올해 300명이면 증가율은 몇 퍼센트야?","tools":["calculator"]}
+{"input":"4x-5=27에서 x를 계산해 봐","tools":["calculator"]}
+{"input":"제곱수 169의 양의 제곱근이 뭐야?","tools":["calculator"]}
+{"input":"방금 나온 공식 환율을 찾아서 200달러를 원화로 환산해 줘","tools":["web_search","calculator"]}
+{"input":"오늘 발표된 경기 기록을 찾아 타율을 계산해 줘","tools":["web_search","calculator"]}
+{"input":"현재 판매 가격을 검색해서 두 제품 가격 차이를 계산해 줘","tools":["web_search","calculator"]}
+{"input":"올해 공개된 자료의 수치를 찾아 평균을 계산해 줘","tools":["web_search","calculator"]}
+{"input":"방금 발표된 관중 수를 찾아 지난 경기와 증감률을 계산해 줘","tools":["web_search","calculator"]}
+{"input":"오늘 유로 환율을 찾아서 50유로가 얼마인지 계산해 줘","tools":["web_search","calculator"]}
+{"input":"어제 이야기했던 야구팀의 오늘 경기 결과를 찾아줘","tools":["memory_lookup","web_search"]}
+{"input":"지난번에 추천한 노트북이 지금 얼마인지 다시 검색해 줘","tools":["memory_lookup","web_search"]}
+{"input":"저번에 이야기했던 행사 일정에 변경이 있는지 최신 공지 확인해 줘","tools":["memory_lookup","web_search"]}
+{"input":"전에 언급한 학교의 올해 경쟁률을 공식 사이트에서 찾아줘","tools":["memory_lookup","web_search"]}
+{"input":"지난번에 정한 예산에서 23000원을 빼면 얼마가 남아?","tools":["memory_lookup","calculator"]}
+{"input":"어제 말했던 점수들의 평균을 계산해 줘","tools":["memory_lookup","calculator"]}
+{"input":"전에 적어둔 숫자를 기억해서 두 배로 계산해 줘","tools":["memory_lookup","calculator"]}
+{"input":"우리가 지난번에 만든 예산표의 총액을 다시 계산해줘","tools":["memory_lookup","calculator"]}
+{"input":"저번에 언급한 제품의 최신 가격을 찾아 예산에서 얼마 남는지 계산해 줘","tools":["memory_lookup","web_search","calculator"]}
+{"input":"이전에 정한 환전 목표를 기억하고 오늘 환율로 계산해 줘","tools":["memory_lookup","web_search","calculator"]}
+{"input":"지난번에 조사한 경기의 최신 득점 기록을 찾아 득점 차를 계산해 줘","tools":["memory_lookup","web_search","calculator"]}
+{"input":"우리 이전 여행 예산을 확인하고 현재 항공료를 찾아 총액을 계산해 줘","tools":["memory_lookup","web_search","calculator"]}

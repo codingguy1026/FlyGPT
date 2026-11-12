@@ -1,0 +1,36 @@
+{"input":"오늘 기분이 어때?","tools":[]}
+{"input":"사과와 바나나의 공통점이 뭐야?","tools":[]}
+{"input":"고양이가 말을 할 수 있다면 무슨 말을 할까?","tools":[]}
+{"input":"자기소개는 하지 말고, 사과와 바나나의 공통점을 한 문장으로 설명해 줘.","tools":[]}
+{"input":"흥미로운 역사 이야기를 들려줘","tools":[]}
+{"input":"아래 글을 한 문장으로 요약해 줘: 화분에 물을 주니 식물이 자랐다.","tools":[]}
+{"input":"Python의 딕셔너리가 뭔지 알려줘","tools":[]}
+{"input":"왜 동물은 잠을 자는 거야?","tools":[]}
+{"input":"영어로 짧은 소설을 하나 써줘","tools":[]}
+{"input":"너랑 자유롭게 대화하고 싶어","tools":[]}
+{"input":"태양과 달이 지구에 미치는 영향을 설명해 줘","tools":[]}
+{"input":"사과를 활용한 새로운 디저트 아이디어 알려줘","tools":[]}
+{"input":"지금 서울의 날씨를 검색해 줘","tools":["web_search"]}
+{"input":"오늘 KBO 경기 결과를 공식 기록으로 확인해 줘","tools":["web_search"]}
+{"input":"올해 최신 대학 입시 지침을 찾아줘","tools":["web_search"]}
+{"input":"오늘 일본 엔화 환율 정보를 확인해 줘","tools":["web_search"]}
+{"input":"이번 주 발표된 새로운 과학 발견을 찾아줘","tools":["web_search"]}
+{"input":"최신 Node.js 버전 확인해 줘","tools":["web_search"]}
+{"input":"지난번에 내가 선택했던 계획은 뭐였어?","tools":["memory_lookup"]}
+{"input":"아까 내가 말한 질문을 다시 보여줘","tools":["memory_lookup"]}
+{"input":"이전 대화에서 내가 정했던 이름을 기억해 줘","tools":["memory_lookup"]}
+{"input":"지난번 프로젝트 작업을 이어서 진행해 줘","tools":["memory_lookup"]}
+{"input":"저번에 추천했던 방법을 다시 알려줘","tools":["memory_lookup"]}
+{"input":"23 곱하기 47은 얼마야?","tools":["calculator"]}
+{"input":"78000원에서 12500원을 빼 줘","tools":["calculator"]}
+{"input":"45와 75의 평균을 계산해 줘","tools":["calculator"]}
+{"input":"0.45를 퍼센트로 바꿔줘","tools":["calculator"]}
+{"input":"반지름 8인 원의 둘레를 구해 줘","tools":["calculator"]}
+{"input":"오늘 달러 환율을 찾아서 75달러를 환산해 줘","tools":["web_search","calculator"]}
+{"input":"최신 경기 결과로 두 팀의 득점 차이를 계산해 줘","tools":["web_search","calculator"]}
+{"input":"지난번에 말한 경기의 오늘 결과를 검색해 줘","tools":["memory_lookup","web_search"]}
+{"input":"우리가 예전에 이야기한 행사 장소의 오늘 영업시간을 찾아봐","tools":["memory_lookup","web_search"]}
+{"input":"예전에 이야기한 예산에서 15000원 더 쓰면 남는 돈은?","tools":["memory_lookup","calculator"]}
+{"input":"지난번에 정한 물품 가격을 불러와 총액을 계산해 줘","tools":["memory_lookup","calculator"]}
+{"input":"전에 알아본 노트북의 현재 가격을 찾아서 우리 예산과 비교 계산해 줘","tools":["memory_lookup","web_search","calculator"]}
+{"input":"이전에 세운 여행 계획에 오늘 환율을 적용해 예상 비용을 계산해 줘","tools":["memory_lookup","web_search","calculator"]}
