@@ -186,6 +186,12 @@ export type HealthResponse = {
     configured?: boolean;
     initialized?: boolean;
   };
+  full_population_router?: {
+    enabled?: boolean;
+    active?: boolean;
+    all_annotated_neurons?: number;
+    live_neuron_firing_traces?: boolean;
+  };
   generator?: {
     configured?: boolean;
     provider?: string;

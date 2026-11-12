@@ -6,6 +6,7 @@ import "./liquid-refraction.css";
 import "./studio-theme.css";
 import "./neuron-explorer.css";
 import "./papiti-orbit.css";
+import "./malecns-observatory.css";
 
 export const metadata: Metadata = {
   title: "papiti. | 생각이 움직이는 공간",

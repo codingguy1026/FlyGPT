@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getRouterGraph, type GraphResponse, type RouterResult } from "@/lib/api";
+import { getRouterGraph, getRouterAnnotations, type GraphResponse, type RouterResult, type NeuronAnnotationsResponse, type NeuronKind } from "@/lib/api";
+
+const KIND_COLORS: Record<NeuronKind, string> = {
+  sensory: "#65d6fa",
+  motor: "#8caaff",
+  interneuron: "#e6c874",
+  projection: "#b58bff",
+  other: "#f3a777",
+  unclassified: "#8aa49a",
+};
 
 type Props = {
   router: RouterResult | null;
@@ -28,6 +37,7 @@ function nodePosition(index: number, count: number) {
 
 export default function ConnectomePreview({ router, pending, live, phase, onExpand }: Props) {
   const [graph, setGraph] = useState<GraphResponse | null>(null);
+  const [annotations, setAnnotations] = useState<NeuronAnnotationsResponse | null>(null);
   const [error, setError] = useState(false);
   const [retry, setRetry] = useState(0);
   const [frameIndex, setFrameIndex] = useState(-1);
@@ -40,6 +50,17 @@ export default function ConnectomePreview({ router, pending, live, phase, onExpa
       .catch(() => { if (active) setError(true); });
     return () => { active = false; };
   }, [retry]);
+
+  useEffect(() => {
+    if (!graph?.nodes.length) return;
+    let active = true;
+    // Official MaleCNS superclass annotations are optional. If neuPrint
+    // is unavailable, use the neutral/unclassified color instead.
+    getRouterAnnotations()
+      .then((response) => { if (active) setAnnotations(response); })
+      .catch(() => { if (active) setAnnotations(null); });
+    return () => { active = false; };
+  }, [graph]);
 
   useEffect(() => {
     // While streaming, show the most recently received real frame immediately.
@@ -128,22 +149,36 @@ export default function ConnectomePreview({ router, pending, live, phase, onExpa
             {graph.nodes.map((node, index) => {
               const pos = positions[index];
               const activity = Math.max(0, Math.min(1, activations[index] ?? 0));
+              const neuronKind = node.root_id ? annotations?.by_body_id[node.root_id]?.kind : undefined;
+              const categoryColor = KIND_COLORS[neuronKind ?? "unclassified"];
               return (
                 <circle
                   key={node.root_id ?? index}
                   cx={pos.x} cy={pos.y}
                   r={activity > 0.08 ? 0.85 + activity * 1.4 : 0.58}
                   className={activity > 0.08 ? "connectomeNode active" : "connectomeNode"}
-                  style={{ opacity: activity > 0.08 ? 0.55 + activity * 0.45 : 0.36 }}
+                  style={{
+                    opacity: activity > 0.08 ? 0.55 + activity * 0.45 : 0.36,
+                    fill: activity > 0.08 ? categoryColor : "#6c9a91",
+                    filter: activity > 0.08 ? `drop-shadow(0 0 2px ${categoryColor})` : "none",
+                  }}
                 >
-                  <title>{`Body ${node.root_id ?? index} · trace activation ${(activity * 100).toFixed(1)}%`}</title>
+                  <title>{`Body ${node.root_id ?? index} · ${neuronKind ?? "unclassified"} · model trace activation ${(activity * 100).toFixed(1)}%`}</title>
                 </circle>
               );
             })}
           </svg>
         )}
       </div>
-      <div className="connectomeTraceStatus" aria-live="polite">
+      <div className="connectomeKindLegend" aria-label="공식 MaleCNS 분류별 색상">
+         {annotations && ([
+           ["sensory", "감각"], ["motor", "운동"], ["interneuron", "중간"],
+           ["projection", "투사"], ["other", "기타"], ["unclassified", "미분류"],
+         ] as const).map(([kind, label]) => (
+           <span key={kind}><i style={{ backgroundColor: KIND_COLORS[kind] }} />{label}</span>
+         ))}
+       </div>
+       <div className="connectomeTraceStatus" aria-live="polite">
         <span className={compatible && (phase === "routing" || !pending) ? "lit" : ""} />
         <div>
           <strong>{status}</strong>
