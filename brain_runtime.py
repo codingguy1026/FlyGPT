@@ -477,6 +477,25 @@ class FlyBrainRuntime:
                     ],
                 )
             else:
+                if final.get("route") == "research":
+                    # Backward compatibility: the historical bounded-task
+                    # Research mode can still pass retrieved evidence to its
+                    # optional generator. Hybrid evidence-first uses GENERAL
+                    # execution with a strict sourced-excerpt mouth plan.
+                    plan = dict(final.get("utterance_plan") or {})
+                    plan["speech_act"] = "research_semantics_pending"
+                    plan["ready"] = False
+                    final["utterance_plan"] = plan
+                    final["evidence"] = evidence
+                    if final.get("accepted"):
+                        final["task_plan"] = {
+                            "contract": "bounded_task_v1",
+                            "ready": True,
+                            "route": "research",
+                            "language": str((plan.get("style") or {}).get("language", "match_user")),
+                            "grounding": "retrieved_sources",
+                        }
+                    return final
                 # Do not invent facts from search snippets or promote them to
                 # verified knowledge. The upstream Python brain may choose
                 # exact, attributed excerpts as evidence to *report*, never
