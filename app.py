@@ -1559,14 +1559,22 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 failure = generation.error_code or ""
                 if failure in {
                     "hybrid_language_model_required", "hybrid_speaker_missing",
+                    "hybrid_speaker_unsupported",
                     "hybrid_neural_rejected", "hybrid_local_endpoint_blocked",
                     "invalid_semantic_plan",
                 }:
-                    answer = (
-                        "🪰 실제 언어 모델이 이 응답을 생성하지 못했어. "
-                        "Hybrid v0.6.1 가중치와 로컬 모델 설정을 확인해 줘. "
-                        "Native 답변으로 대체하지 않았어."
-                    )
+                    if failure == "hybrid_speaker_unsupported":
+                        answer = (
+                            "🪰 이 질문은 v0.6.1이 학습한 응답 유형 밖이야. "
+                            "자유형 답변을 생성할 별도 로컬 언어 모델을 설정해야 해. "
+                            "엉뚱한 자기소개를 답변으로 내보내지는 않을게."
+                        )
+                    else:
+                        answer = (
+                            "🪰 실제 언어 모델이 이 응답을 생성하지 못했어. "
+                            "Hybrid v0.6.1 가중치와 로컬 모델 설정을 확인해 줘. "
+                            "Native 답변으로 대체하지 않았어."
+                        )
                     mode_label = f"{result.route} · hybrid_language_model_unavailable"
                 elif failure == "native_plan_unavailable":
                     answer = "🪰 자체 응답 계획이 아직 준비되지 않았어. 지원하는 질문을 다시 시도해 줘."
