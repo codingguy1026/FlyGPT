@@ -604,6 +604,13 @@ def generator_readiness():
     generator_status = _generator.status()
     if generator_status.get("native_mode"):
         return {"state": "native", "ready": True}
+    if generator_status.get("hybrid_mode"):
+        if generator_status.get("hybrid_speaker_checkpoint_present"):
+            # A checkpoint exists; only a real conversation can validate it.
+            return {"state": "hybrid_speaker_present", "ready": None}
+        if generator_status.get("hybrid_model_configured"):
+            return {"state": "hybrid_local_model_configured", "ready": None}
+        return {"state": "hybrid_model_missing", "ready": False}
     model = str(generator_status.get("model") or "")
     url = str(os.environ.get("FLYGPT_GENERATOR_URL", ""))
     local = (
