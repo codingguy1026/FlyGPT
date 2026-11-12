@@ -10,6 +10,7 @@ import {
 } from "react";
 import BrainPanel from "./BrainPanel";
 import ConnectomePreview from "./ConnectomePreview";
+import FullPopulationMap from "./FullPopulationMap";
 import FlyThinkingIndicator from "./FlyThinkingIndicator";
 import { Icon, PapitiMark } from "./FlightIdentity";
 import { THEMES } from "@/lib/flight-theme";
@@ -816,14 +817,23 @@ export default function FlyGPTApp({
         <div className="telemetryHeader">
           <div>
             <span>PAPITI / HOW IT WORKS</span>
-            <h2>작동 기록</h2>
+            <h2>신경 관제실</h2>
           </div>
           <button className="dockClose" type="button" aria-label="Telemetry 닫기" onClick={() => setTelemetryOpen(false)}>
             <Icon name="close" />
           </button>
         </div>
 
-        <ConnectomePreview router={traceRouter} pending={sending} live={sending} phase={monitorPhase} onExpand={() => setBrainOpen(true)} />
+        <FullPopulationMap
+          phase={monitorPhase}
+          pending={sending}
+          routerNodes={traceRouter?.n_nodes ?? router?.n_nodes ?? null}
+          fullPopulationActive={health?.full_population_router?.active ?? false}
+        />
+        <details className="observatoryRouterTrace">
+          <summary>실제 라우터 추론 기록 펼치기</summary>
+          <ConnectomePreview router={traceRouter} pending={sending} live={sending} phase={monitorPhase} onExpand={() => setBrainOpen(true)} />
+        </details>
 
         <section className="telemetrySection">
           <div className="sectionTitle">
