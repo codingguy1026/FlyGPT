@@ -489,7 +489,7 @@ class GeneratorRuntime:
             "fallback_model": self.fallback_model or None,
             "retry_delay_seconds": self.retry_delay,
             "role": ("native_deterministic_language_realizer" if self.native_mode
-                     else "brain_conditioned_v0.6.1_speech_with_honest_native_fallback" if self.hybrid_mode
+                     else "brain_conditioned_v0.6.1_speech_with_language_model_required" if self.hybrid_mode
                      else "grounded_task_reasoner_and_mouth_only_language_realizer"),
             "strict_semantic_gate": True,
             "bounded_task_reasoning": True,
@@ -1029,74 +1029,83 @@ class GeneratorRuntime:
             )
 
         if self.hybrid_mode:
-            # A completed, validated mouth-only plan is authoritative.
-            # Invalid fact plans must NOT be sent to a free-form model.
+            # Hybrid never silently substitutes deterministic Native prose.
+            # v0.6.1 verbalizes completed meaning; an explicitly configured
+            # loopback language model can process authorized open-ended tasks.
             started = time.perf_counter()
-            native_answer = realize_native(
-                message, route, brain_state=brain_state, tool_context=tool_context,
-            )
             utterance_plan = (brain_state or {}).get("utterance_plan")
             ready_plan = (
                 isinstance(utterance_plan, dict)
                 and utterance_plan.get("contract") == "mouth_only_v1"
                 and utterance_plan.get("ready") is True
             )
-            # The brain's completed semantic packet is authoritative. v0.6.1
-            # never sees unresolved tasks or invents a task solution itself.
-            # No v0.6.1 checkpoint => honest Native fallback, never an
-            # untrained model presented as a trained speaker.
-            speaker_error = None
             invalid_facts = (
                 ready_plan and bool(utterance_plan.get("semantic_steps"))
                 and trusted_fact_fallback(utterance_plan) is None
             )
-            if (ready_plan and self.hybrid_speaker == "v0.6.1"
-                    and speech_checkpoint_present() and not invalid_facts):
-                try:
-                    candidate = generate_speech(
-                        utterance_plan,
-                        timeout_seconds=min(20.0, float(budget_seconds or self.budget)),
-                    )
-                    speaker_error = check_candidate(utterance_plan, candidate)
-                    if speaker_error is None and _contains_internal_plan(candidate):
-                        speaker_error = "internal_plan_leak"
-                    if speaker_error is None and _contains_mouth_only_leak(candidate):
-                        speaker_error = "internal_metadata_leak"
-                    if speaker_error is None and _wrong_output_language(candidate, utterance_plan):
-                        speaker_error = "wrong_output_language"
-                    if speaker_error is None:
-                        return GenerationResult(
-                            used=True,
-                            provider="papiti-hybrid-v0.6.1",
-                            model="papiti-language-v0.6.1",
-                            answer=candidate,
-                            finish_reason="neural_semantic_realization",
-                            latency_ms=round((time.perf_counter() - started) * 1000),
-                        )
-                except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
-                    speaker_error = type(exc).__name__
-                # Never replace a failed model reply with a fabricated neural
-                # answer; Native is explicitly labelled as a fallback.
-            if ready_plan or not (self.url and self.model and self.local_endpoint_allowed):
+            if invalid_facts:
                 return GenerationResult(
-                    used=bool(native_answer),
-                    provider="papiti-hybrid-native",
+                    used=False,
+                    provider="papiti-hybrid",
                     model=None,
-                    answer=native_answer,
-                    finish_reason=(
-                        "native_fallback_v0.6.1" if speaker_error and native_answer
-                        else "native_realization" if ready_plan and native_answer
-                        else "native_limited" if native_answer else None
-                    ),
-                    latency_ms=round((time.perf_counter() - started) * 1000),
-                    error_code=None if native_answer else "native_plan_unavailable",
-                    error=(f"v0.6.1 speech rejected: {speaker_error}" if speaker_error
-                           else "Hybrid model requires a loopback URL"
-                           if not ready_plan and self.url and not self.local_endpoint_allowed
-                           else None),
+                    answer=None,
+                    error_code="invalid_semantic_plan",
+                    error="grounded semantic fact plan is invalid",
                 )
-            # A bounded task plan and existing response leak checks still
-            # gate all optional local model generations below.
+
+            speaker_error = None
+            if ready_plan and self.hybrid_speaker == "v0.6.1":
+                if speech_checkpoint_present():
+                    try:
+                        candidate = generate_speech(
+                            utterance_plan,
+                            timeout_seconds=min(20.0, float(budget_seconds or self.budget)),
+                        )
+                        speaker_error = check_candidate(utterance_plan, candidate)
+                        if speaker_error is None and _contains_internal_plan(candidate):
+                            speaker_error = "internal_plan_leak"
+                        if speaker_error is None and _contains_mouth_only_leak(candidate):
+                            speaker_error = "internal_metadata_leak"
+                        if speaker_error is None and _wrong_output_language(candidate, utterance_plan):
+                            speaker_error = "wrong_output_language"
+                        if speaker_error is None:
+                            return GenerationResult(
+                                used=True,
+                                provider="papiti-hybrid-v0.6.1",
+                                model="papiti-language-v0.6.1",
+                                answer=candidate,
+                                finish_reason="neural_semantic_realization",
+                                latency_ms=round((time.perf_counter() - started) * 1000),
+                            )
+                    except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
+                        speaker_error = type(exc).__name__
+                else:
+                    speaker_error = "missing_checkpoint"
+
+            # A local endpoint is a second language model, not Native fallback.
+            if not (self.url and self.model and self.local_endpoint_allowed):
+                if self.url and self.model and not self.local_endpoint_allowed:
+                    failure = "hybrid_local_endpoint_blocked"
+                    detail = "Hybrid model must use an authorized loopback endpoint"
+                elif speaker_error == "missing_checkpoint":
+                    failure = "hybrid_speaker_missing"
+                    detail = "v0.6.1 speech checkpoint is not installed"
+                elif speaker_error:
+                    failure = "hybrid_neural_rejected"
+                    detail = f"v0.6.1 speech rejected: {speaker_error}"
+                else:
+                    failure = "hybrid_language_model_required"
+                    detail = "Open-ended Hybrid requests require a configured local language model"
+                return GenerationResult(
+                    used=False,
+                    provider="papiti-hybrid",
+                    model=None,
+                    answer=None,
+                    error_code=failure,
+                    error=detail,
+                    latency_ms=round((time.perf_counter() - started) * 1000),
+                )
+            # An optional local model goes through existing semantic gates.
 
         if self.local_only and not self.local_endpoint_allowed:
             return GenerationResult(
@@ -1244,6 +1253,15 @@ class GeneratorRuntime:
                     result.error_code = "unsafe_generated_content"
                     result.finish_reason = "blocked_internal_plan"
                     result.error = f"generated response rejected: {reason}"
+            if result.used and result.answer and self.hybrid_mode and mouth_ready:
+                # Secondary models must preserve exact results and sourced facts.
+                semantic_error = check_candidate(plan, result.answer)
+                if semantic_error is not None:
+                    result.used = False
+                    result.answer = None
+                    result.error_code = "unsafe_generated_content"
+                    result.finish_reason = "blocked_semantic_change"
+                    result.error = f"generated response rejected: {semantic_error}"
             if (
                 not result.used
                 and remaining_seconds() <= 0.05
@@ -1314,7 +1332,7 @@ class GeneratorRuntime:
             conversational templates, this recovery contains only fact atoms
             already selected and integrity-checked by the upstream planner.
             """
-            if result.error_code != "unsafe_generated_content" or not mouth_ready:
+            if self.hybrid_mode or result.error_code != "unsafe_generated_content" or not mouth_ready:
                 return result
             safe_facts = trusted_fact_fallback(plan)
             if not safe_facts:
