@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: "papiti. | 생각이 움직이는 공간",
   description: "파피티, 호기심이 생각으로 연결되는 AI 대화 공간",
   icons: {
-    icon: "/flygpt-logo.webp",
+    icon: "/papiti-mark.svg",
   },
 };
 
