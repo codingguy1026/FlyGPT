@@ -3,10 +3,10 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
-if [[ "${FLYGPT_GENERATOR_MODE:-native}" == "native" ]]; then
+if [[ "${FLYGPT_GENERATOR_MODE:-hybrid}" == "native" ]]; then
   unset FLYGPT_GENERATOR_URL FLYGPT_GENERATOR_MODEL FLYGPT_GENERATOR_API_KEY
   export FLYGPT_GENERATOR_PROVIDER=papiti-native
-elif [[ "${FLYGPT_GENERATOR_MODE:-native}" == "hybrid" ]]; then
+elif [[ "${FLYGPT_GENERATOR_MODE:-hybrid}" == "hybrid" ]]; then
   unset FLYGPT_GENERATOR_URL FLYGPT_GENERATOR_MODEL FLYGPT_GENERATOR_API_KEY
   export FLYGPT_GENERATOR_PROVIDER=papiti-hybrid
 else
@@ -21,9 +21,9 @@ export FLYGPT_GENERATOR_TEMPERATURE="${FLYGPT_GENERATOR_TEMPERATURE:-0.60}"
 export FLYGPT_GENERATOR_MAX_TOKENS="${FLYGPT_GENERATOR_MAX_TOKENS:-384}"
 
 echo "🪰 FlyGPT v0.8.0 backend"
-if [[ "${FLYGPT_GENERATOR_MODE:-native}" == "native" ]]; then
+if [[ "${FLYGPT_GENERATOR_MODE:-hybrid}" == "native" ]]; then
   echo "Generator: Papiti Native v1 (no LLM)"
-elif [[ "${FLYGPT_GENERATOR_MODE:-native}" == "hybrid" ]]; then
+elif [[ "${FLYGPT_GENERATOR_MODE:-hybrid}" == "hybrid" ]]; then
   echo "Generator: Papiti Hybrid (native first; local model ${FLYGPT_HYBRID_MODEL:-not configured})"
 else
   echo "Generator: $FLYGPT_GENERATOR_PROVIDER / $FLYGPT_GENERATOR_MODEL"
