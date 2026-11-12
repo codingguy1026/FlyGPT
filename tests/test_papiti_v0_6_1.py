@@ -10,7 +10,7 @@ from unittest.mock import patch, Mock
 
 from brain_runtime import FlyBrainRuntime
 from generator_runtime import GeneratorRuntime
-from hybrid_speech import check_candidate, generate_speech
+from hybrid_speech import check_candidate, generate_speech, supports_v061_plan
 from papiti_lm.v0_6_1_data import create_corpus, packet_text
 
 
@@ -62,6 +62,77 @@ class SemanticContractTests(unittest.TestCase):
             check_candidate(fact, "아무튼 안녕."),
             "semantic_content_not_preserved",
         )
+
+    def test_historical_story_without_sources_never_accepts_self_intro(self):
+        brain = FlyBrainRuntime()
+        message = "흥미로운 역사 이야기를 들려줘"
+        state = brain.plan(
+            route_info={"route": "general", "accepted": True,
+                        "confidence": 0.63, "margin": 0.2},
+            dispatch={"route": "general"}, message=message,
+        )
+        state["retrieval"] = "research"
+        state = brain.finalize(
+            state,
+            research_result={"used": False, "sources": []},
+        )
+        plan = state["utterance_plan"]
+        self.assertEqual(plan["speech_act"], "report_no_external_evidence")
+        self.assertFalse(supports_v061_plan(plan))
+        wrong = (
+            "MaleCNS 이 파피티는 한국어 애칭이다. "
+            "파피티는 실험 단계의 AI 대화 도우미다. "
+            "MaleCNS 기반 작업 라우터가 사용자 질문의 처리 유형을 분류한다."
+        )
+        self.assertEqual(check_candidate(plan, wrong), "missing_status_semantics")
+        self.assertIsNone(check_candidate(plan, "확인된 자료가 없어서 지금은 답을 검증할 수 없어."))
+        with patch.dict(os.environ, {
+            "FLYGPT_GENERATOR_MODE": "hybrid",
+            "FLYGPT_HYBRID_SPEAKER": "v0.6.1",
+        }, clear=True):
+            runtime = GeneratorRuntime()
+            with patch("generator_runtime.speech_checkpoint_present", return_value=True), \
+                 patch("generator_runtime.generate_speech") as speaker:
+                result = runtime.generate(message, "general", brain_state=state)
+        speaker.assert_not_called()
+        self.assertFalse(result.used)
+        self.assertIsNone(result.answer)
+        self.assertEqual(result.error_code, "hybrid_speaker_unsupported")
+
+    def test_untrained_sourced_search_cannot_be_sent_to_tiny_speaker(self):
+        brain = FlyBrainRuntime()
+        state = brain.plan(
+            route_info={"route": "general", "accepted": True, "confidence": 0.63},
+            dispatch={"route": "general"}, message="흥미로운 역사 이야기를 들려줘",
+        )
+        state["retrieval"] = "research"
+        state = brain.finalize(state, research_result={
+            "used": True,
+            "sources": [{
+                "url": "https://example.org/history",
+                "title": "Historical source",
+                "snippets": ["역사 기록에서 확인할 수 있는 사건입니다."],
+            }],
+        })
+        plan = state["utterance_plan"]
+        self.assertEqual(plan["speech_act"], "report_retrieved_web_evidence")
+        self.assertFalse(supports_v061_plan(plan))
+        self.assertEqual(
+            check_candidate(plan, "파피티는 AI 도우미야."),
+            "semantic_content_not_preserved",
+        )
+        with patch.dict(os.environ, {
+            "FLYGPT_GENERATOR_MODE": "hybrid",
+            "FLYGPT_HYBRID_SPEAKER": "v0.6.1",
+        }, clear=True):
+            runtime = GeneratorRuntime()
+            with patch("generator_runtime.speech_checkpoint_present", return_value=True), \
+                 patch("generator_runtime.generate_speech") as speaker:
+                result = runtime.generate(
+                    "흥미로운 역사 이야기를 들려줘", "general", brain_state=state,
+                )
+        speaker.assert_not_called()
+        self.assertEqual(result.error_code, "hybrid_speaker_unsupported")
 
     def test_bridge_uses_only_local_python_no_http(self):
         plan = plan_for("안녕")["utterance_plan"]
