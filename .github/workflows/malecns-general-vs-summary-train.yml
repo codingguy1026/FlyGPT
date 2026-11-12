@@ -1,0 +1,130 @@
+name: Experimental MaleCNS general-vs-summary router training
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/malecns-general-vs-summary-train.yml'
+      - 'training/curriculum_general_vs_summary_candidate.jsonl'
+      - 'training/regression_general_vs_summary_candidate.jsonl'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: malecns-general-summary-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  train-candidate:
+    name: Train and evaluate isolated v0.5 candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    env:
+      OMP_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install CPU PyTorch
+        run: |
+          python -m pip install 'torch>=2.4,<3' --index-url https://download.pytorch.org/whl/cpu
+      - name: Construct training set and check untouched holdout
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat \
+            training/teacher_seed.jsonl \
+            training/curriculum_v0_3_4.jsonl \
+            training/curriculum_v0_3_5_short.jsonl \
+            training/curriculum_v0_3_6_context.jsonl \
+            training/curriculum_v0_3_7_yugeok.jsonl \
+            training/curriculum_v0_3_8_hard_negatives.jsonl \
+            training/curriculum_v0_3_9.jsonl \
+            training/curriculum_v0_5_realworld.jsonl \
+            training/curriculum_general_vs_summary_candidate.jsonl \
+            > /tmp/malecns-candidate-teacher.jsonl
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          training = {
+              json.loads(line)["input"].strip()
+              for line in Path("/tmp/malecns-candidate-teacher.jsonl").read_text().splitlines()
+              if line.strip()
+          }
+          holdout = [
+              json.loads(line)["input"].strip()
+              for line in Path("training/regression_general_vs_summary_candidate.jsonl").read_text().splitlines()
+              if line.strip()
+          ]
+          overlap = sorted(set(holdout) & training)
+          print(f"training_rows={len(Path('/tmp/malecns-candidate-teacher.jsonl').read_text().splitlines())}")
+          print(f"untouched_holdout_rows={len(holdout)}")
+          if overlap:
+              raise SystemExit(f"HOLDOUT_LEAK: {overlap}")
+          PY
+      - name: Train v0.5 MaleCNS candidate on frozen official scaffold
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts reports
+          python training/train_router.py \
+            --dataset /tmp/malecns-candidate-teacher.jsonl \
+            --scaffold training/malecns_scaffold.json \
+            --out artifacts/fly_router_malecns_general_summary_candidate.pt \
+            --epochs 220 \
+            --patience 30 \
+            --lr 0.0015 \
+            --weight-decay 0.0004 \
+            --val-ratio 0.22 \
+            --vectorizer-version v6 \
+            --vocab-size 8192 \
+            --label-smoothing 0.04 \
+            --margin 0.30 \
+            --margin-weight 0.10 \
+            --feature-dropout 0.08 \
+            --selection-metric balanced_accuracy \
+            --gate-target-precision 0.97 \
+            --gate-min-coverage 0.55
+      - name: Validate actual MaleCNS topology
+        run: |
+          python training/diagnose_brain.py \
+            --model artifacts/fly_router_malecns_general_summary_candidate.pt \
+            --scaffold training/malecns_scaffold.json | tee reports/integrity.txt
+      - name: Evaluate untouched examples and original regression suites
+        shell: bash
+        run: |
+          set -euo pipefail
+          for dataset in \
+            training/regression_general_vs_summary_candidate.jsonl \
+            training/regression_v0_5_realworld.jsonl \
+            training/regression_v0_3_9_paraphrase.jsonl \
+            training/regression_v0_3_8_hard_negatives.jsonl \
+            training/regression_v0_3_7_yugeok.jsonl \
+            training/regression_v0_3_6_context.jsonl \
+            training/regression_v0_3_5_short.jsonl \
+            training/regression_v0_3_4_core.jsonl \
+            training/regression_v0_3_1.jsonl \
+            training/regression_v0_3_2_gratitude.jsonl; do
+            name="$(basename "$dataset" .jsonl)"
+            echo "=== ${name} ==="
+            python training/eval_router.py \
+              --model artifacts/fly_router_malecns_general_summary_candidate.pt \
+              --dataset "$dataset" | tee "reports/${name}.txt"
+          done
+      - name: Save experimental checkpoint and evaluations (not deployed)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: malecns-general-summary-candidate
+          path: |
+            artifacts/fly_router_malecns_general_summary_candidate.pt
+            reports/
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Confirm production remains unchanged
+        if: always()
+        run: echo 'Research checkpoint only. No production router, app setting, or deployed model changed.'
