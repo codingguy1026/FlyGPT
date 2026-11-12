@@ -229,6 +229,7 @@ else
     echo "🪰 PAPITI NATIVE: built-in deterministic responses, no Ollama or hosted LLM"
   elif [[ "$FLYGPT_GENERATOR_MODE" == "hybrid" ]]; then
     echo "🪰 PAPITI HYBRID: MaleCNS/Python brain first; v0.6.1 neural speech when trained"
+    echo "🔎 Hybrid evidence-first retrieval: ${FLYGPT_HYBRID_EVIDENCE_FIRST:-1} (public fact questions; API key required)"
     if [[ "${FLYGPT_HYBRID_SPEAKER:-}" == "v0.6.1" ]]; then
       SPEECH_CKPT="${FLYGPT_HYBRID_SPEECH_CHECKPOINT:-artifacts/papiti_language_v0_6_1.pt}"
       if [[ -f "$SPEECH_CKPT" ]]; then
