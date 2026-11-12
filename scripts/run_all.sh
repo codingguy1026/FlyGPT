@@ -12,8 +12,8 @@ if [[ -f ".env" ]]; then
 fi
 
 STABLE_MODE=0
-# Native is the default: the fly router stays active, but no LLM is started.
-export FLYGPT_GENERATOR_MODE="${FLYGPT_GENERATOR_MODE:-native}"
+# Default to real Hybrid neural speech; Native remains an explicit opt-in.
+export FLYGPT_GENERATOR_MODE="${FLYGPT_GENERATOR_MODE:-hybrid}"
 for argument in "$@"; do
   case "$argument" in
     --local-only)
