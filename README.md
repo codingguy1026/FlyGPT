@@ -66,10 +66,12 @@ Hybrid selects v0.6.1 as its preferred experimental speaker **only if a
 compatible local checkpoint is present**. Its outputs are labeled
 `papiti-hybrid-v0.6.1` when genuinely generated and accepted by semantic
 checks. Incorrect exact results, corrupted factual content, repeated text,
-missing checkpoints and model execution errors all use the already present
-Native path, labeled `papiti-hybrid-native`. No model, formula, or answer is
-downloaded or invented at startup. Unsupported open-ended tasks do not
-magically become solvable. To disable this experiment, set
+missing checkpoints and model execution errors are never presented as
+Native language replies in Hybrid. A separately configured, authorized
+loopback language model may answer eligible tasks; otherwise the request
+returns a visible language-model-unavailable status. No model, formula, or answer is
+downloaded or invented at startup. Unsupported open-ended tasks require an explicitly configured local model.
+v0.6.1 alone cannot reason about them. To disable this experiment, set
 `FLYGPT_HYBRID_SPEAKER=legacy`. See
 [the v0.6.1 experiment guide](docs/papiti-language-v0-6-1.md).
 
