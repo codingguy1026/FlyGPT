@@ -1,0 +1,154 @@
+/* MaleCNS Observatory: visual telemetry, not biological firing data. */
+.flightApp .neuralObservatory {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid #23433d;
+  border-radius: 17px;
+  background: #0a1a1c;
+  color: #d5ede6;
+  box-shadow: inset 0 1px rgba(255,255,255,.07);
+}
+.neuralObsHead, .neuralObsModel, .neuralObsOverlayBottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.neuralObsHead > div { display: grid; gap: 5px; }
+.neuralObsHead > div > span {
+  font: 700 9px ui-monospace,monospace;
+  color: #85b9a9;
+  letter-spacing: .08em;
+}
+.neuralObsHead strong { font-size: 16px; letter-spacing: -.03em; color: #eafff4; }
+.neuralObsLive {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #799c95;
+  font: 700 8px ui-monospace,monospace;
+  letter-spacing: .04em;
+}
+.neuralObsLive i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #77958d;
+}
+.neuralObsLive.active { color: #a8ef77; }
+.neuralObsLive.active i {
+  background: #a8ef77;
+  box-shadow: 0 0 10px #a8ef77;
+  animation: observatoryPulse 1.4s infinite;
+}
+.neuralObsCanvasFrame {
+  margin-top: 10px;
+  width: 100%;
+  height: 260px;
+  border: 1px solid #1d3c39;
+  border-radius: 12px;
+  background: radial-gradient(ellipse 65% 65% at 50% 35%, #103336 0%, #09171b 85%);
+  position: relative;
+  overflow: hidden;
+}
+.neuralObsCanvas { display: block; width: 100%; height: 100%; }
+.neuralObsOverlayTop {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  color: #8abcae;
+  font: 700 8px ui-monospace,monospace;
+  letter-spacing: .08em;
+  pointer-events: none;
+}
+.neuralObsOverlayBottom {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  color: #d0f1e5;
+  font: 700 9px ui-monospace,monospace;
+  justify-content: flex-start;
+  letter-spacing: .05em;
+  pointer-events: none;
+}
+.neuralObsOverlayBottom > span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--signal, #8abcae);
+  box-shadow: 0 0 10px var(--signal, #8abcae);
+}
+.neuralObsLegend {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 9px 7px;
+  padding: 14px 0 11px;
+}
+.neuralObsLegend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #abc9bd;
+  font-size: 10px;
+}
+.neuralObsLegend i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.neuralObsModel {
+  padding: 10px 0;
+  border-block: 1px solid rgba(152,215,191,.14);
+  flex-wrap: wrap;
+}
+.neuralObsModel span { color: #8cb5a5; font-size: 9px; }
+.neuralObsModel strong { color: #c6efe1; font: 700 9px ui-monospace,monospace; }
+.neuralObsNote {
+  margin: 10px 0 0;
+  color: #90b2a8;
+  font-size: 10px;
+  line-height: 1.6;
+}
+.flightApp .observatoryRouterTrace {
+  margin-top: 12px;
+  color: var(--papiti-ink);
+}
+.flightApp .observatoryRouterTrace > summary {
+  cursor: pointer;
+  padding: 9px 1px;
+  font-weight: 700;
+  font-size: 11px;
+  color: #427b64;
+}
+.flightApp .observatoryRouterTrace .connectomePreview { margin-top: 6px; }
+@keyframes observatoryPulse { 50% { opacity: .4; } }
+
+/* On sufficiently wide screens the observatory is always on the right.
+   Existing slide-over drawer behavior remains available on small screens. */
+@media (min-width: 1280px) {
+  .flightApp {
+    grid-template-columns: 252px minmax(0,1fr) minmax(300px,340px) !important;
+  }
+  .flightApp .telemetryDock,
+  .flightApp .telemetryDock:not(.open),
+  .flightApp .telemetryDock.open {
+    position: relative;
+    inset: auto;
+    z-index: 20;
+    transform: none;
+    visibility: visible;
+    pointer-events: auto;
+    width: 100%;
+    min-width: 0;
+    height: 100dvh;
+    padding: 17px 14px;
+    box-shadow: none;
+    border-left: 1px solid var(--papiti-line);
+  }
+  .flightApp .telemetryScrim { display: none !important; }
+  .flightApp .telemetryDock .dockClose { display: none; }
+  .flightApp .telemetryToggle { display: none; }
+}
+@media (max-width: 420px) {
+  .flightApp .neuralObservatory { padding: 10px; }
+  .neuralObsCanvasFrame { height: 225px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .neuralObsLive.active i { animation: none; }
+}
