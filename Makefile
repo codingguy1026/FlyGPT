@@ -200,7 +200,7 @@ help:
 	@echo "  make papiti-lm-chat   Chat with local Papiti weights"
 	@echo "  make papiti-lm-serve  Serve localhost Papiti checkpoint"
 	@echo "  make run         Start configured generator, backend, and frontend"
-	@echo "  make run        Papiti-native replies by default, no local or hosted LLM"
+	@echo "  make run        Hybrid neural generation by default; weights/local LM required"
 	@echo "  make native     Force deterministic Papiti-native response mode"
 	@echo "  make hybrid     Native-first responses; optional explicitly configured loopback model"
 	@echo "  make fast       Local LLM with explicit installed FLYGPT_FAST_MODEL"
