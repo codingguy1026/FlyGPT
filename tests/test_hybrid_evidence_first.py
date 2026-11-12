@@ -189,7 +189,7 @@ class EvidenceFirstEndToEndTests(unittest.TestCase):
         self.assertEqual(response["data"]["evidence_decision"]["reason"],
                          "unanswered_public_question")
         self.assertEqual(response["data"]["generation"]["error_code"],
-                         "hybrid_speaker_missing")
+                         "hybrid_speaker_unsupported")
 
     def test_historical_story_invitation_retrieves_sourced_material(self):
         historically_grounded = ResearchResult(
@@ -218,7 +218,7 @@ class EvidenceFirstEndToEndTests(unittest.TestCase):
             "unanswered_grounded_story_request",
         )
         # Search still runs, but no Native excerpt impersonates neural speech.
-        self.assertEqual(response["data"]["generation"]["error_code"], "hybrid_speaker_missing")
+        self.assertEqual(response["data"]["generation"]["error_code"], "hybrid_speaker_unsupported")
 
     def test_no_web_sources_reports_missing_evidence(self):
         unavailable = ResearchResult(
@@ -228,7 +228,7 @@ class EvidenceFirstEndToEndTests(unittest.TestCase):
         response, count = self.call_hybrid("왜 하늘이 파래?", unavailable)
         self.assertEqual(count, 1)
         self.assertEqual(response["data"]["generation"]["error_code"],
-                         "hybrid_speaker_missing")
+                         "hybrid_speaker_unsupported")
         self.assertIn("언어 모델", response["answer"])
 
 
