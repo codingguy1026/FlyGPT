@@ -1172,7 +1172,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
         # ordinary chats. Historical MaleCNS neuron inspection endpoints above
         # remain intact. Never synthesize a v0.5 label from a v0.4 prediction.
         if v05_enabled():
-            _emit_live_trace({"type": "status", "phase": "v05_policy_loading"})
+            _emit_live_trace({"type": "status", "phase": "router_loading"})
             checkpoint_path = os.environ.get("FLYGPT_V05_MODEL_PATH", DEFAULT_CHECKPOINT)
             try:
                 policy = get_v05_policy(checkpoint_path)
@@ -1194,7 +1194,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
                     },
                     route=None, session_id=session_id,
                 )
-            _emit_live_trace({"type": "status", "phase": "v05_policy_decision"})
+            _emit_live_trace({"type": "status", "phase": "generation"})
             result_v05 = run_v05_chat(
                 msg, policy=policy, memory=_memory, research=_research,
                 generator=_generator, session_id=session_id,
@@ -1203,7 +1203,9 @@ def chat_endpoint(req: ChatRequest, request: Request):
             )
             _emit_live_trace({
                 "type": "route", "route": "multi_action",
-                "model": policy.name, "category_free": True,
+                "confidence": 0.0, "accepted": True,
+                "semantic_override": False, "model": policy.name,
+                "category_free": True,
                 "selected_capabilities": result_v05["route"]["selected_capabilities"],
             })
             return response_with_router(
