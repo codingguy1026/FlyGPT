@@ -381,3 +381,25 @@ body {
   .flightApp .starterCard { transition: none; }
   .flightApp .telemetryDock { transition: none; }
 }
+
+/* Brand mark variants for the dark rail and light authentication shell. */
+.flightApp .railBrand .papitiMark {
+  width: 47px;
+  height: 47px;
+  border-radius: 15px;
+  background: rgba(197,239,139,.11);
+}
+.flightApp .railBrand .papitiMark path { stroke: var(--papiti-lime); }
+.flightApp .railBrand .papitiMark .signalDot { fill: var(--papiti-sky); }
+.authCard .authBrand .papitiMark {
+  width: 64px;
+  height: 64px;
+  padding: 7px;
+  border-radius: 18px;
+  background: #eaf7e6;
+}
+.authShell .authLoading .papitiMark { padding: 7px; border-radius: 18px; background: #eaf7e6; }
+.authCard .authBrand > div > span { font-size: 9px; color: #608675; }
+.authCard .authForm label > span { font-size: 11px; color: #4c6859; }
+.authCard .authForm input { background: #fbfdf9; color: var(--papiti-ink); border-color: #d6e5d8; }
+.authCard .authForm input:focus { border-color: #4b9a74; }
