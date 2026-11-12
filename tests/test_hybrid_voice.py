@@ -20,21 +20,25 @@ def plan_for(message: str, route: str = "general", **finalize):
 
 
 class PapitiHybridTests(unittest.TestCase):
-    def test_native_greeting_never_calls_model(self):
+    def test_legacy_speaker_uses_local_language_model_not_native(self):
         with patch.dict(os.environ, {
             "FLYGPT_GENERATOR_MODE": "hybrid",
+            "FLYGPT_HYBRID_SPEAKER": "legacy",
             "FLYGPT_HYBRID_URL": "http://127.0.0.1:12345/v1/chat/completions",
             "FLYGPT_HYBRID_MODEL": "experimental-small-model",
         }, clear=True):
             runtime = GeneratorRuntime()
-            with patch.object(runtime, "_generate_once") as send:
+            model_answer = GenerationResult(
+                used=True, provider="papiti-hybrid",
+                model="experimental-small-model", answer="안녕! 모델이 응답했어.",
+            )
+            with patch.object(runtime, "_generate_once", return_value=model_answer) as send:
                 result = runtime.generate("안녕", "general",
                                           brain_state=plan_for("안녕"))
-                send.assert_not_called()
+                send.assert_called_once()
         self.assertTrue(result.used)
-        self.assertIn("안녕", result.answer)
-        self.assertEqual(result.provider, "papiti-hybrid-native")
-        self.assertIsNone(result.model)
+        self.assertEqual(result.answer, model_answer.answer)
+        self.assertEqual(result.provider, "papiti-hybrid")
         self.assertTrue(runtime.status()["hybrid_model_configured"])
 
     def test_unconfigured_hybrid_fails_closed_without_legacy_model_or_network(self):
@@ -53,8 +57,9 @@ class PapitiHybridTests(unittest.TestCase):
         self.assertEqual(runtime.model, "")
         self.assertEqual(runtime.provider_name, "papiti-hybrid")
         self.assertFalse(runtime.status()["uses_language_model"])
-        self.assertTrue(result.used)
-        self.assertIn("아직 직접 풀 수 없어", result.answer)
+        self.assertFalse(result.used)
+        self.assertIsNone(result.answer)
+        self.assertEqual(result.error_code, "hybrid_language_model_required")
 
     def test_open_ended_task_uses_opt_in_local_generator(self):
         with patch.dict(os.environ, {
@@ -93,7 +98,7 @@ class PapitiHybridTests(unittest.TestCase):
                                           brain_state=forged)
                 send.assert_not_called()
         self.assertFalse(result.used)
-        self.assertEqual(result.error_code, "native_plan_unavailable")
+        self.assertEqual(result.error_code, "invalid_semantic_plan")
 
     def test_hybrid_rejects_hosted_endpoint_even_when_configured(self):
         with patch.dict(os.environ, {
@@ -108,24 +113,32 @@ class PapitiHybridTests(unittest.TestCase):
                 send.assert_not_called()
         self.assertFalse(runtime.local_endpoint_allowed)
         self.assertFalse(runtime.status()["hybrid_model_configured"])
-        self.assertIn("아직 직접 풀 수 없어", result.answer)
+        self.assertFalse(result.used)
+        self.assertIsNone(result.answer)
+        self.assertEqual(result.error_code, "hybrid_local_endpoint_blocked")
 
-    def test_verified_math_does_not_use_model(self):
+    def test_verified_math_uses_local_model_with_exact_answer_guard(self):
         context = "Exact math tool result: 42"
         with patch.dict(os.environ, {
             "FLYGPT_GENERATOR_MODE": "hybrid",
+            "FLYGPT_HYBRID_SPEAKER": "legacy",
             "FLYGPT_HYBRID_URL": "http://127.0.0.1:12345/v1/chat/completions",
             "FLYGPT_HYBRID_MODEL": "papiti-small-experiment",
         }, clear=True):
             runtime = GeneratorRuntime()
-            with patch.object(runtime, "_generate_once") as send:
+            model_answer = GenerationResult(
+                used=True, provider="papiti-hybrid",
+                model="papiti-small-experiment", answer="42",
+            )
+            with patch.object(runtime, "_generate_once", return_value=model_answer) as send:
                 result = runtime.generate(
                     "6*7", "math",
                     brain_state=plan_for("6*7", route="math", tool_context=context),
                     tool_context=context,
                 )
-                send.assert_not_called()
-        self.assertEqual(result.answer, "🧮 42")
+                send.assert_called_once()
+        self.assertTrue(result.used)
+        self.assertEqual(result.answer, "42")
 
 
 if __name__ == "__main__":
