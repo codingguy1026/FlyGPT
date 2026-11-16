@@ -149,6 +149,8 @@ class MainV05PolicyTests(unittest.TestCase):
         cases = (
             ("잘 지내요?", "acknowledge_presence", "응, 이야기할 준비 됐어."),
             ("오늘 좋은 일이 있었어요!", "acknowledge_good_news", "오, 좋은 소식이네!"),
+            ("오늘 좋은 일이 생겼어", "acknowledge_good_news", "오, 좋은 소식이네!"),
+            ("좋은 일이 생겼어요!", "acknowledge_good_news", "오, 좋은 소식이네!"),
             ("좀 피곤해요.", "acknowledge_tiredness", "많이 피곤했겠다."),
             ("ㅎㅎㅎㅎㅎ", "respond_to_laughter", "ㅋㅋㅋ"),
         )
@@ -163,6 +165,13 @@ class MainV05PolicyTests(unittest.TestCase):
                 self.assertEqual(result["route"]["selected_capabilities"], [])
                 self.assertEqual(speaker.call_args.args[0]["speech_act"], act)
                 self.assertTrue(result["data"]["generation"]["used"])
+
+    def test_good_news_question_keeps_selected_search(self):
+        with patch("generator_runtime.generate_speech") as speaker:
+            result, _, research, _, _ = execute("오늘 좋은 일이 생겼어?", selected=["web_search"])
+        self.assertEqual(research.calls, ["오늘 좋은 일이 생겼어?"])
+        self.assertEqual(result["route"]["selected_capabilities"], ["web_search"])
+        speaker.assert_not_called()
 
     def test_all_three_tools_still_execute_without_speaking_a_partial_plan(self):
         query = "전에 말한 비용과 현재 가격을 찾아서 17 × 23은 몇인지 계산해 줘"
