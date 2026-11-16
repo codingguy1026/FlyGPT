@@ -14,7 +14,7 @@ import subprocess
 import sys
 from typing import Any
 
-from papiti_lm.v0_6_1_data import packet_text
+from papiti_lm.v0_6_1_data import SOCIAL_SPEECH_ACTS, packet_text
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_CHECKPOINT = ROOT / "artifacts" / "papiti_language_v0_6_1.pt"
@@ -74,6 +74,15 @@ def checkpoint_path() -> Path:
     return Path(path).expanduser() if path else DEFAULT_CHECKPOINT
 
 
+def _speaker_checkpoint(plan: dict[str, Any]) -> Path:
+    base = checkpoint_path()
+    if plan.get("speech_act") in SOCIAL_SPEECH_ACTS:
+        social = base.with_name(f"{base.stem}_social{base.suffix}")
+        if social.is_file():
+            return social
+    return base
+
+
 def checkpoint_present() -> bool:
     return checkpoint_path().is_file()
 
@@ -126,6 +135,8 @@ def check_candidate(plan: dict[str, Any], answer: str) -> str | None:
                     or url not in answer):
                 return "web_source_attribution_missing"
     language = str((plan.get("style") or {}).get("language") or "")
+    if language == "ko" and speech_act in SOCIAL_SPEECH_ACTS and re.search(r"[A-Za-z]", answer):
+        return "wrong_language"
     if language == "ko" and not re.search(r"[가-힣ㄱ-ㅎㅏ-ㅣ]", answer):
         if speech_act != "state_exact_math_result":
             return "wrong_language"
@@ -137,7 +148,7 @@ def check_candidate(plan: dict[str, Any], answer: str) -> str | None:
 def generate_speech(plan: dict[str, Any], timeout_seconds: float = 20.0) -> str:
     """Run *only* the trained Transformer, no Native realizer inside speaker."""
     packet_text(plan)  # Validate before serializing/untrusted subprocess input.
-    path = checkpoint_path()
+    path = _speaker_checkpoint(plan)
     if not path.is_file():
         raise FileNotFoundError(f"v0.6.1 checkpoint missing: {path}")
     seconds = min(30.0, max(0.1, float(timeout_seconds)))

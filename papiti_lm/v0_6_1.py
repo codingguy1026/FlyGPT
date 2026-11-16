@@ -27,7 +27,7 @@ def _train(args):
     torch.set_num_threads(min(4, torch.get_num_threads()))
     torch.manual_seed(args.seed)
     random.seed(args.seed)
-    corpus = create_corpus(args.seed)
+    corpus = create_corpus(args.seed, diverse_social=args.diverse_social)
     tokenizer = DigitSubwordTokenizer.from_examples(corpus.train, max_merges=256)
     config = ModelConfig(
         tokenizer.vocab_size, context=args.context, d_model=args.d_model,
@@ -71,6 +71,7 @@ def _train(args):
                 "version": "v0.6.1",
                 "role": "brain_conditioned_language_realizer_only",
                 "initialization": "random_from_scratch",
+                "diverse_social_targets": args.diverse_social,
                 "seed": args.seed, "epoch": epoch,
                 "val_char_nll": score["char_nll"],
                 "train_count": len(corpus.train),
@@ -93,7 +94,10 @@ def _eval(args):
     model, tokenizer, metadata = load_checkpoint(args.checkpoint)
     if metadata.get("version") != "v0.6.1":
         raise ValueError("v0.6.1 checkpoint required")
-    corpus = create_corpus(int(metadata["seed"]))
+    corpus = create_corpus(
+        int(metadata["seed"]),
+        diverse_social=metadata.get("diverse_social_targets") is True,
+    )
     metric = _evaluate(
         model, [tokenizer.sequence(row, model.config.context) for row in corpus.test],
         args.batch_size, sum(len(row.assistant) + 1 for row in corpus.test),
@@ -130,7 +134,7 @@ def _infer(args):
     """Only checkpoint-driven token prediction; does not load training examples."""
     from papiti_lm.cli import _torch
     from papiti_lm.model import generate, load_checkpoint
-    from papiti_lm.v0_6_1_data import packet_text
+    from papiti_lm.v0_6_1_data import SOCIAL_SPEECH_ACTS, packet_text
 
     torch = _torch()
     torch.set_num_threads(min(4, torch.get_num_threads()))
@@ -139,9 +143,17 @@ def _infer(args):
         raise ValueError("v0.6.1 semantic speaker checkpoint required")
     plan = json.loads(sys.stdin.read())
     packet = packet_text(plan)
-    answer = generate(model, tokenizer, packet, temperature=0, top_k=12,
-                      max_new_tokens=args.max_new_tokens)
-    # Never emit a manufactured fallback or a training-set answer.
+    sample = metadata.get("diverse_social_targets") is True and plan["speech_act"] in SOCIAL_SPEECH_ACTS
+    if sample:
+        from hybrid_speech import check_candidate
+
+        for _ in range(3):
+            answer = generate(model, tokenizer, packet, temperature=0.42, top_k=4,
+                              max_new_tokens=args.max_new_tokens)
+            if check_candidate(plan, answer) is None:
+                print(answer, flush=True)
+                return
+    answer = generate(model, tokenizer, packet, temperature=0, max_new_tokens=args.max_new_tokens)
     print(answer, flush=True)
 
 
@@ -154,6 +166,7 @@ def main(argv=None):
     for cmd in (train, evaluation, infer):
         cmd.add_argument("--checkpoint", default="artifacts/papiti_language_v0_6_1.pt")
     train.add_argument("--seed", type=int, default=42)
+    train.add_argument("--diverse-social", action="store_true")
     train.add_argument("--epochs", type=int, default=12)
     train.add_argument("--patience", type=int, default=5)
     train.add_argument("--batch-size", type=int, default=16)

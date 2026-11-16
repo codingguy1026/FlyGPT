@@ -15,6 +15,12 @@ from typing import Any
 from papiti_lm.corpus import Example
 
 
+SOCIAL_SPEECH_ACTS = frozenset({
+    "return_greeting", "acknowledge_thanks", "return_farewell",
+    "return_welcome", "request_specific_task",
+})
+
+
 def packet_text(plan: dict[str, Any]) -> str:
     """Compact, auditable brain-to-mouth contract, not a user-question lookup."""
     if (not isinstance(plan, dict) or plan.get("contract") != "mouth_only_v1"
@@ -72,7 +78,7 @@ def _math_plan(result: int) -> dict[str, Any]:
     }
 
 
-def create_corpus(seed: int = 42) -> SpeechCorpus:
+def create_corpus(seed: int = 42, *, diverse_social: bool = False) -> SpeechCorpus:
     """Training examples use original human prose and verified upstream content.
 
     An input packet is never present across different splits. The numeric
@@ -81,26 +87,27 @@ def create_corpus(seed: int = 42) -> SpeechCorpus:
     """
     from semantic_planner import trusted_fact_fallback
     authored = (
-        ("안녕", "안녕! 반가워."),
-        ("안녕하세요", "안녕하세요!"),
-        ("고마워", "천만에!"),
-        ("감사합니다", "별말씀을요."),
-        ("잘 가", "잘 가!"),
-        ("안녕히 가세요", "안녕히 가세요."),
-        ("반가워", "반가워!"),
-        ("도움이 필요해", "어떤 도움이 필요해?"),
-        ("너 누구야?", "파피티에 대해 알려 줄게."),
-        ("Hi", "Hello!"),
-        ("Thanks", "You're welcome!"),
-        ("Bye", "Goodbye!"),
+        ("안녕", ("안녕! 반가워.", "안녕하세요!", "안녕! 만나서 반가워.", "반가워! 안녕.")),
+        ("고마워", ("천만에!", "별말씀을요.", "도움이 됐다니 다행이야.", "별거 아니야!")),
+        ("잘 가", ("잘 가!", "안녕히 가세요.", "다음에 또 봐!", "잘 가, 또 보자.")),
+        ("반가워", ("반가워!", "나도 반가워.", "만나서 반가워!", "나도 만나서 반가워.")),
+        ("도움이 필요해", ("어떤 도움이 필요해?", "뭘 도와줄까?", "어떤 일인지 말해줄래?", "어떤 걸 같이 해볼까?")),
+        ("Hi", ("Hello!", "Hi there!", "Hey!", "Hi, nice to meet you!")),
+        ("Thanks", ("You're welcome!", "No problem!", "Glad I could help.", "Anytime!")),
+        ("Bye", ("Goodbye!", "See you!", "Take care!", "Bye, see you later!")),
     )
-    originals: dict[str, Example] = {}
-    for prompt, answer in authored:
+    if not diverse_social:
+        # Keep packet order and training reproduction for the original weights.
+        authored = authored[:5] + (("너 누구야?", ("파피티에 대해 알려 줄게.",)),) + authored[5:]
+    originals: dict[str, list[Example]] = {}
+    for prompt, answers in authored:
         plan = _sample_plan(prompt)
         if not plan or not plan.get("ready"):
             continue
         key = packet_text(plan)
-        originals.setdefault(key, Example("social:" + plan["speech_act"], key, answer))
+        targets = answers if diverse_social else answers[:1]
+        originals[key] = [Example("social:" + plan["speech_act"], key, answer)
+                          for answer in targets]
     # Project facts are selected and grounded by Python, not fabricated by a
     # language model. Train on their approved exact meanings, then require
     # verbatim preservation in inference for fact-bearing plans.
@@ -111,18 +118,19 @@ def create_corpus(seed: int = 42) -> SpeechCorpus:
             answer = trusted_fact_fallback(plan)
             if answer:
                 key = packet_text(plan)
-                originals[key] = Example("facts:" + plan["speech_act"], key, answer)
+                originals[key] = [Example("facts:" + plan["speech_act"], key, answer)]
     numeric = [Example("verified-number", packet_text(_math_plan(value)), str(value))
                for value in range(200)]
     rng = random.Random(seed)
     rng.shuffle(numeric)
     # Distinct value packets; no label leakage from held-out examples.
     valid, test, train_numbers = numeric[:20], numeric[20:40], numeric[40:]
-    social = list(originals.values())
+    groups = list(originals.values())
     # Held-out stylistic variations of known meanings test whether the model
     # preserves content rather than matching a complete training packet.
     varied = []
-    for row in social[:min(4, len(social))]:
+    for rows in groups[:4]:
+        row = rows[0]
         payload = json.loads(row.user)
         payload["tone"] = "careful_unseen"  # NOT present in training.
         varied.append(Example(row.group + ":style", json.dumps(
@@ -130,9 +138,14 @@ def create_corpus(seed: int = 42) -> SpeechCorpus:
         ), row.assistant))
     valid.extend(varied[:2])
     test.extend(varied[2:])
-    if len(social) < 5:
+    if len(groups) < 5:
         raise ValueError("brain did not produce enough independent speech plans")
-    train = social * 12 + train_numbers
+    # Give each packet equal weight while preserving every valid realization.
+    if diverse_social:
+        train = [rows[i % len(rows)] for rows in groups for i in range(12)]
+    else:
+        train = [rows[0] for rows in groups] * 12
+    train.extend(train_numbers)
     rng.shuffle(train)
     data = SpeechCorpus(train, valid, test)
     train_prompts = {row.user for row in data.train}
