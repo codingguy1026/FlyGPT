@@ -123,8 +123,8 @@ class FlyBrainRuntime:
         re.IGNORECASE,
     )
     _GOOD_NEWS_RE = re.compile(
-        r"^(?:(?:오늘\s*)?좋은\s*일(?:이)?\s*있었어(?:요)?"
-        r"|(?:오늘\s*)?기분(?:이)?\s*좋아(?:요)?|i have good news|i'm in a good mood)[!?.~\s]*$",
+        r"^(?:(?:오늘\s*)?좋은\s*일(?:이)?\s*(?:있었|생겼)어(?:요)?"
+        r"|(?:오늘\s*)?기분(?:이)?\s*좋아(?:요)?|i have good news|i'm in a good mood)[!.~\s]*$",
         re.IGNORECASE,
     )
     _TIRED_RE = re.compile(
