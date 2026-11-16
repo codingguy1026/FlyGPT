@@ -29,7 +29,7 @@ def _train(args):
     random.seed(args.seed)
     corpus = create_corpus(
         args.seed, diverse_social=args.diverse_social, mirror_greetings=args.diverse_social,
-        everyday_dialogue=args.diverse_social,
+        everyday_dialogue=args.everyday_dialogue,
     )
     tokenizer = DigitSubwordTokenizer.from_examples(corpus.train, max_merges=256)
     config = ModelConfig(
@@ -81,7 +81,7 @@ def _train(args):
                 "initialization": "random_from_scratch",
                 "diverse_social_targets": args.diverse_social,
                 "mirror_greetings": args.diverse_social,
-                "everyday_dialogue": args.diverse_social,
+                "everyday_dialogue": args.everyday_dialogue,
                 "seed": args.seed, "epoch": epoch,
                 "val_char_nll": score["char_nll"],
                 "train_count": len(corpus.train),
@@ -193,7 +193,8 @@ def _infer(args):
             raise ValueError("model did not reproduce the source greeting")
         print(answer, flush=True)
         return
-    sample = metadata.get("diverse_social_targets") is True and act in SOCIAL_SPEECH_ACTS
+    sample = (metadata.get("diverse_social_targets") is True
+              and act in SOCIAL_SPEECH_ACTS - EVERYDAY_SPEECH_ACTS)
     if sample:
         from hybrid_speech import check_candidate
 
@@ -217,6 +218,7 @@ def main(argv=None):
         cmd.add_argument("--checkpoint", default="artifacts/papiti_language_v0_6_1.pt")
     train.add_argument("--seed", type=int, default=42)
     train.add_argument("--diverse-social", action="store_true")
+    train.add_argument("--everyday-dialogue", action="store_true")
     train.add_argument("--epochs", type=int, default=12)
     train.add_argument("--patience", type=int, default=5)
     train.add_argument("--batch-size", type=int, default=16)

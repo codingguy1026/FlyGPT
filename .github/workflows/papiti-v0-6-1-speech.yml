@@ -105,6 +105,22 @@ jobs:
                        if row["purpose"] == "mirror-greeting"]
           assert greetings and all(row["exact_match"] for row in greetings), greetings
           PY
+      - name: Train and exercise the everyday dialogue checkpoint
+        run: |
+          make papiti-lm-train-v0.6.1-dialogue
+          python - <<'PY'
+          from brain_runtime import FlyBrainRuntime
+          from hybrid_speech import check_candidate, generate_speech
+
+          brain = FlyBrainRuntime()
+          for text in ("잘 지내요?", "오늘 좋은 일이 있었어요!", "좀 피곤해요.", "ㅎㅎㅎㅎㅎ",
+                       "How's it going?", "I'm really tired", "I have good news!", "Haha!"):
+              state = brain.plan(route_info={}, dispatch={"route": "general"}, message=text)
+              plan = brain.finalize(state)["utterance_plan"]
+              answer = generate_speech(plan)
+              assert check_candidate(plan, answer) is None, (text, answer)
+              print(text, "→", answer)
+          PY
       - name: Publish short-lived model checkpoint and inspection evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -113,6 +129,7 @@ jobs:
           path: |
             artifacts/papiti_language_v0_6_1.pt
             artifacts/papiti_language_v0_6_1_social.pt
+            artifacts/papiti_language_v0_6_1_dialogue.pt
             reports/papiti_v0_6_1.json
             reports/papiti_v0_6_1.log
             reports/papiti_v0_6_1_social.json

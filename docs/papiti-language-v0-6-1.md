@@ -44,12 +44,15 @@ checkpoint. The greeting plan supplies the user's greeting, and the speaker
 learns to return the same wording and punctuation through token prediction.
 The model predicts characters at their aligned input positions and an end
 token. The output must match the input greeting to pass validation. Thanks,
-farewells, simple help prompts, check-ins, good news, tiredness and laughter
-use token sampling. These new cases apply to standalone messages whose
-utterance plans the app supports. Keep the
+farewells and simple help prompts use token sampling. Keep the
 original checkpoint for exact calculator results and project facts. For a
 custom checkpoint name, put the companion beside it with `_social` appended
 to its filename stem.
+
+Run `make papiti-lm-train-v0.6.1-dialogue` to add check-ins, good news,
+tiredness and laughter in Korean and English. The app uses this checkpoint
+for those standalone turns. For a custom base filename, give its companion
+the same name stem with `_dialogue` appended.
 
 make hybrid requests FLYGPT_HYBRID_SPEAKER=v0.6.1 by default.
 The presence of a checkpoint is visible in GeneratorRuntime.status() under

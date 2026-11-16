@@ -207,7 +207,7 @@ def create_corpus(
         train = []
         for rows in groups:
             act = rows[0].group.removeprefix("social:")
-            count = 24 if act in EVERYDAY_SPEECH_ACTS else 12
+            count = 40 if act in EVERYDAY_SPEECH_ACTS else 12
             train.extend(rows[i % len(rows)] for i in range(count))
     else:
         train = [rows[0] for rows in groups] * 12
@@ -222,7 +222,8 @@ def create_corpus(
             if rows[0].group.removeprefix("social:") not in EVERYDAY_SPEECH_ACTS:
                 continue
             # Evaluate alternate plan styles against multiple authored replies.
-            for split, tone in ((valid, "casual"), (test, "friendly")):
+            for split, tone in ((train, "warm"), (train, "short"),
+                                (valid, "casual"), (test, "friendly")):
                 alternate = key.replace(", natural):", f", {tone}):", 1)
                 split.extend(Example(row.group, alternate, row.assistant) for row in rows)
     rng.shuffle(train)
