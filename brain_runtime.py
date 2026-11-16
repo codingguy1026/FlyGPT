@@ -170,6 +170,11 @@ class FlyBrainRuntime:
             return "en"
         return "match_user"
 
+    @classmethod
+    def is_greeting(cls, message: str) -> bool:
+        text = message.strip()
+        return 0 < len(text) <= 96 and cls._GREETING_RE.fullmatch(text) is not None
+
     def _initial_utterance_plan(self, message: str, route: str) -> dict[str, Any]:
         """Build a strict semantic packet.
 
@@ -206,11 +211,12 @@ class FlyBrainRuntime:
         if route != "general" or not text:
             return plan
 
-        if self._GREETING_RE.fullmatch(text):
+        if self.is_greeting(message):
             plan.update(
                 {
                     "ready": True,
                     "speech_act": "return_greeting",
+                    "greeting": message.strip(),
                     "content_units": [
                         {
                             "kind": "communicative_act",

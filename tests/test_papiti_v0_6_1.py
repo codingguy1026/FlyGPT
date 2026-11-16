@@ -32,6 +32,23 @@ class SemanticContractTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             packet_text({"contract": "mouth_only_v1", "ready": False})
 
+    def test_mirror_greeting_preserves_original_form(self):
+        plan = plan_for("  안녕 !?  ")["utterance_plan"]
+        self.assertEqual(plan["greeting"], "안녕 !?")
+        self.assertEqual(packet_text(plan, mirror_greetings=True), "Mirror greeting: 안녕 !?")
+        self.assertNotIn("안녕 !?", packet_text(plan))
+
+    def test_greeting_copy_corpus_holds_out_entire_punctuation_patterns(self):
+        corpus = create_corpus(diverse_social=True, mirror_greetings=True)
+        for rows in (corpus.train, corpus.valid, corpus.test):
+            greetings = [row for row in rows if row.group == "mirror-greeting"]
+            self.assertTrue(greetings)
+            for row in greetings:
+                self.assertEqual(row.user, "Mirror greeting: " + row.assistant)
+        held_out = packet_text(plan_for("안녕!?")["utterance_plan"], mirror_greetings=True)
+        self.assertIn(held_out, {row.user for row in corpus.test})
+        self.assertNotIn(held_out, {row.user for row in corpus.train})
+
     def test_training_test_split_never_shares_semantic_packet(self):
         first = create_corpus(seed=42)
         second = create_corpus(seed=42)
