@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Enable v0.5 full MaleCNS category-free policy as the MAIN ordinary-chat
-# router. No Ollama/Qwen/local language model is downloaded or started.
+# router and use the local Papiti v0.6.1 speaker.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
@@ -74,8 +74,8 @@ kept = [line for line in lines if line_key(line) not in keys]
 kept += [
     "FLYGPT_V05_ACTIVE=1",
     "FLYGPT_V05_MODEL_PATH=artifacts/papiti_v0_5_category_free_166700.pt",
-    "FLYGPT_GENERATOR_MODE=http",
-    "FLYGPT_LOCAL_ONLY=0",
+    "FLYGPT_GENERATOR_MODE=hybrid",
+    "FLYGPT_LOCAL_ONLY=1",
 ]
 temp = env.with_name(".env.papiti-v05.tmp")
 temp.write_text("\n".join(kept) + "\n", encoding="utf-8")
@@ -84,8 +84,5 @@ os.replace(temp, env)
 PY
 
 echo "🪰 Main chat router: MaleCNS v0.5 (category-free, 166700 neurons)"
-echo "☁️  External API mode selected; NO local language-model installation."
-if ! grep -Eq '^[[:space:]]*(export[[:space:]]+)?GEMINI_API_KEY=.+$' .env; then
-  echo "⚠️ Gemini key missing. Add GEMINI_API_KEY=... privately to .env for natural answers."
-fi
+echo "🗣️  Local generator: Papiti v0.6.1 (existing speech checkpoint required)."
 echo "✅ Restart server with 'make run'. Rollback with 'make disable-papiti-v05'."

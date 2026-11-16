@@ -7,6 +7,7 @@ all-neuron weighted moments; this is not live biological neural firing.
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from threading import Lock
 from typing import Any
@@ -18,6 +19,12 @@ DEFAULT_CHECKPOINT = "artifacts/papiti_v0_5_category_free_166700.pt"
 _loaded = None
 _loaded_path: Path | None = None
 _load_lock = Lock()
+
+
+def v05_enabled() -> bool:
+    return os.environ.get("FLYGPT_V05_ACTIVE", "").strip().lower() in {
+        "1", "true", "yes", "on",
+    }
 
 
 class PapitiV05PolicyRuntime:

@@ -49,6 +49,13 @@ for argument in "$@"; do
   esac
 done
 
+# v0.5 uses the built-in semantic speaker, including when an older .env
+# still selects the hosted generator from the previous v0.5 setup.
+if [[ "${FLYGPT_V05_ACTIVE:-}" =~ ^[[:space:]]*(1|[Tt][Rr][Uu][Ee]|[Yy][Ee][Ss]|[Oo][Nn])[[:space:]]*$ ]]; then
+  export FLYGPT_GENERATOR_MODE=hybrid FLYGPT_HYBRID_SPEAKER=v0.6.1
+  unset FLYGPT_HYBRID_URL FLYGPT_HYBRID_MODEL
+fi
+
 # In stable mode, disable the backend file watcher and serve a built Next.js
 # frontend rather than running two development/watch processes.
 export FLYGPT_STABLE_MODE="$STABLE_MODE"

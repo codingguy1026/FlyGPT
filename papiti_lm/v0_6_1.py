@@ -132,7 +132,8 @@ def _infer(args):
     from papiti_lm.model import generate, load_checkpoint
     from papiti_lm.v0_6_1_data import packet_text
 
-    _torch()
+    torch = _torch()
+    torch.set_num_threads(min(4, torch.get_num_threads()))
     model, tokenizer, metadata = load_checkpoint(args.checkpoint)
     if metadata.get("version") != "v0.6.1":
         raise ValueError("v0.6.1 semantic speaker checkpoint required")

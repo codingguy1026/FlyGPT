@@ -36,8 +36,8 @@ from route_learning import RouteLearningStore
 from knowledge_store import KnowledgeStore
 from research_runtime import BraveResearchRuntime, validated_fact_candidates
 from auth_store import AuthStore, SESSION_TTL_SECONDS
-from papiti_v05_chat import run_v05_chat, v05_enabled
-from papiti_v05_runtime import DEFAULT_CHECKPOINT, get_v05_policy
+from papiti_v05_chat import run_v05_chat
+from papiti_v05_runtime import DEFAULT_CHECKPOINT, get_v05_policy, v05_enabled
 
 
 APP_VERSION = "0.12.6"
@@ -1198,7 +1198,6 @@ def chat_endpoint(req: ChatRequest, request: Request):
             result_v05 = run_v05_chat(
                 msg, policy=policy, memory=_memory, research=_research,
                 generator=_generator, session_id=session_id,
-                recent_context=memory_context, knowledge_context=knowledge_context,
                 budget_seconds=CHAT_REQUEST_BUDGET_SECONDS - CHAT_RESPONSE_RESERVE_SECONDS,
             )
             _emit_live_trace({
