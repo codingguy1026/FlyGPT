@@ -3,9 +3,12 @@
 # Explicit opt-in scratch language-model experiment; never invoked by make run.
 PAPITI_PYTHON ?= $(if $(wildcard .venv-papiti/bin/python),.venv-papiti/bin/python,$(if $(wildcard .venv-train/bin/python),.venv-train/bin/python,$(if $(wildcard .venv/bin/python),.venv/bin/python,python3)))
 
-.PHONY: papiti-lm-train-v0.6.1 papiti-lm-eval-v0.6.1
+.PHONY: papiti-lm-train-v0.6.1 papiti-lm-train-v0.6.1-social papiti-lm-eval-v0.6.1
 papiti-lm-train-v0.6.1:
 	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 train
+
+papiti-lm-train-v0.6.1-social:
+	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 train --diverse-social --epochs 20 --checkpoint artifacts/papiti_language_v0_6_1_social.pt
 
 papiti-lm-eval-v0.6.1:
 	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 eval

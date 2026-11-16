@@ -45,6 +45,32 @@ class SemanticContractTests(unittest.TestCase):
         self.assertFalse(train & test)
         self.assertFalse(valid & test)
 
+    def test_social_packet_keeps_multiple_targets_but_math_stays_exact(self):
+        corpus = create_corpus(diverse_social=True)
+        greeting = packet_text(plan_for("안녕")["utterance_plan"])
+        targets = {row.assistant for row in corpus.train if row.user == greeting}
+        self.assertGreaterEqual(len(targets), 3)
+        for row in corpus.train:
+            if row.group == "verified-number":
+                packet = json.loads(row.user)
+                expected = packet["content"][0]["value"].removeprefix("Exact math tool result: ")
+                self.assertEqual(row.assistant, expected)
+
+    def test_social_companion_speaks_greetings_while_math_uses_base(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp) / "trained.pt"
+            companion = base.with_stem("trained_social")
+            for path in (base, companion):
+                path.touch()
+            with (
+                patch.dict(os.environ, {"FLYGPT_HYBRID_SPEECH_CHECKPOINT": str(base)}),
+                patch("hybrid_speech.subprocess.run", return_value=Mock(returncode=0, stdout="reply")) as proc,
+            ):
+                generate_speech(plan_for("안녕")["utterance_plan"])
+                self.assertIn(str(companion), proc.call_args.args[0])
+                generate_speech(plan_for("6*7", "math", "Exact math tool result: 42")["utterance_plan"])
+                self.assertIn(str(base), proc.call_args.args[0])
+
     def test_math_candidate_never_replaced_by_calculator(self):
         plan = plan_for("6*7", "math", "Exact math tool result: 42")["utterance_plan"]
         self.assertIsNone(check_candidate(plan, "42"))
