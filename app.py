@@ -1199,6 +1199,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 msg, policy=policy, memory=_memory, research=_research,
                 generator=_generator, session_id=session_id,
                 budget_seconds=CHAT_REQUEST_BUDGET_SECONDS - CHAT_RESPONSE_RESERVE_SECONDS,
+                recent_messages=memory_context,
             )
             _emit_live_trace({
                 "type": "route", "route": "multi_action",

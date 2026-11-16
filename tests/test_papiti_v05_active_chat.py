@@ -75,7 +75,7 @@ class FakeResearch:
 
 
 def execute(text, *, selected=None, session_id="user-session", generator=None,
-            research=None, memory=None):
+            research=None, memory=None, recent_messages=None):
     policy = FakePolicy(selected=selected)
     memory = memory or FakeMemory()
     research = research or FakeResearch()
@@ -84,6 +84,7 @@ def execute(text, *, selected=None, session_id="user-session", generator=None,
         text, policy=policy, memory=memory, research=research,
         generator=generator, session_id=session_id,
         budget_seconds=20.0,
+        recent_messages=recent_messages,
     )
     return response, memory, research, generator, policy
 
@@ -172,6 +173,48 @@ class MainV05PolicyTests(unittest.TestCase):
         self.assertEqual(research.calls, ["오늘 좋은 일이 생겼어?"])
         self.assertEqual(result["route"]["selected_capabilities"], ["web_search"])
         speaker.assert_not_called()
+
+    def test_good_news_paraphrases_and_search_requests_take_different_paths(self):
+        with (
+            patch("generator_runtime.speech_checkpoint_present", return_value=True),
+            patch("generator_runtime.generate_speech", return_value="오, 좋은 소식이네!") as speaker,
+        ):
+            for text in ("오늘 완전 좋은 소식 들었어!", "아까 기분 좋은 일이 하나 있었어!", "기쁜 소식이 있어"):
+                with self.subTest(text=text):
+                    result, _, research, _, _ = execute(text, selected=["web_search"])
+                    self.assertEqual(research.calls, [])
+                    self.assertEqual(result["data"]["brain_state"]["speech_act"], "acknowledge_good_news")
+            speaker.reset_mock()
+            for text in ("오늘 좋은 뉴스 좀 찾아줘", "기쁜 소식 찾아 봐"):
+                with self.subTest(text=text):
+                    result, _, research, _, _ = execute(text, selected=["web_search"])
+                    self.assertEqual(research.calls, [text])
+                    self.assertEqual(result["route"]["selected_capabilities"], ["web_search"])
+            for text in ("오늘 좋은 소식이 하나도 없었어", "새로운 일이 생겼어"):
+                with self.subTest(text=text):
+                    result, *_ = execute(text, selected=[])
+                    self.assertEqual(result["data"]["brain_state"]["speech_act"], "unresolved")
+            speaker.assert_not_called()
+
+    def test_repeated_social_turn_passes_its_previous_reply(self):
+        prompt = "오늘 좋은 일이 생겼어"
+        history = [
+            {"role": "user", "content": prompt},
+            {"role": "assistant", "content": "좋은 일이라니 반갑다!"},
+            {"role": "user", "content": "고마워"},
+            {"role": "assistant", "content": "별말씀을요."},
+        ]
+        with (
+            patch("generator_runtime.speech_checkpoint_present", return_value=True),
+            patch("generator_runtime.generate_speech", return_value="오, 좋은 소식이네!") as speaker,
+        ):
+            execute(prompt, recent_messages=history)
+            self.assertEqual(speaker.call_args.args[0]["previous_reply"], "좋은 일이라니 반갑다!")
+            execute("안녕", recent_messages=[
+                {"role": "user", "content": "안녕"},
+                {"role": "assistant", "content": "안녕"},
+            ])
+            self.assertNotIn("previous_reply", speaker.call_args.args[0])
 
     def test_all_three_tools_still_execute_without_speaking_a_partial_plan(self):
         query = "전에 말한 비용과 현재 가격을 찾아서 17 × 23은 몇인지 계산해 줘"

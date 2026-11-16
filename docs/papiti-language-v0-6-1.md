@@ -53,6 +53,11 @@ Run `make papiti-lm-train-v0.6.1-dialogue` to add check-ins, good news,
 tiredness and laughter in Korean and English. The app uses this checkpoint
 for those standalone turns. For a custom base filename, give its companion
 the same name stem with `_dialogue` appended.
+The speaker samples different phrasings for supported social turns. When
+the same message is repeated in a chat, it tries to avoid its previous reply.
+Exact greetings and calculator results still preserve their required text.
+The Korean good-news intent classifier can be rebuilt with
+`python -m training.train_good_news_intent`.
 
 make hybrid requests FLYGPT_HYBRID_SPEAKER=v0.6.1 by default.
 The presence of a checkpoint is visible in GeneratorRuntime.status() under

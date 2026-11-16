@@ -6,7 +6,7 @@ from typing import Any
 
 from brain_runtime import FlyBrainRuntime
 from dispatcher import run_math_tool
-from papiti_lm.v0_6_1_data import EVERYDAY_SPEECH_ACTS
+from papiti_lm.v0_6_1_data import EVERYDAY_SPEECH_ACTS, SOCIAL_SPEECH_ACTS
 
 _TOOL_ORDER = ("memory_lookup", "web_search", "calculator")
 _brain = FlyBrainRuntime()
@@ -86,6 +86,7 @@ def run_v05_chat(
     message: str, *,
     policy: Any, memory: Any, research: Any, generator: Any,
     session_id: str | None, budget_seconds: float,
+    recent_messages: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     start = time.perf_counter()
     decision = policy.decide(message)
@@ -123,6 +124,13 @@ def run_v05_chat(
     }
 
     plan = _utterance_plan(message, route, memory_hits, research_data, calculation)
+    if plan.get("speech_act") in SOCIAL_SPEECH_ACTS - {"return_greeting"} and recent_messages:
+        for index in range(len(recent_messages) - 2, -1, -1):
+            previous, reply = recent_messages[index:index + 2]
+            if (previous.get("role") == "user" and previous.get("content") == message
+                    and reply.get("role") == "assistant" and isinstance(reply.get("content"), str)):
+                plan["previous_reply"] = reply["content"]
+                break
     remaining = budget_seconds - (time.perf_counter() - start)
     generation = generator.generate_v061(plan, budget_seconds=remaining)
     error = generation.error_code

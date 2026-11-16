@@ -5,6 +5,7 @@ import re
 from typing import Any
 
 from semantic_planner import compose_fact_plan
+from good_news_intent import is_good_news
 
 
 class FlyBrainRuntime:
@@ -199,7 +200,7 @@ class FlyBrainRuntime:
     @classmethod
     def _social_reply(cls, text: str) -> tuple[str, str] | None:
         for pattern, act, instruction in cls._SOCIAL_REPLIES:
-            if pattern.fullmatch(text):
+            if pattern.fullmatch(text) or (pattern is cls._GOOD_NEWS_RE and is_good_news(text)):
                 return act, instruction
         return None
 
