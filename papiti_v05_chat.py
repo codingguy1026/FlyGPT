@@ -93,6 +93,10 @@ def run_v05_chat(
     if any(tool not in policy.capabilities for tool in selected):
         raise ValueError("Policy suggested an unsupported tool")
 
+    # A standalone greeting needs no tools even if their scores exceed a threshold.
+    if selected and _brain.is_greeting(message):
+        selected = []
+
     # The new path NEVER calls the old six-category router or dispatch().
     reports, memory_hits, research_data, calculation = _tool_results(
         message, selected, memory=memory, research=research,

@@ -123,6 +123,17 @@ class MainV05PolicyTests(unittest.TestCase):
                          [{"tool": "calculator", "status": "verified"}])
         self.assertEqual(result["answer"], "42")
 
+    def test_standalone_greeting_bypasses_spurious_tool_selections(self):
+        with (
+            patch("generator_runtime.speech_checkpoint_present", return_value=True),
+            patch("generator_runtime.generate_speech", return_value="Hi!?!") as speaker,
+        ):
+            result, _, research, _, _ = execute("Hi!?!", selected=["web_search", "calculator"])
+        self.assertEqual(research.calls, [])
+        self.assertEqual(result["route"]["selected_capabilities"], [])
+        self.assertEqual(speaker.call_args.args[0]["greeting"], "Hi!?!")
+        self.assertTrue(result["data"]["generation"]["used"])
+
     def test_calculator_false_positive_does_not_swallow_thanks(self):
         with (
             patch("generator_runtime.speech_checkpoint_present", return_value=True),
