@@ -14,7 +14,7 @@ import subprocess
 import sys
 from typing import Any
 
-from papiti_lm.v0_6_1_data import SOCIAL_SPEECH_ACTS, packet_text
+from papiti_lm.v0_6_1_data import EVERYDAY_SPEECH_ACTS, SOCIAL_SPEECH_ACTS, packet_text
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_CHECKPOINT = ROOT / "artifacts" / "papiti_language_v0_6_1.pt"
@@ -23,12 +23,7 @@ _REPEATED_WORD = re.compile(r"(?<!\w)([가-힣A-Za-z]{2,})\s+\1(?!\w)")
 # These speech acts have supervised examples in the small v0.6.1 corpus.
 # Other plans (notably live-search status and arbitrary sourced excerpts)
 # must go to a separately configured language model, not this tiny speaker.
-V061_TRAINED_SPEECH_ACTS = frozenset({
-    "return_greeting",
-    "acknowledge_thanks",
-    "return_farewell",
-    "return_welcome",
-    "request_specific_task",
+V061_TRAINED_SPEECH_ACTS = SOCIAL_SPEECH_ACTS | frozenset({
     "introduce_flygpt",
     "describe_supported_features",
     "explain_malecns",
@@ -76,15 +71,19 @@ def checkpoint_path() -> Path:
 
 def _speaker_checkpoint(plan: dict[str, Any]) -> Path:
     base = checkpoint_path()
-    if plan.get("speech_act") in SOCIAL_SPEECH_ACTS:
+    act = plan.get("speech_act")
+    if act in EVERYDAY_SPEECH_ACTS:
+        return base.with_name(f"{base.stem}_dialogue{base.suffix}")
+    if act in SOCIAL_SPEECH_ACTS:
         social = base.with_name(f"{base.stem}_social{base.suffix}")
         if social.is_file():
             return social
     return base
 
 
-def checkpoint_present() -> bool:
-    return checkpoint_path().is_file()
+def checkpoint_present(plan: dict[str, Any] | None = None) -> bool:
+    path = checkpoint_path() if plan is None else _speaker_checkpoint(plan)
+    return path.is_file()
 
 
 def speech_python() -> str:

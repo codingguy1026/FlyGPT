@@ -118,9 +118,30 @@ class FlyBrainRuntime:
         re.IGNORECASE,
     )
     _HOW_ARE_YOU_RE = re.compile(
-        r"^(?:잘\s*지내|(?:오늘\s*)?기분\s*어때|how are you)"
-        r"[?!\.\s]*$",
+        r"^(?:잘\s*지내(?:요)?|(?:오늘\s*)?기분\s*(?:어때|어때요)|how are you|how's it going)"
+        r"[?!\.~\s]*$",
         re.IGNORECASE,
+    )
+    _GOOD_NEWS_RE = re.compile(
+        r"^(?:(?:오늘\s*)?좋은\s*일(?:이)?\s*있었어(?:요)?"
+        r"|(?:오늘\s*)?기분(?:이)?\s*좋아(?:요)?|i have good news|i'm in a good mood)[!?.~\s]*$",
+        re.IGNORECASE,
+    )
+    _TIRED_RE = re.compile(
+        r"^(?:(?:오늘\s*)?(?:너무\s*|좀\s*)?피곤해(?:요)?|i'm (?:so |really )?tired)[!?.~\s]*$",
+        re.IGNORECASE,
+    )
+    _LAUGHTER_RE = re.compile(r"(?:[ㅋㅎ]{2,24}|(?:ha){2,8}|lol)[!?.~]*", re.IGNORECASE)
+    _SOCIAL_REPLIES = (
+        (_HOW_ARE_YOU_RE, "acknowledge_presence",
+         "Reply briefly that the assistant is ready to chat. "
+         "Do not assert human emotions or subjective experience."),
+        (_GOOD_NEWS_RE, "acknowledge_good_news",
+         "React warmly to the user's good mood or good news without assuming what happened."),
+        (_TIRED_RE, "acknowledge_tiredness",
+         "Acknowledge that the user feels tired, briefly and with care."),
+        (_LAUGHTER_RE, "respond_to_laughter",
+         "Respond playfully to the user's laughter with a brief laugh."),
     )
     _HELP_RE = re.compile(
         r"^(?:도와줘|도와주세요|도움이\s*필요해|help me|i need help)"
@@ -174,6 +195,21 @@ class FlyBrainRuntime:
     def is_greeting(cls, message: str) -> bool:
         text = message.strip()
         return 0 < len(text) <= 96 and cls._GREETING_RE.fullmatch(text) is not None
+
+    @classmethod
+    def _social_reply(cls, text: str) -> tuple[str, str] | None:
+        for pattern, act, instruction in cls._SOCIAL_REPLIES:
+            if pattern.fullmatch(text):
+                return act, instruction
+        return None
+
+    @classmethod
+    def is_standalone_social(cls, message: str) -> bool:
+        text = " ".join(message.split())
+        return (cls.is_greeting(message) or cls._THANKS_RE.fullmatch(text) is not None
+                or cls._FAREWELL_RE.fullmatch(text) is not None
+                or cls._MEET_RE.fullmatch(text) is not None or cls._HELP_RE.fullmatch(text) is not None
+                or cls._social_reply(text) is not None)
 
     def _initial_utterance_plan(self, message: str, route: str) -> dict[str, Any]:
         """Build a strict semantic packet.
@@ -257,6 +293,18 @@ class FlyBrainRuntime:
             )
             return plan
 
+        social_reply = self._social_reply(text)
+        if social_reply:
+            act, instruction = social_reply
+            plan.update({
+                "ready": True,
+                "speech_act": act,
+                "content_units": [{"kind": "communicative_act", "value": instruction}],
+            })
+            if act == "respond_to_laughter" and plan["style"]["language"] == "match_user":
+                plan["style"]["language"] = "ko"
+            return plan
+
         if self._EMOTICON_RE.fullmatch(text):
             plan.update(
                 {
@@ -294,22 +342,6 @@ class FlyBrainRuntime:
                         **composed,
                     })
                 return plan
-
-        if self._HOW_ARE_YOU_RE.fullmatch(text):
-            plan.update({
-                "ready": True,
-                "speech_act": "acknowledge_presence",
-                "content_units": [
-                    {
-                        "kind": "communicative_act",
-                        "value": (
-                            "Reply briefly that the assistant is ready to chat. "
-                            "Do not assert human emotions or subjective experience."
-                        ),
-                    }
-                ],
-            })
-            return plan
 
         if self._HELP_RE.fullmatch(text):
             plan.update({

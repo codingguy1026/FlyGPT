@@ -6,6 +6,7 @@ from typing import Any
 
 from brain_runtime import FlyBrainRuntime
 from dispatcher import run_math_tool
+from papiti_lm.v0_6_1_data import EVERYDAY_SPEECH_ACTS
 
 _TOOL_ORDER = ("memory_lookup", "web_search", "calculator")
 _brain = FlyBrainRuntime()
@@ -93,8 +94,8 @@ def run_v05_chat(
     if any(tool not in policy.capabilities for tool in selected):
         raise ValueError("Policy suggested an unsupported tool")
 
-    # A standalone greeting needs no tools even if their scores exceed a threshold.
-    if selected and _brain.is_greeting(message):
+    # Standalone social turns need no tools even if a score exceeds its threshold.
+    if selected and _brain.is_standalone_social(message):
         selected = []
 
     # The new path NEVER calls the old six-category router or dispatch().
@@ -127,10 +128,12 @@ def run_v05_chat(
     error = generation.error_code
     answer = generation.answer
     if error == "hybrid_speaker_missing":
+        target = "papiti-lm-train-v0.6.1"
+        if plan.get("speech_act") in EVERYDAY_SPEECH_ACTS:
+            target += "-dialogue"
         answer = (
             "🪰 파피티 v0.6.1 발화 모델의 체크포인트가 없어. "
-            "터미널에서 make papiti-lm-train-v0.6.1로 학습하거나 "
-            "기존 체크포인트 경로를 설정해 줘."
+            f"터미널에서 make {target}로 학습하거나 기존 체크포인트 경로를 설정해 줘."
         )
     elif error == "hybrid_speaker_unsupported":
         answer = (

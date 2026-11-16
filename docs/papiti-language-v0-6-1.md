@@ -49,6 +49,11 @@ original checkpoint for exact calculator results and project facts. For a
 custom checkpoint name, put the companion beside it with `_social` appended
 to its filename stem.
 
+Run `make papiti-lm-train-v0.6.1-dialogue` to add check-ins, good news,
+tiredness and laughter in Korean and English. The app uses this checkpoint
+for those standalone turns. For a custom base filename, give its companion
+the same name stem with `_dialogue` appended.
+
 make hybrid requests FLYGPT_HYBRID_SPEAKER=v0.6.1 by default.
 The presence of a checkpoint is visible in GeneratorRuntime.status() under
 hybrid_speaker_checkpoint_present. That flag alone does not prove

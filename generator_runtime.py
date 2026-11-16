@@ -1010,7 +1010,7 @@ class GeneratorRuntime:
             code = error = "invalid_semantic_plan"
         elif not supports_v061_plan(plan):
             code, error = "hybrid_speaker_unsupported", "unsupported_semantic_act"
-        elif not speech_checkpoint_present():
+        elif not speech_checkpoint_present(plan):
             code, error = "hybrid_speaker_missing", "missing_checkpoint"
         elif budget_seconds <= 0:
             code = error = "timeout"
@@ -1029,7 +1029,7 @@ class GeneratorRuntime:
             except (TimeoutError, TimeoutExpired):
                 code = error = "timeout"
             except FileNotFoundError:
-                if speech_checkpoint_present():
+                if speech_checkpoint_present(plan):
                     error = "speaker_python_missing"
                 else:
                     code, error = "hybrid_speaker_missing", "missing_checkpoint"

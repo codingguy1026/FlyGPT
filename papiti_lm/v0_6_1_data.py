@@ -15,10 +15,13 @@ from typing import Any
 from papiti_lm.corpus import ASSISTANT, BOS, EOS, USER, Example
 
 
+EVERYDAY_SPEECH_ACTS = frozenset({
+    "acknowledge_presence", "acknowledge_good_news", "acknowledge_tiredness", "respond_to_laughter",
+})
 SOCIAL_SPEECH_ACTS = frozenset({
     "return_greeting", "acknowledge_thanks", "return_farewell",
     "return_welcome", "request_specific_task",
-})
+}) | EVERYDAY_SPEECH_ACTS
 MIRROR_GREETING_PREFIX = "Mirror greeting: "
 
 
@@ -49,6 +52,8 @@ def packet_text(plan: dict[str, Any], *, mirror_greetings: bool = False) -> str:
     result = json.dumps(packet, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
     if len(result) > 2100:
         raise ValueError("semantic packet exceeds experimental context")
+    if packet["act"] in EVERYDAY_SPEECH_ACTS:
+        return f"Social reply ({packet['lang']}, {packet['tone']}): {packet['act']}"
     if mirror_greetings and plan.get("speech_act") == "return_greeting":
         greeting = plan.get("greeting")
         if not isinstance(greeting, str) or not 1 <= len(greeting) <= 96:
@@ -121,6 +126,7 @@ def _greeting_examples(seed: int) -> SpeechCorpus:
 
 def create_corpus(
     seed: int = 42, *, diverse_social: bool = False, mirror_greetings: bool = False,
+    everyday_dialogue: bool = False,
 ) -> SpeechCorpus:
     """Training examples use original human prose and verified upstream content.
 
@@ -142,6 +148,17 @@ def create_corpus(
     if not diverse_social:
         # Keep packet order and training reproduction for the original weights.
         authored = authored[:5] + (("너 누구야?", ("파피티에 대해 알려 줄게.",)),) + authored[5:]
+    if everyday_dialogue:
+        authored += (
+            ("잘 지내?", ("응, 이야기할 준비 됐어.", "응, 여기 있어. 편하게 얘기해.", "응! 얘기하자.", "응, 대화할 수 있어.")),
+            ("좋은 일이 있었어!", ("오, 좋은 소식이네!", "오! 무슨 좋은 일이 있었어?", "와, 듣기 좋다!", "좋은 일이라니 반갑다!")),
+            ("오늘 너무 피곤해", ("많이 피곤했겠다.", "오늘 많이 지쳤나 봐.", "아이고, 정말 피곤했겠다.", "오늘 꽤 힘들었나 보다.")),
+            ("ㅋㅋㅋㅋ", ("ㅋㅋㅋㅋ", "ㅋㅋㅋ", "ㅎㅎㅎㅎ", "ㅋㅋ!")),
+            ("How are you?", ("I'm here and ready to chat.", "Ready to talk!", "I'm here. We can chat.", "I'm ready when you are.")),
+            ("I have good news!", ("Oh, that's great!", "Good news? Tell me!", "That's lovely to hear!", "Oh, what happened?")),
+            ("I'm tired", ("Sounds like you're worn out.", "That sounds tiring.", "You sound really tired.", "Oh, that sounds exhausting.")),
+            ("lol", ("Haha!", "Ha ha!", "LOL!", "Hahaha!")),
+        )
     originals: dict[str, list[Example]] = {}
     for prompt, answers in authored:
         plan = _sample_plan(prompt)
@@ -187,7 +204,11 @@ def create_corpus(
         raise ValueError("brain did not produce enough independent speech plans")
     # Give each packet equal weight while preserving every valid realization.
     if diverse_social:
-        train = [rows[i % len(rows)] for rows in groups for i in range(12)]
+        train = []
+        for rows in groups:
+            act = rows[0].group.removeprefix("social:")
+            count = 40 if act in EVERYDAY_SPEECH_ACTS else 12
+            train.extend(rows[i % len(rows)] for i in range(count))
     else:
         train = [rows[0] for rows in groups] * 12
     train.extend(train_numbers)
@@ -196,6 +217,15 @@ def create_corpus(
         train.extend(greetings.train)
         valid.extend(greetings.valid)
         test.extend(greetings.test)
+    if everyday_dialogue:
+        for key, rows in originals.items():
+            if rows[0].group.removeprefix("social:") not in EVERYDAY_SPEECH_ACTS:
+                continue
+            # Evaluate alternate plan styles against multiple authored replies.
+            for split, tone in ((train, "warm"), (train, "short"),
+                                (valid, "casual"), (test, "friendly")):
+                alternate = key.replace(", natural):", f", {tone}):", 1)
+                split.extend(Example(row.group, alternate, row.assistant) for row in rows)
     rng.shuffle(train)
     data = SpeechCorpus(train, valid, test)
     train_prompts = {row.user for row in data.train}

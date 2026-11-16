@@ -93,6 +93,23 @@ class SemanticContractTests(unittest.TestCase):
         self.assertIsNone(check_candidate(plan, "42"))
         self.assertEqual(check_candidate(plan, "13"), "exact_result_not_preserved")
 
+    def test_everyday_dialogue_selects_the_dialogue_checkpoint(self):
+        from hybrid_speech import checkpoint_present
+
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp) / "trained.pt"
+            dialogue = base.with_stem("trained_dialogue")
+            base.touch()
+            plan = plan_for("좀 피곤해요.")["utterance_plan"]
+            with patch.dict(os.environ, {"FLYGPT_HYBRID_SPEECH_CHECKPOINT": str(base)}):
+                self.assertFalse(checkpoint_present(plan))
+                dialogue.touch()
+                self.assertTrue(checkpoint_present(plan))
+                with patch("hybrid_speech.subprocess.run",
+                           return_value=Mock(returncode=0, stdout="피곤했겠다.")) as proc:
+                    self.assertEqual(generate_speech(plan), "피곤했겠다.")
+                self.assertIn(str(dialogue), proc.call_args.args[0])
+
     def test_meaning_and_repetition_guard(self):
         plan = plan_for("안녕")["utterance_plan"]
         self.assertIsNone(check_candidate(plan, "안녕! 반가워."))
