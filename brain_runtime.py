@@ -211,6 +211,7 @@ class FlyBrainRuntime:
                 {
                     "ready": True,
                     "speech_act": "return_greeting",
+                    "greeting": message.strip(),
                     "content_units": [
                         {
                             "kind": "communicative_act",

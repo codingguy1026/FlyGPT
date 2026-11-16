@@ -39,9 +39,12 @@ training and subprocess inference. If PyTorch is in another virtualenv,
 set FLYGPT_HYBRID_SPEECH_PYTHON to its Python executable. To choose
 another checkpoint set FLYGPT_HYBRID_SPEECH_CHECKPOINT.
 
-Run `make papiti-lm-train-v0.6.1-social` to train a companion checkpoint
-for greetings, thanks, farewells and simple help prompts. These replies use
-token sampling with several training targets per semantic packet. Keep the
+Run `make papiti-lm-train-v0.6.1-social` to train or update the companion
+checkpoint. The greeting plan supplies the user's greeting, and the speaker
+learns to return the same wording and punctuation through token prediction.
+The model predicts characters at their aligned input positions and an end
+token. The output must match the input greeting to pass validation. Thanks,
+farewells and simple help prompts use token sampling. Keep the
 original checkpoint for exact calculator results and project facts. For a
 custom checkpoint name, put the companion beside it with `_social` appended
 to its filename stem.

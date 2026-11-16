@@ -91,6 +91,20 @@ jobs:
           print("REAL NEURAL HYBRID ACCEPTED:",accepted, "/4", flush=True)
           assert accepted>0, "Model did not produce any accepted social replies; fix training before merge"
           PY
+      - name: Train and verify the companion greeting checkpoint
+        run: |
+          make papiti-lm-train-v0.6.1-social
+          python -m papiti_lm.v0_6_1 eval \
+            --checkpoint artifacts/papiti_language_v0_6_1_social.pt \
+            --report reports/papiti_v0_6_1_social.json
+          python - <<'PY'
+          import json
+          with open("reports/papiti_v0_6_1_social.json", encoding="utf-8") as file:
+              report = json.load(file)
+          greetings = [row for row in report["test_generations"]
+                       if row["purpose"] == "mirror-greeting"]
+          assert greetings and all(row["exact_match"] for row in greetings), greetings
+          PY
       - name: Publish short-lived model checkpoint and inspection evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -98,7 +112,9 @@ jobs:
           name: papiti-v0-6-1-hybrid-speech-evidence
           path: |
             artifacts/papiti_language_v0_6_1.pt
+            artifacts/papiti_language_v0_6_1_social.pt
             reports/papiti_v0_6_1.json
             reports/papiti_v0_6_1.log
+            reports/papiti_v0_6_1_social.json
           if-no-files-found: warn
           retention-days: 7

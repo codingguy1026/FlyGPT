@@ -16,7 +16,7 @@ def _train(args):
     from papiti_lm.cli import _collate, _evaluate, _torch
     from papiti_lm.corpus import DigitSubwordTokenizer
     from papiti_lm.model import ModelConfig, PapitiTransformer, save_checkpoint
-    from papiti_lm.v0_6_1_data import create_corpus
+    from papiti_lm.v0_6_1_data import create_corpus, greeting_sequence
     from torch.utils.data import DataLoader
 
     torch = _torch()
@@ -27,15 +27,22 @@ def _train(args):
     torch.set_num_threads(min(4, torch.get_num_threads()))
     torch.manual_seed(args.seed)
     random.seed(args.seed)
-    corpus = create_corpus(args.seed, diverse_social=args.diverse_social)
+    corpus = create_corpus(
+        args.seed, diverse_social=args.diverse_social, mirror_greetings=args.diverse_social,
+    )
     tokenizer = DigitSubwordTokenizer.from_examples(corpus.train, max_merges=256)
     config = ModelConfig(
         tokenizer.vocab_size, context=args.context, d_model=args.d_model,
         heads=args.heads, layers=args.layers, dropout=0.1,
     )
     model = PapitiTransformer(config)
-    training = [tokenizer.sequence(row, config.context) for row in corpus.train]
-    validation = [tokenizer.sequence(row, config.context) for row in corpus.valid]
+    def encode(row):
+        if row.group == "mirror-greeting":
+            return greeting_sequence(tokenizer, row.user, row.assistant)
+        return tokenizer.sequence(row, config.context)
+
+    training = [encode(row) for row in corpus.train]
+    validation = [encode(row) for row in corpus.valid]
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=0.01)
     print(
         f"v0.6.1 model-only speech | random init | "
@@ -72,6 +79,7 @@ def _train(args):
                 "role": "brain_conditioned_language_realizer_only",
                 "initialization": "random_from_scratch",
                 "diverse_social_targets": args.diverse_social,
+                "mirror_greetings": args.diverse_social,
                 "seed": args.seed, "epoch": epoch,
                 "val_char_nll": score["char_nll"],
                 "train_count": len(corpus.train),
@@ -85,10 +93,27 @@ def _train(args):
     print(f"Selected checkpoint {args.checkpoint}; test split untouched", flush=True)
 
 
+def _generate_greeting(model, tokenizer, packet: str) -> str:
+    import torch
+    from papiti_lm.corpus import EOS, RESERVED
+    from papiti_lm.v0_6_1_data import greeting_sequence
+
+    try:
+        source, start = greeting_sequence(tokenizer, packet)
+    except KeyError as exc:
+        raise ValueError("source greeting contains an out-of-vocabulary character") from exc
+    with torch.inference_mode():
+        device = next(model.parameters()).device
+        output = model(torch.tensor([source], device=device))[0, start:].argmax(dim=-1).tolist()
+    if output[-1] != EOS or any(token < RESERVED for token in output[:-1]):
+        raise ValueError("model did not generate a complete greeting")
+    return tokenizer.decode(output[:-1])
+
+
 def _eval(args):
     from papiti_lm.cli import _evaluate, _torch
     from papiti_lm.model import generate, load_checkpoint
-    from papiti_lm.v0_6_1_data import create_corpus
+    from papiti_lm.v0_6_1_data import create_corpus, greeting_sequence
 
     _torch()
     model, tokenizer, metadata = load_checkpoint(args.checkpoint)
@@ -97,15 +122,27 @@ def _eval(args):
     corpus = create_corpus(
         int(metadata["seed"]),
         diverse_social=metadata.get("diverse_social_targets") is True,
+        mirror_greetings=metadata.get("mirror_greetings") is True,
     )
+    test_sequences = [
+        greeting_sequence(tokenizer, row.user, row.assistant) if row.group == "mirror-greeting"
+        else tokenizer.sequence(row, model.config.context)
+        for row in corpus.test
+    ]
     metric = _evaluate(
-        model, [tokenizer.sequence(row, model.config.context) for row in corpus.test],
+        model, test_sequences,
         args.batch_size, sum(len(row.assistant) + 1 for row in corpus.test),
     )
     results = []
     for row in corpus.test:
-        answer = generate(model, tokenizer, row.user, max_new_tokens=64,
-                          temperature=0, top_k=12)
+        if row.group == "mirror-greeting":
+            try:
+                answer = _generate_greeting(model, tokenizer, row.user)
+            except ValueError:
+                answer = ""
+        else:
+            answer = generate(model, tokenizer, row.user, max_new_tokens=64,
+                              temperature=0, top_k=12)
         results.append({
             "purpose": row.group,
             "expected": row.assistant,
@@ -142,7 +179,14 @@ def _infer(args):
     if metadata.get("version") != "v0.6.1":
         raise ValueError("v0.6.1 semantic speaker checkpoint required")
     plan = json.loads(sys.stdin.read())
-    packet = packet_text(plan)
+    mirror = metadata.get("mirror_greetings") is True and plan["speech_act"] == "return_greeting"
+    packet = packet_text(plan, mirror_greetings=mirror)
+    if mirror:
+        answer = _generate_greeting(model, tokenizer, packet)
+        if answer != plan["greeting"]:
+            raise ValueError("model did not reproduce the source greeting")
+        print(answer, flush=True)
+        return
     sample = metadata.get("diverse_social_targets") is True and plan["speech_act"] in SOCIAL_SPEECH_ACTS
     if sample:
         from hybrid_speech import check_candidate

@@ -12,16 +12,17 @@ import random
 from dataclasses import dataclass
 from typing import Any
 
-from papiti_lm.corpus import Example
+from papiti_lm.corpus import ASSISTANT, BOS, EOS, USER, Example
 
 
 SOCIAL_SPEECH_ACTS = frozenset({
     "return_greeting", "acknowledge_thanks", "return_farewell",
     "return_welcome", "request_specific_task",
 })
+MIRROR_GREETING_PREFIX = "Mirror greeting: "
 
 
-def packet_text(plan: dict[str, Any]) -> str:
+def packet_text(plan: dict[str, Any], *, mirror_greetings: bool = False) -> str:
     """Compact, auditable brain-to-mouth contract, not a user-question lookup."""
     if (not isinstance(plan, dict) or plan.get("contract") != "mouth_only_v1"
             or plan.get("ready") is not True):
@@ -48,7 +49,23 @@ def packet_text(plan: dict[str, Any]) -> str:
     result = json.dumps(packet, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
     if len(result) > 2100:
         raise ValueError("semantic packet exceeds experimental context")
+    if mirror_greetings and plan.get("speech_act") == "return_greeting":
+        greeting = plan.get("greeting")
+        if not isinstance(greeting, str) or not 1 <= len(greeting) <= 96:
+            raise ValueError("invalid source greeting")
+        return MIRROR_GREETING_PREFIX + greeting
     return result
+
+
+def greeting_sequence(tokenizer, packet: str, expected: str | None = None):
+    """Align source characters with supervised output positions."""
+    prefix = [BOS, USER, *tokenizer.encode(MIRROR_GREETING_PREFIX)]
+    greeting = list(packet.removeprefix(MIRROR_GREETING_PREFIX))
+    source = prefix + [tokenizer.char_to_id[ch] for ch in greeting] + [ASSISTANT]
+    if expected is None:
+        return source, len(prefix)
+    targets = [tokenizer.char_to_id[ch] for ch in expected]
+    return source, [-100] * len(prefix) + targets + [EOS]
 
 
 @dataclass(frozen=True)
@@ -78,7 +95,33 @@ def _math_plan(result: int) -> dict[str, Any]:
     }
 
 
-def create_corpus(seed: int = 42, *, diverse_social: bool = False) -> SpeechCorpus:
+def _greeting_examples(seed: int) -> SpeechCorpus:
+    """Teach one copy relation across input forms, with disjoint surface text."""
+    korean = ("안녕", "안녕하세요", "안녕하세용", "안녕하세여", "ㅎㅇ", "하이")
+    english = ("hi", "hello", "hey")
+    stems = (*korean, *(variant for word in english
+                        for variant in (word, word.title(), word.upper(), word.swapcase())))
+    endings = ("", "!", "?", ".", "~", "!!", "??", "..", "~~", "!?", "?!", "!!!", "...", "~~~",
+               "?!?!", "!?!", "!~", "~!", "!?!!", " !", " ?", " ~")
+    # Reserve unfamiliar punctuation patterns across every greeting form.
+    held_out = {"!?": "test", "?!?!": "test", "!?!!": "test", "!?!": "valid",
+                "~!": "valid", " ?": "valid"}
+    rows: dict[str, list[Example]] = {"train": [], "valid": [], "test": []}
+    for stem in dict.fromkeys(stems):
+        for ending in endings:
+            greeting = stem + ending
+            plan = _sample_plan(greeting)
+            assert plan and plan.get("speech_act") == "return_greeting"
+            rows[held_out.get(ending, "train")].append(Example(
+                "mirror-greeting", packet_text(plan, mirror_greetings=True), greeting,
+            ))
+    random.Random(seed).shuffle(rows["train"])
+    return SpeechCorpus(**rows)
+
+
+def create_corpus(
+    seed: int = 42, *, diverse_social: bool = False, mirror_greetings: bool = False,
+) -> SpeechCorpus:
     """Training examples use original human prose and verified upstream content.
 
     An input packet is never present across different splits. The numeric
@@ -103,6 +146,8 @@ def create_corpus(seed: int = 42, *, diverse_social: bool = False) -> SpeechCorp
     for prompt, answers in authored:
         plan = _sample_plan(prompt)
         if not plan or not plan.get("ready"):
+            continue
+        if mirror_greetings and plan["speech_act"] == "return_greeting":
             continue
         key = packet_text(plan)
         targets = answers if diverse_social else answers[:1]
@@ -146,6 +191,11 @@ def create_corpus(seed: int = 42, *, diverse_social: bool = False) -> SpeechCorp
     else:
         train = [rows[0] for rows in groups] * 12
     train.extend(train_numbers)
+    if mirror_greetings:
+        greetings = _greeting_examples(seed)
+        train.extend(greetings.train)
+        valid.extend(greetings.valid)
+        test.extend(greetings.test)
     rng.shuffle(train)
     data = SpeechCorpus(train, valid, test)
     train_prompts = {row.user for row in data.train}
