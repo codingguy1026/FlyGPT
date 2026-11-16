@@ -193,17 +193,24 @@ def _infer(args):
             raise ValueError("model did not reproduce the source greeting")
         print(answer, flush=True)
         return
-    sample = (metadata.get("diverse_social_targets") is True
-              and act in SOCIAL_SPEECH_ACTS - EVERYDAY_SPEECH_ACTS)
+    sample = metadata.get("diverse_social_targets") is True and act in SOCIAL_SPEECH_ACTS
     if sample:
         from hybrid_speech import check_candidate
 
-        for _ in range(3):
+        previous = plan.get("previous_reply")
+        repeated = None
+        for _ in range(6 if previous else 3):
             answer = generate(model, tokenizer, packet, temperature=0.42, top_k=4,
                               max_new_tokens=args.max_new_tokens)
             if check_candidate(plan, answer) is None:
+                if answer.strip() == previous:
+                    repeated = answer
+                    continue
                 print(answer, flush=True)
                 return
+        if repeated is not None:
+            print(repeated, flush=True)
+            return
     answer = generate(model, tokenizer, packet, temperature=0, max_new_tokens=args.max_new_tokens)
     print(answer, flush=True)
 
