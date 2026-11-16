@@ -134,16 +134,35 @@ class MainV05PolicyTests(unittest.TestCase):
         self.assertEqual(speaker.call_args.args[0]["greeting"], "Hi!?!")
         self.assertTrue(result["data"]["generation"]["used"])
 
-    def test_calculator_false_positive_does_not_swallow_thanks(self):
+    def test_thanks_skips_spurious_calculator(self):
         with (
             patch("generator_runtime.speech_checkpoint_present", return_value=True),
             patch("generator_runtime.generate_speech", return_value="천만에!") as speaker,
         ):
             result, *_ = execute("고마워", selected=["calculator"])
         self.assertEqual(speaker.call_args.args[0]["speech_act"], "acknowledge_thanks")
-        self.assertEqual(result["data"]["brain_state"]["tool_reports"],
-                         [{"tool": "calculator", "status": "unsupported"}])
+        self.assertEqual(result["data"]["brain_state"]["tool_reports"], [])
+        self.assertEqual(result["route"]["selected_capabilities"], [])
         self.assertTrue(result["data"]["generation"]["used"])
+
+    def test_everyday_conversation_skips_spurious_tools(self):
+        cases = (
+            ("잘 지내요?", "acknowledge_presence", "응, 이야기할 준비 됐어."),
+            ("오늘 좋은 일이 있었어요!", "acknowledge_good_news", "오, 좋은 소식이네!"),
+            ("좀 피곤해요.", "acknowledge_tiredness", "많이 피곤했겠다."),
+            ("ㅎㅎㅎㅎㅎ", "respond_to_laughter", "ㅋㅋㅋ"),
+        )
+        for prompt, act, answer in cases:
+            with (
+                self.subTest(prompt=prompt),
+                patch("generator_runtime.speech_checkpoint_present", return_value=True),
+                patch("generator_runtime.generate_speech", return_value=answer) as speaker,
+            ):
+                result, _, research, _, _ = execute(prompt, selected=["web_search", "calculator"])
+                self.assertEqual(research.calls, [])
+                self.assertEqual(result["route"]["selected_capabilities"], [])
+                self.assertEqual(speaker.call_args.args[0]["speech_act"], act)
+                self.assertTrue(result["data"]["generation"]["used"])
 
     def test_all_three_tools_still_execute_without_speaking_a_partial_plan(self):
         query = "전에 말한 비용과 현재 가격을 찾아서 17 × 23은 몇인지 계산해 줘"

@@ -29,6 +29,7 @@ def _train(args):
     random.seed(args.seed)
     corpus = create_corpus(
         args.seed, diverse_social=args.diverse_social, mirror_greetings=args.diverse_social,
+        everyday_dialogue=args.diverse_social,
     )
     tokenizer = DigitSubwordTokenizer.from_examples(corpus.train, max_merges=256)
     config = ModelConfig(
@@ -80,6 +81,7 @@ def _train(args):
                 "initialization": "random_from_scratch",
                 "diverse_social_targets": args.diverse_social,
                 "mirror_greetings": args.diverse_social,
+                "everyday_dialogue": args.diverse_social,
                 "seed": args.seed, "epoch": epoch,
                 "val_char_nll": score["char_nll"],
                 "train_count": len(corpus.train),
@@ -123,6 +125,7 @@ def _eval(args):
         int(metadata["seed"]),
         diverse_social=metadata.get("diverse_social_targets") is True,
         mirror_greetings=metadata.get("mirror_greetings") is True,
+        everyday_dialogue=metadata.get("everyday_dialogue") is True,
     )
     test_sequences = [
         greeting_sequence(tokenizer, row.user, row.assistant) if row.group == "mirror-greeting"
@@ -171,7 +174,7 @@ def _infer(args):
     """Only checkpoint-driven token prediction; does not load training examples."""
     from papiti_lm.cli import _torch
     from papiti_lm.model import generate, load_checkpoint
-    from papiti_lm.v0_6_1_data import SOCIAL_SPEECH_ACTS, packet_text
+    from papiti_lm.v0_6_1_data import EVERYDAY_SPEECH_ACTS, SOCIAL_SPEECH_ACTS, packet_text
 
     torch = _torch()
     torch.set_num_threads(min(4, torch.get_num_threads()))
@@ -179,15 +182,18 @@ def _infer(args):
     if metadata.get("version") != "v0.6.1":
         raise ValueError("v0.6.1 semantic speaker checkpoint required")
     plan = json.loads(sys.stdin.read())
-    mirror = metadata.get("mirror_greetings") is True and plan["speech_act"] == "return_greeting"
-    packet = packet_text(plan, mirror_greetings=mirror)
+    packet = packet_text(plan)
+    act = plan.get("speech_act")
+    if act in EVERYDAY_SPEECH_ACTS and metadata.get("everyday_dialogue") is not True:
+        raise ValueError("update the social checkpoint for everyday dialogue")
+    mirror = metadata.get("mirror_greetings") is True and act == "return_greeting"
     if mirror:
-        answer = _generate_greeting(model, tokenizer, packet)
+        answer = _generate_greeting(model, tokenizer, packet_text(plan, mirror_greetings=True))
         if answer != plan["greeting"]:
             raise ValueError("model did not reproduce the source greeting")
         print(answer, flush=True)
         return
-    sample = metadata.get("diverse_social_targets") is True and plan["speech_act"] in SOCIAL_SPEECH_ACTS
+    sample = metadata.get("diverse_social_targets") is True and act in SOCIAL_SPEECH_ACTS
     if sample:
         from hybrid_speech import check_candidate
 

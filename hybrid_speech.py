@@ -23,12 +23,7 @@ _REPEATED_WORD = re.compile(r"(?<!\w)([가-힣A-Za-z]{2,})\s+\1(?!\w)")
 # These speech acts have supervised examples in the small v0.6.1 corpus.
 # Other plans (notably live-search status and arbitrary sourced excerpts)
 # must go to a separately configured language model, not this tiny speaker.
-V061_TRAINED_SPEECH_ACTS = frozenset({
-    "return_greeting",
-    "acknowledge_thanks",
-    "return_farewell",
-    "return_welcome",
-    "request_specific_task",
+V061_TRAINED_SPEECH_ACTS = SOCIAL_SPEECH_ACTS | frozenset({
     "introduce_flygpt",
     "describe_supported_features",
     "explain_malecns",

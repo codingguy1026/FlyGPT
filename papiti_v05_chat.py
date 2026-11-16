@@ -93,8 +93,8 @@ def run_v05_chat(
     if any(tool not in policy.capabilities for tool in selected):
         raise ValueError("Policy suggested an unsupported tool")
 
-    # A standalone greeting needs no tools even if their scores exceed a threshold.
-    if selected and _brain.is_greeting(message):
+    # Standalone social turns need no tools even if a score exceeds its threshold.
+    if selected and _brain.is_standalone_social(message):
         selected = []
 
     # The new path NEVER calls the old six-category router or dispatch().

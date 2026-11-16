@@ -68,10 +68,10 @@ def realize_native(
         if act in _SOCIAL and _units(plan, "communicative_act"):
             return _SOCIAL[act][0 if ko else 1]
 
-        if act == "mirror_social_reaction" and _units(plan, "communicative_act"):
+        if act in {"mirror_social_reaction", "respond_to_laughter"} and _units(plan, "communicative_act"):
             if re.search(r"[ㅠㅜ]", message):
                 return "ㅠㅠ" if ko else "Aw."
-            if re.search(r"[ㅋㅎ]", message):
+            if act == "respond_to_laughter" or re.search(r"[ㅋㅎ]", message):
                 return "ㅋㅋㅋ" if ko else "Haha!"
             return "응!" if ko else "Yep!"
 

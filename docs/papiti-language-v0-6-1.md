@@ -44,7 +44,9 @@ checkpoint. The greeting plan supplies the user's greeting, and the speaker
 learns to return the same wording and punctuation through token prediction.
 The model predicts characters at their aligned input positions and an end
 token. The output must match the input greeting to pass validation. Thanks,
-farewells and simple help prompts use token sampling. Keep the
+farewells, simple help prompts, check-ins, good news, tiredness and laughter
+use token sampling. These new cases apply to standalone messages whose
+utterance plans the app supports. Keep the
 original checkpoint for exact calculator results and project facts. For a
 custom checkpoint name, put the companion beside it with `_social` appended
 to its filename stem.
