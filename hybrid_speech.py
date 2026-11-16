@@ -140,7 +140,7 @@ def generate_speech(plan: dict[str, Any], timeout_seconds: float = 20.0) -> str:
     path = checkpoint_path()
     if not path.is_file():
         raise FileNotFoundError(f"v0.6.1 checkpoint missing: {path}")
-    seconds = min(30.0, max(1.0, float(timeout_seconds)))
+    seconds = min(30.0, max(0.1, float(timeout_seconds)))
     runner = subprocess.run(
         [speech_python(), "-m", "papiti_lm.v0_6_1", "infer",
          "--checkpoint", str(path), "--max-new-tokens", "96"],

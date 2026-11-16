@@ -40,3 +40,6 @@ reports/fly001_*.json
 artifacts/papiti_language_*.pt
 artifacts/papiti_language_*.pt.tmp
 data/papiti_*private*.jsonl
+artifacts/papiti_v0_5_category_free_166700.pt
+data/papiti_v05_previous_env.json
+.env.papiti-v05.tmp

@@ -10,7 +10,9 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from papiti_v05_chat import run_v05_chat, v05_enabled
+from generator_runtime import GeneratorRuntime
+from papiti_v05_chat import run_v05_chat
+from papiti_v05_runtime import v05_enabled
 
 
 class FakePolicy:
@@ -72,74 +74,81 @@ class FakeResearch:
         )
 
 
-class FakeGenerator:
-    configured = True
-    hybrid_mode = False
-    native_mode = False
-    local_only = False
-    api_key = "fake-key-in-tests-only"
-    model = "mock-gemini"
-
-    def __init__(self):
-        self.messages = None
-        self.calls = 0
-
-    def _generate_once(self, *, model, messages, timeout_seconds):
-        self.calls += 1
-        self.messages = messages
-        return SimpleNamespace(
-            used=True, provider="test-api", model=model,
-            answer="사용자 질문에 대한 답변입니다.",
-            error_code=None, finish_reason="stop",
-            latency_ms=4,
-        )
-
-
 def execute(text, *, selected=None, session_id="user-session", generator=None,
             research=None, memory=None):
     policy = FakePolicy(selected=selected)
     memory = memory or FakeMemory()
     research = research or FakeResearch()
-    generator = generator or FakeGenerator()
+    generator = generator or GeneratorRuntime()
     response = run_v05_chat(
         text, policy=policy, memory=memory, research=research,
         generator=generator, session_id=session_id,
-        recent_context=[], knowledge_context=None, budget_seconds=20.0,
+        budget_seconds=20.0,
     )
     return response, memory, research, generator, policy
 
 
 class MainV05PolicyTests(unittest.TestCase):
-    def test_no_old_category_and_no_unneeded_tools(self):
-        text = "사과와 바나나의 공통점이 뭐야?"
-        result, memory, research, generator, policy = execute(text, selected=[])
+    def test_greeting_sends_only_the_plan_to_local_speaker(self):
+        text = "안녕"
+        with (
+            patch("generator_runtime.speech_checkpoint_present", return_value=True),
+            patch("generator_runtime.generate_speech", return_value="안녕!") as speaker,
+            patch("generator_runtime.urllib.request.urlopen") as http,
+        ):
+            result, memory, research, _, policy = execute(text, selected=[])
+        plan = speaker.call_args.args[0]
+        self.assertEqual(plan["speech_act"], "return_greeting")
+        self.assertNotIn("message", plan)
         self.assertEqual(policy.requests, [text])
         self.assertEqual(memory.search_calls, [])
         self.assertEqual(research.calls, [])
-        self.assertEqual(generator.calls, 1)
+        http.assert_not_called()
         self.assertEqual(result["route"]["model_version"], "v0.5")
         self.assertTrue(result["route"]["category_free"])
-        self.assertEqual(result["route"]["route"], "multi_action")
-        self.assertEqual(result["route"]["confidence_kind"], "not_applicable")
         self.assertEqual(result["route"]["selected_capabilities"], [])
-        self.assertEqual(result["data"]["brain_state"]["tool_reports"], [])
-        self.assertEqual(result["answer"], "사용자 질문에 대한 답변입니다.")
+        self.assertEqual(result["data"]["generation"]["model"], "papiti-language-v0.6.1")
+        self.assertEqual(result["answer"], "안녕!")
 
-    def test_all_three_tools_are_executed_in_one_request(self):
+    def test_calculator_passes_verified_result_to_speaker(self):
+        with (
+            patch("generator_runtime.speech_checkpoint_present", return_value=True),
+            patch("generator_runtime.generate_speech", return_value="42") as speaker,
+        ):
+            result, *_ = execute("6 × 7은?", selected=["calculator"])
+        self.assertEqual(speaker.call_args.args[0]["content_units"], [
+            {"kind": "exact_result", "value": "Exact math tool result: 42"}
+        ])
+        self.assertEqual(result["data"]["brain_state"]["tool_reports"],
+                         [{"tool": "calculator", "status": "verified"}])
+        self.assertEqual(result["answer"], "42")
+
+    def test_calculator_false_positive_does_not_swallow_thanks(self):
+        with (
+            patch("generator_runtime.speech_checkpoint_present", return_value=True),
+            patch("generator_runtime.generate_speech", return_value="천만에!") as speaker,
+        ):
+            result, *_ = execute("고마워", selected=["calculator"])
+        self.assertEqual(speaker.call_args.args[0]["speech_act"], "acknowledge_thanks")
+        self.assertEqual(result["data"]["brain_state"]["tool_reports"],
+                         [{"tool": "calculator", "status": "unsupported"}])
+        self.assertTrue(result["data"]["generation"]["used"])
+
+    def test_all_three_tools_still_execute_without_speaking_a_partial_plan(self):
         query = "전에 말한 비용과 현재 가격을 찾아서 17 × 23은 몇인지 계산해 줘"
-        result, memory, research, generator, _ = execute(
-            query, selected=["memory_lookup", "web_search", "calculator"]
-        )
+        with patch("generator_runtime.generate_speech") as speaker:
+            result, memory, research, _, _ = execute(
+                query, selected=["memory_lookup", "web_search", "calculator"]
+            )
         self.assertEqual(len(memory.search_calls), 1)
         self.assertEqual(research.calls, [query])
         self.assertEqual([x["tool"] for x in result["data"]["brain_state"]["tool_reports"]],
                          ["memory_lookup", "web_search", "calculator"])
         self.assertEqual([x["status"] for x in result["data"]["brain_state"]["tool_reports"]],
                          ["retrieved", "retrieved", "verified"])
-        rendered = "\n".join(x["content"] for x in generator.messages)
-        self.assertIn("391", rendered)
-        self.assertIn("https://example.org/verified", rendered)
+        self.assertEqual(result["data"]["v05_error_code"], "hybrid_speaker_unsupported")
         self.assertEqual(result["route"]["n_nodes"], 166700)
+        speaker.assert_not_called()
 
     def test_session_scope_is_not_bypassed(self):
         response, memory, _, _, _ = execute(
@@ -148,25 +157,39 @@ class MainV05PolicyTests(unittest.TestCase):
         self.assertEqual(memory.search_calls, [])
         self.assertEqual(response["data"]["brain_state"]["tool_reports"][0]["status"], "no_evidence")
 
-    def test_missing_hosted_api_is_explicit(self):
-        generator = FakeGenerator()
-        generator.configured = False
-        result, _, _, generator, _ = execute(
-            "흥미로운 역사 이야기 들려줘", generator=generator
-        )
-        self.assertEqual(generator.calls, 0)
-        self.assertEqual(result["data"]["v05_error_code"], "external_language_api_unconfigured")
-        self.assertIn("GEMINI_API_KEY", result["answer"])
-        self.assertEqual(result["route"]["model_version"], "v0.5")
+    def test_v05_ignores_stale_hosted_and_loopback_settings(self):
+        with patch.dict("os.environ", {
+            "FLYGPT_V05_ACTIVE": "1",
+            "FLYGPT_GENERATOR_MODE": "http",
+            "FLYGPT_GENERATOR_URL": "https://example.org/chat/completions",
+            "FLYGPT_GENERATOR_API_KEY": "test-only",
+            "FLYGPT_HYBRID_URL": "http://localhost:9000/v1/chat/completions",
+            "FLYGPT_HYBRID_MODEL": "old-local-model",
+            "FLYGPT_HYBRID_SPEAKER": "legacy",
+        }, clear=True):
+            runtime = GeneratorRuntime()
+        self.assertEqual(runtime.url, "")
+        self.assertFalse(runtime.status()["api_key_configured"])
+        self.assertEqual(runtime.status()["model"], "papiti-language-v0.6.1")
+        self.assertEqual(runtime.hybrid_speaker, "v0.6.1")
 
-    def test_search_unavailable_not_fabricated(self):
-        research = FakeResearch(used=False)
-        result, _, _, generator, _ = execute(
-            "오늘 경기 결과를 알려줘", selected=["web_search"], research=research
-        )
-        self.assertEqual(result["data"]["brain_state"]["tool_reports"][0]["status"], "no_evidence")
-        evidence = "\n".join(x["content"] for x in generator.messages)
-        self.assertIn("Do not invent today's results", evidence)
+    def test_missing_local_checkpoint_is_explicit(self):
+        with patch("generator_runtime.speech_checkpoint_present", return_value=False):
+            result, *_ = execute("안녕")
+        self.assertEqual(result["data"]["v05_error_code"], "hybrid_speaker_missing")
+        self.assertIn("make papiti-lm-train-v0.6.1", result["answer"])
+
+    def test_untrained_questions_and_search_plans_report_unsupported(self):
+        with patch("generator_runtime.generate_speech") as speaker:
+            general, *_ = execute("사과와 바나나의 공통점이 뭐야?")
+            search, *_ = execute(
+                "오늘 경기 결과를 알려줘", selected=["web_search"], research=FakeResearch(used=False)
+            )
+        self.assertFalse(general["data"]["generation"]["used"])
+        self.assertEqual(general["data"]["v05_error_code"], "hybrid_speaker_unsupported")
+        self.assertEqual(search["data"]["v05_error_code"], "hybrid_speaker_unsupported")
+        self.assertEqual(search["data"]["brain_state"]["tool_reports"][0]["status"], "no_evidence")
+        speaker.assert_not_called()
 
     def test_invalid_tool_selection_fails_closed(self):
         with self.assertRaisesRegex(ValueError, "unsupported tool"):
@@ -194,7 +217,7 @@ class MainV05PolicyTests(unittest.TestCase):
         import app
         memory = FakeMemory()
         policy = FakePolicy()
-        generator = FakeGenerator()
+        generator = GeneratorRuntime()
         knowledge = SimpleNamespace(
             context_for_query=lambda user, text, limit: (None, []),
             learn_from_user_text=lambda user, text: [],
@@ -207,17 +230,19 @@ class MainV05PolicyTests(unittest.TestCase):
             patch.object(app, "_knowledge", knowledge),
             patch.object(app, "_research", FakeResearch()),
             patch.object(app, "_generator", generator),
+            patch("generator_runtime.speech_checkpoint_present", return_value=True),
+            patch("generator_runtime.generate_speech", return_value="안녕!") as speaker,
             patch.object(app, "v05_enabled", return_value=True),
             patch.object(app, "get_v05_policy", return_value=policy),
             patch.object(app, "predict_route", side_effect=AssertionError("old router called")),
         ):
             result = app.chat_endpoint(
-                app.ChatRequest(message="사과와 바나나의 공통점이 뭐야?"),
+                app.ChatRequest(message="안녕"),
                 request,
             )
         self.assertEqual(result["router"]["model_version"], "v0.5")
         self.assertTrue(result["router"]["category_free"])
-        self.assertEqual(generator.calls, 1)
+        speaker.assert_called_once()
         self.assertEqual(len(memory.add_calls), 2)
 
 

@@ -24,7 +24,7 @@ echo "🪰 FlyGPT v0.8.0 backend"
 if [[ "${FLYGPT_GENERATOR_MODE:-hybrid}" == "native" ]]; then
   echo "Generator: Papiti Native v1 (no LLM)"
 elif [[ "${FLYGPT_GENERATOR_MODE:-hybrid}" == "hybrid" ]]; then
-  echo "Generator: Papiti Hybrid (native first; local model ${FLYGPT_HYBRID_MODEL:-not configured})"
+  echo "Generator: Papiti Hybrid / speaker ${FLYGPT_HYBRID_SPEAKER:-v0.6.1}"
 else
   echo "Generator: $FLYGPT_GENERATOR_PROVIDER / $FLYGPT_GENERATOR_MODEL"
   echo "URL: $FLYGPT_GENERATOR_URL"

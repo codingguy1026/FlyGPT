@@ -4,17 +4,19 @@ import http.client
 import json
 import os
 import re
+from subprocess import TimeoutExpired
 import time
 import urllib.error
 import urllib.request
 from urllib.parse import urlsplit, urlunsplit
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from typing import Any
 
 from semantic_planner import trusted_fact_fallback
 from native_realizer import realize_native
 from hybrid_speech import checkpoint_present as speech_checkpoint_present
 from hybrid_speech import generate_speech, check_candidate, supports_v061_plan
+from papiti_v05_runtime import v05_enabled
 from local_generator_policy import (
     DEFAULT_LOCAL_GENERATOR_URL,
     DEFAULT_LOCAL_MODEL,
@@ -32,6 +34,8 @@ class _NoGeneratorRedirects(urllib.request.HTTPRedirectHandler):
 
 
 GENERATIVE_ROUTES = {"general", "code", "summarize", "math", "memory", "research"}
+V061_PROVIDER = "papiti-hybrid-v0.6.1"
+V061_MODEL = "papiti-language-v0.6.1"
 RETRYABLE_HTTP_CODES = {429, 500, 502, 503, 504}
 
 # These phrases are implementation details of the Fly Brain plan contract,
@@ -353,28 +357,26 @@ class GeneratorRuntime:
     """
 
     def __init__(self) -> None:
-        mode = os.environ.get("FLYGPT_GENERATOR_MODE", "").strip().lower()
+        self.v05_local = v05_enabled()
+        mode = "hybrid" if self.v05_local else os.environ.get("FLYGPT_GENERATOR_MODE", "").strip().lower()
         self.native_mode = mode == "native"
         self.hybrid_mode = mode == "hybrid"
-        self.hybrid_speaker = (
-            os.environ.get("FLYGPT_HYBRID_SPEAKER", "v0.6.1").strip().lower()
-            if self.hybrid_mode else ""
-        )
+        self.hybrid_speaker = ""
         # Hybrid is opt-in and accepts only a dedicated, loopback language
         # generator. No implicit local model, auto-pull, or hosted API.
         self.local_only = self.hybrid_mode or (
             enabled(os.environ.get("FLYGPT_LOCAL_ONLY")) and not self.native_mode
         )
-        self.url = (
-            os.environ.get("FLYGPT_HYBRID_URL", "").strip()
-            if self.hybrid_mode else
-            ("" if self.native_mode else os.environ.get("FLYGPT_GENERATOR_URL", "").strip())
-        )
-        self.model = (
-            os.environ.get("FLYGPT_HYBRID_MODEL", "").strip()
-            if self.hybrid_mode else
-            ("" if self.native_mode else os.environ.get("FLYGPT_GENERATOR_MODEL", "").strip())
-        )
+        self.url = self.model = ""
+        if self.v05_local:
+            self.hybrid_speaker = "v0.6.1"
+        elif self.hybrid_mode:
+            self.hybrid_speaker = os.environ.get("FLYGPT_HYBRID_SPEAKER", "v0.6.1").strip().lower()
+            self.url = os.environ.get("FLYGPT_HYBRID_URL", "").strip()
+            self.model = os.environ.get("FLYGPT_HYBRID_MODEL", "").strip()
+        elif not self.native_mode:
+            self.url = os.environ.get("FLYGPT_GENERATOR_URL", "").strip()
+            self.model = os.environ.get("FLYGPT_GENERATOR_MODEL", "").strip()
         if self.local_only and not self.hybrid_mode:
             # A stale Gemini key must never turn on hosted generation.
             self.url = self.url or DEFAULT_LOCAL_GENERATOR_URL
@@ -444,6 +446,8 @@ class GeneratorRuntime:
 
     @property
     def provider_name(self) -> str:
+        if self.v05_local:
+            return V061_PROVIDER
         if self.native_mode:
             return "papiti-native"
         if self.hybrid_mode:
@@ -463,7 +467,8 @@ class GeneratorRuntime:
             "local_only": self.local_only,
             "local_endpoint_allowed": self.local_endpoint_allowed,
             "provider": self.provider_name,
-            "model": ("Papiti Native v1" if self.native_mode else self.model or None),
+            "model": (V061_MODEL if self.v05_local else
+                      "Papiti Native v1" if self.native_mode else self.model or None),
             "native_mode": self.native_mode,
             "hybrid_mode": self.hybrid_mode,
             "hybrid_speaker_requested": self.hybrid_speaker or None,
@@ -994,6 +999,50 @@ class GeneratorRuntime:
         return [item for item in facts[:12] if isinstance(item, dict)]
 
 
+    def generate_v061(
+        self, plan: dict[str, Any], *, budget_seconds: float,
+    ) -> GenerationResult:
+        """Speak a completed upstream plan using only the local checkpoint."""
+        started = time.perf_counter()
+        answer = error = None
+        code = "hybrid_neural_rejected"
+        if plan.get("semantic_steps") and trusted_fact_fallback(plan) is None:
+            code = error = "invalid_semantic_plan"
+        elif not supports_v061_plan(plan):
+            code, error = "hybrid_speaker_unsupported", "unsupported_semantic_act"
+        elif not speech_checkpoint_present():
+            code, error = "hybrid_speaker_missing", "missing_checkpoint"
+        elif budget_seconds <= 0:
+            code = error = "timeout"
+        else:
+            try:
+                candidate = generate_speech(plan, timeout_seconds=min(20.0, budget_seconds))
+                error = check_candidate(plan, candidate)
+                if error is None and _contains_internal_plan(candidate):
+                    error = "internal_plan_leak"
+                if error is None and _contains_mouth_only_leak(candidate):
+                    error = "internal_metadata_leak"
+                if error is None and _wrong_output_language(candidate, plan):
+                    error = "wrong_output_language"
+                if error is None:
+                    answer = candidate
+            except (TimeoutError, TimeoutExpired):
+                code = error = "timeout"
+            except FileNotFoundError:
+                if speech_checkpoint_present():
+                    error = "speaker_python_missing"
+                else:
+                    code, error = "hybrid_speaker_missing", "missing_checkpoint"
+            except (OSError, ValueError, RuntimeError) as exc:
+                error = type(exc).__name__
+
+        return GenerationResult(
+            used=answer is not None, provider=V061_PROVIDER, model=V061_MODEL,
+            answer=answer, error=error, error_code=code if error else None,
+            finish_reason="neural_semantic_realization" if answer is not None else None,
+            latency_ms=round((time.perf_counter() - started) * 1000),
+        )
+
     def generate(
         self,
         message: str,
@@ -1055,36 +1104,12 @@ class GeneratorRuntime:
 
             speaker_error = None
             if ready_plan and self.hybrid_speaker == "v0.6.1":
-                if not supports_v061_plan(utterance_plan):
-                    # The tiny speaker was never trained for this meaning.
-                    # Do not run it and accept memorized introduction text.
-                    speaker_error = "unsupported_semantic_act"
-                elif speech_checkpoint_present():
-                    try:
-                        candidate = generate_speech(
-                            utterance_plan,
-                            timeout_seconds=min(20.0, float(budget_seconds or self.budget)),
-                        )
-                        speaker_error = check_candidate(utterance_plan, candidate)
-                        if speaker_error is None and _contains_internal_plan(candidate):
-                            speaker_error = "internal_plan_leak"
-                        if speaker_error is None and _contains_mouth_only_leak(candidate):
-                            speaker_error = "internal_metadata_leak"
-                        if speaker_error is None and _wrong_output_language(candidate, utterance_plan):
-                            speaker_error = "wrong_output_language"
-                        if speaker_error is None:
-                            return GenerationResult(
-                                used=True,
-                                provider="papiti-hybrid-v0.6.1",
-                                model="papiti-language-v0.6.1",
-                                answer=candidate,
-                                finish_reason="neural_semantic_realization",
-                                latency_ms=round((time.perf_counter() - started) * 1000),
-                            )
-                    except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
-                        speaker_error = type(exc).__name__
-                else:
-                    speaker_error = "missing_checkpoint"
+                speech = self.generate_v061(
+                    utterance_plan, budget_seconds=float(budget_seconds or self.budget),
+                )
+                if speech.used:
+                    return replace(speech, latency_ms=round((time.perf_counter() - started) * 1000))
+                speaker_error = speech.error
 
             # A local endpoint is a second language model, not Native fallback.
             if not (self.url and self.model and self.local_endpoint_allowed):
