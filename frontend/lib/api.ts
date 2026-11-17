@@ -83,10 +83,13 @@ export type ResearchSource = {
   age?: string[];
 };
 
+export type AnswerSource = Pick<ResearchSource, "url" | "title">;
+
 export type ResearchResult = {
   query: string;
   provider: string;
   sources: ResearchSource[];
+  answer_sources?: AnswerSource[];
   retrieved_at: number;
   error?: string | null;
   http_status?: number | null;

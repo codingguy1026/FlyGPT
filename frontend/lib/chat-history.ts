@@ -1,3 +1,5 @@
+import type { AnswerSource } from "./api";
+
 export type MessageMeta = {
   text: string;
   tone?: "good" | "info" | "warn" | "muted";
@@ -7,6 +9,7 @@ export type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  sources?: AnswerSource[];
   meta?: MessageMeta[];
   learning?: {
     prompt: string;
@@ -55,6 +58,9 @@ function isMessage(input: unknown): input is Message {
   if (!input || typeof input !== "object") return false;
   const item = input as Partial<Message>;
   if (typeof item.id !== "string" || (item.role !== "user" && item.role !== "assistant") || typeof item.content !== "string") return false;
+  if (item.sources !== undefined && (!Array.isArray(item.sources) || !item.sources.every(source =>
+    source && typeof source.title === "string" && typeof source.url === "string" && /^https?:\/\//i.test(source.url)
+  ))) return false;
   if (item.meta !== undefined && (!Array.isArray(item.meta) || !item.meta.every(meta => meta && typeof meta.text === "string"))) return false;
   if (item.learning !== undefined && (!item.learning || typeof item.learning.prompt !== "string" || typeof item.learning.route !== "string")) return false;
   return true;

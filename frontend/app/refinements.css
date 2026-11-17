@@ -169,3 +169,15 @@
 .flightApp .historyExport:hover:not(:disabled) {
   background: rgba(var(--accent-rgb), .15);
 }
+
+.messageSources {
+  margin: 0.65rem 0 0;
+  padding-inline-start: 1.5rem;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.messageSources a {
+  color: inherit;
+  text-decoration: underline;
+}
