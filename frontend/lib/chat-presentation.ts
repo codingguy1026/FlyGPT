@@ -133,9 +133,10 @@ export function buildMessageMeta(response: ChatResponse): MessageMeta[] {
       }
 
       const research = response.data?.research;
-      if ((research?.sources?.length ?? 0) > 0) {
+      const sourceCount = (research?.answer_sources ?? research?.sources ?? []).length;
+      if (sourceCount > 0) {
         meta.push({
-          text: "WEB · " + research!.sources.length + " sources",
+          text: "WEB · " + sourceCount + (sourceCount === 1 ? " source" : " sources"),
           tone: "info",
         });
       } else if (response.router?.route === "research" && research?.error) {

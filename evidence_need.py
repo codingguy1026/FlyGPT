@@ -18,9 +18,9 @@ _BROWSE_REQUEST = re.compile(
     re.I,
 )
 _QUESTION = re.compile(
-    r"(?:[?？]|(?:뭐|무엇|누구|언제|어디|왜|어떻게|어느|"
+    r"(?:뭐|무엇|누구|언제|어디|왜|어떻게|어느|"
     r"몇|알려\s*줘|설명해\s*줘|정리해\s*줘|정보|"
-    r"\bwho\b|\bwhat\b|\bwhere\b|\bwhen\b|\bwhy\b|\bhow\b|\bwhich\b))",
+    r"\bwho\b|\bwhat\b|\bwhere\b|\bwhen\b|\bwhy\b|\bhow\b|\bwhich\b)",
     re.I,
 )
 _PAST_CHAT = re.compile(
@@ -84,6 +84,7 @@ def decide_evidence(
     *,
     ready_plan: bool = False,
     verified_local_evidence: bool = False,
+    allow_question_mark_only: bool = True,
 ) -> EvidenceDecision:
     """Conservative external search for unanswered *public factual* requests.
 
@@ -111,7 +112,9 @@ def decide_evidence(
     if _LOCAL_PROMPT.fullmatch(text):
         return EvidenceDecision(False, False, "social")
     explicit = bool(_BROWSE_REQUEST.search(text))
-    is_question = bool(_QUESTION.search(text))
+    is_question = bool(_QUESTION.search(text)) or (
+        allow_question_mark_only and ("?" in text or "？" in text)
+    )
     grounded_story_request = (
         bool(_GROUNDED_STORY_TOPIC.search(text))
         and bool(_STORY_REQUEST.search(text))

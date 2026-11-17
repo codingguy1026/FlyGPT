@@ -1,12 +1,18 @@
 """Papiti v0.5 tool policy and local v0.6.1 speech pipeline."""
 from __future__ import annotations
 
+import re
 import time
+from dataclasses import asdict
 from typing import Any
 
 from brain_runtime import FlyBrainRuntime
 from dispatcher import run_math_tool
+from evidence_need import decide_evidence
+from generator_runtime import GenerationResult
 from papiti_lm.v0_6_1_data import EVERYDAY_SPEECH_ACTS, SOCIAL_SPEECH_ACTS
+from research_runtime import ResearchResult
+from web_answer import compose_web_answer
 
 _TOOL_ORDER = ("memory_lookup", "web_search", "calculator")
 _brain = FlyBrainRuntime()
@@ -15,11 +21,11 @@ _brain = FlyBrainRuntime()
 def _tool_results(
     message: str, selected: list[str], *,
     memory: Any, research: Any, session_id: str | None,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any] | None, str | None]:
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], ResearchResult | None, str | None]:
     """Execute each selected tool independently, with bounded evidence."""
     reports: list[dict[str, Any]] = []
     memory_hits: list[dict[str, Any]] = []
-    research_data = None
+    research_result = None
     calculation = None
 
     for name in _TOOL_ORDER:
@@ -39,11 +45,10 @@ def _tool_results(
                 reports.append({"tool": name, "status": "unavailable"})
         elif name == "web_search":
             try:
-                retrieved = research.search(message)
-                research_data = retrieved.to_dict()
+                research_result = research.search(message)
                 reports.append({
                     "tool": name,
-                    "status": "retrieved" if retrieved.used else "no_evidence",
+                    "status": "retrieved" if research_result.used else "no_evidence",
                 })
             except Exception:
                 reports.append({"tool": name, "status": "unavailable"})
@@ -56,7 +61,7 @@ def _tool_results(
                 })
             except (ArithmeticError, ValueError, OverflowError):
                 reports.append({"tool": name, "status": "failed"})
-    return reports, memory_hits, research_data, calculation
+    return reports, memory_hits, research_result, calculation
 
 
 def _utterance_plan(
@@ -82,6 +87,37 @@ def _utterance_plan(
     )["utterance_plan"]
 
 
+def _answer_search(
+    message: str, result: ResearchResult | None, research_data: dict[str, Any] | None,
+) -> tuple[dict[str, Any], GenerationResult]:
+    started = time.perf_counter()
+    response = compose_web_answer(message, result)
+    if response:
+        answer, sources = response
+        if research_data is not None:
+            research_data["answer_sources"] = [asdict(source) for source in sources]
+        act = "answer_from_web_evidence"
+    else:
+        korean = bool(re.search(r"[가-힣]", message))
+        if result is None or result.error:
+            answer = "지금은 웹 검색을 할 수 없어." if korean else "Web search is unavailable right now."
+        else:
+            answer = (
+                "검색 결과에서 이 질문에 답할 만한 근거를 찾지 못했어."
+                if korean else "I couldn’t find relevant evidence for that question in the search results."
+            )
+        act = "report_no_external_evidence"
+    return {"speech_act": act}, GenerationResult(
+        used=response is not None,
+        provider="papiti-web-evidence",
+        model=None,
+        answer=answer,
+        error_code=None if response else "web_evidence_unavailable",
+        finish_reason="sourced_excerpts" if response else None,
+        latency_ms=round((time.perf_counter() - started) * 1000),
+    )
+
+
 def run_v05_chat(
     message: str, *,
     policy: Any, memory: Any, research: Any, generator: Any,
@@ -99,11 +135,23 @@ def run_v05_chat(
     if selected and _brain.is_standalone_social(message):
         selected = []
 
+    local_plan = None
+    search_fallback = None
+    if not selected:
+        local_plan = _utterance_plan(message, {"selected_capabilities": []}, [], None, None)
+        evidence = decide_evidence(
+            message, ready_plan=bool(local_plan.get("ready")), allow_question_mark_only=False,
+        )
+        if evidence.search:
+            selected = ["web_search"]
+            search_fallback = evidence.reason
+
     # The new path NEVER calls the old six-category router or dispatch().
-    reports, memory_hits, research_data, calculation = _tool_results(
+    reports, memory_hits, research_result, calculation = _tool_results(
         message, selected, memory=memory, research=research,
         session_id=session_id,
     )
+    research_data = research_result.to_dict() if research_result is not None else None
     tools_ms = round((time.perf_counter() - start) * 1000)
     model_name = getattr(policy, "name", "papiti-v0.5-category-free-166700")
     route = {
@@ -122,17 +170,24 @@ def run_v05_chat(
         "all_curated_neurons_attended": True,
         "trace": [],  # Never fabricate neuronal firing.
     }
+    if search_fallback:
+        route["web_search_fallback"] = search_fallback
 
-    plan = _utterance_plan(message, route, memory_hits, research_data, calculation)
-    if plan.get("speech_act") in SOCIAL_SPEECH_ACTS - {"return_greeting"} and recent_messages:
-        for index in range(len(recent_messages) - 2, -1, -1):
-            previous, reply = recent_messages[index:index + 2]
-            if (previous.get("role") == "user" and previous.get("content") == message
-                    and reply.get("role") == "assistant" and isinstance(reply.get("content"), str)):
-                plan["previous_reply"] = reply["content"]
-                break
-    remaining = budget_seconds - (time.perf_counter() - start)
-    generation = generator.generate_v061(plan, budget_seconds=remaining)
+    if selected == ["web_search"]:
+        plan, generation = _answer_search(message, research_result, research_data)
+    else:
+        plan = local_plan if local_plan is not None else _utterance_plan(
+            message, route, memory_hits, research_data, calculation,
+        )
+        if plan.get("speech_act") in SOCIAL_SPEECH_ACTS - {"return_greeting"} and recent_messages:
+            for index in range(len(recent_messages) - 2, -1, -1):
+                previous, reply = recent_messages[index:index + 2]
+                if (previous.get("role") == "user" and previous.get("content") == message
+                        and reply.get("role") == "assistant" and isinstance(reply.get("content"), str)):
+                    plan["previous_reply"] = reply["content"]
+                    break
+        remaining = budget_seconds - (time.perf_counter() - start)
+        generation = generator.generate_v061(plan, budget_seconds=remaining)
     error = generation.error_code
     answer = generation.answer
     if error == "hybrid_speaker_missing":
@@ -149,7 +204,7 @@ def run_v05_chat(
             "파피티 v0.6.1은 아직 이 질문에 답할 수 없어. "
             "인사나 간단한 계산을 물어봐 줘."
         )
-    elif not generation.used:
+    elif not generation.used and not answer:
         answer = "🪰 파피티 v0.6.1이 발화 계획에 맞는 답변을 생성하지 못했어."
 
     total_ms = round((time.perf_counter() - start) * 1000)

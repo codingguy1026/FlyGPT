@@ -170,6 +170,22 @@ function appendMessage(sender, content, meta = null) {
   bubble.appendChild(contentNode);
 
   if (meta && sender === 'assistant') {
+    if (meta.sources?.length) {
+      const sources = document.createElement('ol');
+      sources.setAttribute('aria-label', '답변 출처');
+      for (const source of meta.sources) {
+        if (!/^https?:\/\//i.test(source.url)) continue;
+        const item = document.createElement('li');
+        const link = document.createElement('a');
+        link.href = source.url;
+        link.target = '_blank';
+        link.rel = 'noreferrer';
+        link.textContent = source.title;
+        item.appendChild(link);
+        sources.appendChild(item);
+      }
+      if (sources.childElementCount) bubble.appendChild(sources);
+    }
     const metaRow = document.createElement('div');
     metaRow.className = 'message-meta';
 
@@ -608,7 +624,10 @@ chatForm.addEventListener('submit', async (event) => {
       });
     }
 
-    appendMessage('assistant', data.answer, { items: metaItems });
+    appendMessage('assistant', data.answer, {
+      items: metaItems,
+      sources: data.data?.research?.answer_sources,
+    });
 
     if (data.router) {
       renderRoute(data.router);

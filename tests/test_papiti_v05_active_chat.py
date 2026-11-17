@@ -13,6 +13,7 @@ from unittest.mock import patch
 from generator_runtime import GeneratorRuntime
 from papiti_v05_chat import run_v05_chat
 from papiti_v05_runtime import v05_enabled
+from research_runtime import ResearchResult, WebSource
 
 
 class FakePolicy:
@@ -61,17 +62,25 @@ class FakeMemory:
 
 
 class FakeResearch:
-    def __init__(self, used=True):
-        self.used = used
+    def __init__(self, used=True, sources=None, error=None):
+        self.sources = sources if sources is not None else ([web_source("default")] if used else [])
+        self.error = error
         self.calls = []
 
     def search(self, message):
         self.calls.append(message)
-        return SimpleNamespace(
-            used=self.used,
-            context=lambda: "Official source: https://example.org/verified",
-            to_dict=lambda: {"provider": "fixture", "sources": [{"url": "https://example.org/verified"}]},
+        return ResearchResult(
+            query=message, provider="fixture", sources=self.sources, retrieved_at=0,
+            error=self.error,
         )
+
+
+def web_source(slug, *snippets, title="자료"):
+    return WebSource(
+        url=f"https://example.org/{slug}", title=title,
+        hostname="example.org", root_domain="example.org",
+        snippets=list(snippets), age=[], authority=0.75,
+    )
 
 
 def execute(text, *, selected=None, session_id="user-session", generator=None,
@@ -261,17 +270,69 @@ class MainV05PolicyTests(unittest.TestCase):
         self.assertEqual(result["data"]["v05_error_code"], "hybrid_speaker_missing")
         self.assertIn("make papiti-lm-train-v0.6.1", result["answer"])
 
-    def test_untrained_questions_and_search_plans_report_unsupported(self):
+    def test_untrained_questions_and_empty_search_have_distinct_responses(self):
         with patch("generator_runtime.generate_speech") as speaker:
-            general, *_ = execute("사과와 바나나의 공통점이 뭐야?")
+            general, *_ = execute("검색 없이 사과와 바나나의 공통점이 뭐야?")
             search, *_ = execute(
                 "오늘 경기 결과를 알려줘", selected=["web_search"], research=FakeResearch(used=False)
             )
         self.assertFalse(general["data"]["generation"]["used"])
         self.assertEqual(general["data"]["v05_error_code"], "hybrid_speaker_unsupported")
-        self.assertEqual(search["data"]["v05_error_code"], "hybrid_speaker_unsupported")
+        self.assertEqual(search["data"]["v05_error_code"], "web_evidence_unavailable")
+        self.assertIn("근거를 찾지 못했어", search["answer"])
         self.assertEqual(search["data"]["brain_state"]["tool_reports"][0]["status"], "no_evidence")
         speaker.assert_not_called()
+
+    def test_search_answers_new_questions_with_attributed_evidence(self):
+        cases = (
+            ("에뮤 전쟁은 왜 시작됐어?", "에뮤 떼의 농작물 피해로 에뮤 전쟁이 시작됐어.", "emu"),
+            ("훈민정음은 언제 반포됐어?", "훈민정음은 1446년에 반포되었어.", "hunminjeongeum"),
+            ("Why does the Moon shine?", "The Moon shines because it reflects sunlight.", "moon"),
+        )
+        for question, evidence, slug in cases:
+            source = web_source(slug, evidence)
+            unrelated = web_source("unrelated", "서울 한강에는 여러 개의 다리가 있어.")
+            search = FakeResearch(sources=[unrelated, source])
+            with self.subTest(question=question), patch("generator_runtime.generate_speech") as speaker:
+                result, *_ = execute(question, research=search)
+                self.assertIn(f"{evidence} [1]", result["answer"])
+                self.assertEqual(result["route"]["selected_capabilities"], ["web_search"])
+                self.assertEqual(result["route"]["web_search_fallback"], "unanswered_public_question")
+                self.assertEqual(result["data"]["research"]["answer_sources"],
+                                 [{"url": source.url, "title": source.title}])
+                self.assertEqual(result["data"]["generation"]["finish_reason"], "sourced_excerpts")
+                self.assertEqual(search.calls, [question])
+                speaker.assert_not_called()
+
+    def test_search_cites_only_selected_sentences_and_preserves_source_order(self):
+        search = FakeResearch(sources=[
+            web_source("one", "에뮤 전쟁은 농작물 피해 때문에 시작됐습니다."),
+            web_source("duplicate", "에뮤 전쟁은 농작물 피해 때문에 시작됐습니다."),
+            web_source("two", "에뮤 전쟁에선 추가 피해를 막기 위해 군대가 배치되었습니다."),
+            web_source("three", "에뮤 전쟁은 농작물 피해 때문에 시작됐습니다."),
+        ])
+        result, *_ = execute("에뮤 전쟁은 왜 시작됐어?", selected=["web_search"], research=search)
+        self.assertEqual(result["answer"], "에뮤 전쟁은 농작물 피해 때문에 시작됐어. [1] "
+                         "에뮤 전쟁에선 추가 피해를 막기 위해 군대가 배치됐어. [2]")
+        self.assertEqual([source["url"] for source in result["data"]["research"]["answer_sources"]],
+                         ["https://example.org/one", "https://example.org/two"])
+
+    def test_search_fallback_respects_private_context_and_opt_out(self):
+        for question in ("내가 전에 왜 그렇게 말했지?", "검색 없이 에뮤 전쟁은 왜 시작됐어?", "괜찮아?"):
+            with self.subTest(question=question):
+                _, _, research, _, _ = execute(question)
+                self.assertEqual(research.calls, [])
+
+    def test_search_skips_unrelated_results_and_reports_provider_failure(self):
+        for research, expected in (
+            (FakeResearch(sources=[web_source("unrelated", "서울 한강에는 여러 개의 다리가 있어.")]),
+             "근거를 찾지 못했어"),
+            (FakeResearch(used=False, error="provider offline"), "웹 검색을 할 수 없어"),
+        ):
+            with self.subTest(expected=expected):
+                result, *_ = execute("에뮤 전쟁은 왜 시작됐어?", selected=["web_search"], research=research)
+                self.assertIn(expected, result["answer"])
+                self.assertNotIn("answer_sources", result["data"]["research"])
 
     def test_invalid_tool_selection_fails_closed(self):
         with self.assertRaisesRegex(ValueError, "unsupported tool"):
@@ -305,12 +366,13 @@ class MainV05PolicyTests(unittest.TestCase):
             learn_from_user_text=lambda user, text: [],
         )
         request = SimpleNamespace(cookies={})
+        source = web_source("emu", "에뮤 떼의 농작물 피해로 에뮤 전쟁이 시작됐어.")
         with (
             patch.object(app, "_require_user", return_value={"id": "test-v05"}),
             patch.object(app, "_scoped_session_id", return_value="session-v05"),
             patch.object(app, "_memory", memory),
             patch.object(app, "_knowledge", knowledge),
-            patch.object(app, "_research", FakeResearch()),
+            patch.object(app, "_research", FakeResearch(sources=[source])),
             patch.object(app, "_generator", generator),
             patch("generator_runtime.speech_checkpoint_present", return_value=True),
             patch("generator_runtime.generate_speech", return_value="안녕!") as speaker,
@@ -322,10 +384,16 @@ class MainV05PolicyTests(unittest.TestCase):
                 app.ChatRequest(message="안녕"),
                 request,
             )
+            search_result = app.chat_endpoint(
+                app.ChatRequest(message="에뮤 전쟁은 왜 시작됐어?"),
+                request,
+            )
         self.assertEqual(result["router"]["model_version"], "v0.5")
         self.assertTrue(result["router"]["category_free"])
+        self.assertIn("농작물 피해", search_result["answer"])
+        self.assertEqual(search_result["data"]["research"]["answer_sources"][0]["url"], source.url)
         speaker.assert_called_once()
-        self.assertEqual(len(memory.add_calls), 2)
+        self.assertEqual(len(memory.add_calls), 4)
 
 
 if __name__ == "__main__":

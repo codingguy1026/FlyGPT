@@ -284,6 +284,7 @@ export default function FlyGPTApp({
           id: makeId("assistant"),
           role: "assistant",
           content: response.answer,
+          sources: response.data?.research?.answer_sources?.filter(source => /^https?:\/\//i.test(source.url)),
           meta,
           learning: response.router && !response.router.category_free
             ? {
@@ -704,6 +705,16 @@ export default function FlyGPTApp({
                   <div className="messagePayload">
                     <div className="messageBubble">
                       <div className="messageText">{message.content}</div>
+
+                      {message.sources && message.sources.length > 0 && (
+                        <ol className="messageSources" aria-label="답변 출처">
+                          {message.sources.map(source => (
+                            <li key={source.url}>
+                              <a href={source.url} target="_blank" rel="noreferrer">{source.title}</a>
+                            </li>
+                          ))}
+                        </ol>
+                      )}
 
                       {message.meta && message.meta.length > 0 && (
                         <div className="messageMeta">
