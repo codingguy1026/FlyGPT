@@ -1212,7 +1212,9 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 answer=result_v05["answer"],
                 response_type=result_v05["response_type"],
                 data=result_v05["data"], route=result_v05["route"],
-                session_id=session_id, timings=result_v05["timings"],
+                session_id=(session_id if result_v05["data"]["v05_error_code"]
+                            != "hybrid_new_wording_unavailable" else None),
+                timings=result_v05["timings"],
             )
 
         _emit_live_trace({"type": "status", "phase": "router_loading"})
@@ -1615,7 +1617,10 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 # Report actionable failures without exposing raw provider error
                 # bodies, credentials, or private request details in chat prose.
                 failure = generation.error_code or ""
-                if failure in {
+                if failure == "hybrid_new_wording_unavailable":
+                    answer = "🪰 이번에는 같은 뜻을 다른 문장으로 표현하지 못했어요."
+                    mode_label = f"{result.route} · hybrid_new_wording_unavailable"
+                elif failure in {
                     "hybrid_language_model_required", "hybrid_speaker_missing",
                     "hybrid_speaker_unsupported",
                     "hybrid_neural_rejected", "hybrid_local_endpoint_blocked",
@@ -1763,7 +1768,8 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 response_type="dispatch",
                 data=data,
                 route=route,
-                session_id=session_id,
+                session_id=(session_id if generation.error_code
+                            != "hybrid_new_wording_unavailable" else None),
             )
 
         if Path(MODEL_PATH).is_file() and _router_error:

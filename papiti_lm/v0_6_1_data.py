@@ -23,6 +23,12 @@ SOCIAL_SPEECH_ACTS = frozenset({
     "return_welcome", "request_specific_task",
 }) | EVERYDAY_SPEECH_ACTS
 MIRROR_GREETING_PREFIX = "Mirror greeting: "
+DELIVERY_STYLES = ("direct", "brief", "warm", "casual")
+
+
+def delivery_packet(packet: str, style: str) -> str:
+    """A style cue changes how to speak, without changing the facts to speak."""
+    return f"Delivery: {style}\n{packet}"
 
 
 def packet_text(plan: dict[str, Any], *, mirror_greetings: bool = False) -> str:
@@ -126,7 +132,7 @@ def _greeting_examples(seed: int) -> SpeechCorpus:
 
 def create_corpus(
     seed: int = 42, *, diverse_social: bool = False, mirror_greetings: bool = False,
-    everyday_dialogue: bool = False,
+    everyday_dialogue: bool = False, phrasing_cues: bool = False,
 ) -> SpeechCorpus:
     """Training examples use original human prose and verified upstream content.
 
@@ -170,9 +176,12 @@ def create_corpus(
         targets = answers if diverse_social else answers[:1]
         originals[key] = [Example("social:" + plan["speech_act"], key, answer)
                           for answer in targets]
-    # Project facts are selected and grounded by Python, not fabricated by a
-    # language model. Train on their approved exact meanings, then require
-    # verbatim preservation in inference for fact-bearing plans.
+    # The model can learn different ways to present the same facts. These are
+    # supervised examples only; inference still checks each exact fact unit.
+    fact_leads = {
+        "ko": ("", "간단히 말하면, ", "먼저 핵심부터 말할게. ", "조금 풀어 말해 볼게. "),
+        "en": ("", "Here's a quick explanation. ", "Let me explain. ", "Here's the short version. "),
+    }
     for prompt in ("너 누구야?", "파피티 이름은?", "파피티 뇌가 뭐야?",
                    "뭐 할 수 있어?", "MaleCNS가 뭐야?", "What is MaleCNS?"):
         plan = _sample_plan(prompt)
@@ -180,7 +189,9 @@ def create_corpus(
             answer = trusted_fact_fallback(plan)
             if answer:
                 key = packet_text(plan)
-                originals[key] = [Example("facts:" + plan["speech_act"], key, answer)]
+                leads = fact_leads[plan["style"]["language"]] if phrasing_cues else ("",)
+                originals[key] = [Example("facts:" + plan["speech_act"], key, lead + answer)
+                                  for lead in leads]
     numeric = [Example("verified-number", packet_text(_math_plan(value)), str(value))
                for value in range(200)]
     rng = random.Random(seed)
@@ -211,6 +222,14 @@ def create_corpus(
             train.extend(rows[i % len(rows)] for i in range(count))
     else:
         train = [rows[0] for rows in groups] * 12
+    if phrasing_cues:
+        # Teach separable delivery cues as well as ordinary, unhinted prose.
+        # The runtime sends only a cue and the plan, never a target sentence.
+        for rows in groups:
+            for index, style in enumerate(DELIVERY_STYLES):
+                row = rows[index % len(rows)]
+                example = Example(row.group, delivery_packet(row.user, style), row.assistant)
+                train.extend([example] * 12)
     train.extend(train_numbers)
     if mirror_greetings:
         greetings = _greeting_examples(seed)

@@ -11,6 +11,7 @@ import unittest
 from unittest.mock import patch
 
 from generator_runtime import GeneratorRuntime
+from hybrid_speech import reply_key
 from papiti_v05_chat import run_v05_chat
 from papiti_v05_runtime import v05_enabled
 
@@ -196,25 +197,29 @@ class MainV05PolicyTests(unittest.TestCase):
                     self.assertEqual(result["data"]["brain_state"]["speech_act"], "unresolved")
             speaker.assert_not_called()
 
-    def test_repeated_social_turn_passes_its_previous_reply(self):
+    def test_repeated_social_turn_passes_reply_keys_including_greetings(self):
         prompt = "오늘 좋은 일이 생겼어"
         history = [
             {"role": "user", "content": prompt},
             {"role": "assistant", "content": "좋은 일이라니 반갑다!"},
             {"role": "user", "content": "고마워"},
             {"role": "assistant", "content": "별말씀을요."},
+            {"role": "user", "content": prompt},
+            {"role": "assistant", "content": "와, 듣기 좋다!"},
         ]
         with (
             patch("generator_runtime.speech_checkpoint_present", return_value=True),
             patch("generator_runtime.generate_speech", return_value="오, 좋은 소식이네!") as speaker,
         ):
             execute(prompt, recent_messages=history)
-            self.assertEqual(speaker.call_args.args[0]["previous_reply"], "좋은 일이라니 반갑다!")
+            self.assertEqual(speaker.call_args.kwargs["avoid_reply_keys"],
+                             (reply_key("와, 듣기 좋다!"), reply_key("좋은 일이라니 반갑다!")))
+            self.assertNotIn("previous_reply", speaker.call_args.args[0])
             execute("안녕", recent_messages=[
                 {"role": "user", "content": "안녕"},
                 {"role": "assistant", "content": "안녕"},
             ])
-            self.assertNotIn("previous_reply", speaker.call_args.args[0])
+            self.assertEqual(speaker.call_args.kwargs["avoid_reply_keys"], (reply_key("안녕"),))
 
     def test_all_three_tools_still_execute_without_speaking_a_partial_plan(self):
         query = "전에 말한 비용과 현재 가격을 찾아서 17 × 23은 몇인지 계산해 줘"
