@@ -9,8 +9,8 @@ import "./papiti-orbit.css";
 import "./malecns-observatory.css";
 
 export const metadata: Metadata = {
-  title: "papiti. | 생각이 움직이는 공간",
-  description: "파피티, 호기심이 생각으로 연결되는 AI 대화 공간",
+  title: "FlyGPT | 초파리의 뇌에서 시작된 AI",
+  description: "FlyGPT(파피티)는 초파리의 뉴런 연결망을 활용하는 실험적인 대화형 AI 프로젝트입니다.",
   icons: {
     icon: "/papiti-mark.svg",
   },
