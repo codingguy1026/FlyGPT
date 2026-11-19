@@ -6,7 +6,8 @@ from typing import Any
 
 from brain_runtime import FlyBrainRuntime
 from dispatcher import run_math_tool
-from papiti_lm.v0_6_1_data import EVERYDAY_SPEECH_ACTS, SOCIAL_SPEECH_ACTS
+from hybrid_speech import recent_reply_keys
+from papiti_lm.v0_6_1_data import EVERYDAY_SPEECH_ACTS
 
 _TOOL_ORDER = ("memory_lookup", "web_search", "calculator")
 _brain = FlyBrainRuntime()
@@ -124,15 +125,11 @@ def run_v05_chat(
     }
 
     plan = _utterance_plan(message, route, memory_hits, research_data, calculation)
-    if plan.get("speech_act") in SOCIAL_SPEECH_ACTS - {"return_greeting"} and recent_messages:
-        for index in range(len(recent_messages) - 2, -1, -1):
-            previous, reply = recent_messages[index:index + 2]
-            if (previous.get("role") == "user" and previous.get("content") == message
-                    and reply.get("role") == "assistant" and isinstance(reply.get("content"), str)):
-                plan["previous_reply"] = reply["content"]
-                break
     remaining = budget_seconds - (time.perf_counter() - start)
-    generation = generator.generate_v061(plan, budget_seconds=remaining)
+    generation = generator.generate_v061(
+        plan, budget_seconds=remaining,
+        avoid_reply_keys=recent_reply_keys(message, recent_messages),
+    )
     error = generation.error_code
     answer = generation.answer
     if error == "hybrid_speaker_missing":
@@ -149,6 +146,8 @@ def run_v05_chat(
             "파피티 v0.6.1은 아직 이 질문에 답할 수 없어. "
             "인사나 간단한 계산을 물어봐 줘."
         )
+    elif error == "hybrid_new_wording_unavailable":
+        answer = "🪰 이번에는 같은 뜻을 다른 문장으로 표현하지 못했어요."
     elif not generation.used:
         answer = "🪰 파피티 v0.6.1이 발화 계획에 맞는 답변을 생성하지 못했어."
 

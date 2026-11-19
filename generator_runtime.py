@@ -15,7 +15,7 @@ from typing import Any
 from semantic_planner import trusted_fact_fallback
 from native_realizer import realize_native
 from hybrid_speech import checkpoint_present as speech_checkpoint_present
-from hybrid_speech import generate_speech, check_candidate, supports_v061_plan
+from hybrid_speech import check_candidate, generate_speech, recent_reply_keys, supports_v061_plan
 from papiti_v05_runtime import v05_enabled
 from local_generator_policy import (
     DEFAULT_LOCAL_GENERATOR_URL,
@@ -1001,9 +1001,12 @@ class GeneratorRuntime:
 
     def generate_v061(
         self, plan: dict[str, Any], *, budget_seconds: float,
+        avoid_reply_keys: tuple[str, ...] = (),
     ) -> GenerationResult:
         """Speak a completed upstream plan using only the local checkpoint."""
         started = time.perf_counter()
+        if plan.get("speech_act") == "state_exact_math_result":
+            avoid_reply_keys = ()
         answer = error = None
         code = "hybrid_neural_rejected"
         if plan.get("semantic_steps") and trusted_fact_fallback(plan) is None:
@@ -1016,8 +1019,14 @@ class GeneratorRuntime:
             code = error = "timeout"
         else:
             try:
-                candidate = generate_speech(plan, timeout_seconds=min(20.0, budget_seconds))
-                error = check_candidate(plan, candidate)
+                candidate = generate_speech(
+                    plan, timeout_seconds=min(20.0, budget_seconds),
+                    avoid_reply_keys=avoid_reply_keys,
+                )
+                error = check_candidate(plan, candidate, avoid_reply_keys=avoid_reply_keys)
+                if avoid_reply_keys and error in {"empty_speech", "repeated_reply"}:
+                    code = "hybrid_new_wording_unavailable"
+                    error = "no_valid_new_wording"
                 if error is None and _contains_internal_plan(candidate):
                     error = "internal_plan_leak"
                 if error is None and _contains_mouth_only_leak(candidate):
@@ -1077,11 +1086,13 @@ class GeneratorRuntime:
                 error_code=None if answer else "native_plan_unavailable",
             )
 
+        avoid_reply_keys: tuple[str, ...] = ()
         if self.hybrid_mode:
             # Hybrid never silently substitutes deterministic Native prose.
             # v0.6.1 verbalizes completed meaning; an explicitly configured
             # loopback language model can process authorized open-ended tasks.
             started = time.perf_counter()
+            hybrid_budget = self.budget if budget_seconds is None else min(self.budget, budget_seconds)
             utterance_plan = (brain_state or {}).get("utterance_plan")
             ready_plan = (
                 isinstance(utterance_plan, dict)
@@ -1103,9 +1114,11 @@ class GeneratorRuntime:
                 )
 
             speaker_error = None
+            if ready_plan and utterance_plan.get("speech_act") != "state_exact_math_result":
+                avoid_reply_keys = recent_reply_keys(message, memory_context)
             if ready_plan and self.hybrid_speaker == "v0.6.1":
                 speech = self.generate_v061(
-                    utterance_plan, budget_seconds=float(budget_seconds or self.budget),
+                    utterance_plan, budget_seconds=hybrid_budget, avoid_reply_keys=avoid_reply_keys,
                 )
                 if speech.used:
                     return replace(speech, latency_ms=round((time.perf_counter() - started) * 1000))
@@ -1122,6 +1135,9 @@ class GeneratorRuntime:
                 elif speaker_error == "missing_checkpoint":
                     failure = "hybrid_speaker_missing"
                     detail = "v0.6.1 speech checkpoint is not installed"
+                elif speaker_error == "no_valid_new_wording":
+                    failure = "hybrid_new_wording_unavailable"
+                    detail = "No new wording passed validation for this plan"
                 elif speaker_error:
                     failure = "hybrid_neural_rejected"
                     detail = f"v0.6.1 speech rejected: {speaker_error}"
@@ -1138,6 +1154,7 @@ class GeneratorRuntime:
                     latency_ms=round((time.perf_counter() - started) * 1000),
                 )
             # An optional local model goes through existing semantic gates.
+            budget_seconds = max(0.0, hybrid_budget - (time.perf_counter() - started))
 
         if self.local_only and not self.local_endpoint_allowed:
             return GenerationResult(
@@ -1209,6 +1226,14 @@ class GeneratorRuntime:
             knowledge_context=knowledge_context,
             brain_state=brain_state,
         )
+        if mouth_ready and avoid_reply_keys:
+            messages.insert(1, {
+                "role": "system",
+                "content": (
+                    "This is a repeated question. Use a fresh phrasing of the approved "
+                    "meaning. Preserve required facts, quoted material, and exact values."
+                ),
+            })
 
         total_started = time.perf_counter()
         effective_budget = self.budget
@@ -1287,7 +1312,7 @@ class GeneratorRuntime:
                     result.error = f"generated response rejected: {reason}"
             if result.used and result.answer and self.hybrid_mode and mouth_ready:
                 # Secondary models must preserve exact results and sourced facts.
-                semantic_error = check_candidate(plan, result.answer)
+                semantic_error = check_candidate(plan, result.answer, avoid_reply_keys=avoid_reply_keys)
                 if semantic_error is not None:
                     result.used = False
                     result.answer = None

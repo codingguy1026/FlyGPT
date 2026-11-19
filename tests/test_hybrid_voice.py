@@ -41,6 +41,31 @@ class PapitiHybridTests(unittest.TestCase):
         self.assertEqual(result.provider, "papiti-hybrid")
         self.assertTrue(runtime.status()["hybrid_model_configured"])
 
+    def test_secondary_hybrid_model_retries_a_repeated_reply_without_receiving_history(self):
+        old, new = "안녕! 반가워.", "만나서 반가워요."
+        with patch.dict(os.environ, {
+            "FLYGPT_GENERATOR_MODE": "hybrid",
+            "FLYGPT_HYBRID_SPEAKER": "legacy",
+            "FLYGPT_HYBRID_URL": "http://127.0.0.1:12345/v1/chat/completions",
+            "FLYGPT_HYBRID_MODEL": "experimental-small-model",
+            "FLYGPT_GENERATOR_RETRY_DELAY": "0",
+        }, clear=True):
+            runtime = GeneratorRuntime()
+            attempts = [
+                GenerationResult(used=True, provider="papiti-hybrid", model=runtime.model, answer=text)
+                for text in ("안녕 반가워!", new)
+            ]
+            with patch.object(runtime, "_generate_once", side_effect=attempts) as send:
+                result = runtime.generate(
+                    "안녕", "general", brain_state=plan_for("안녕"),
+                    memory_context=[{"role": "user", "content": "안녕"},
+                                    {"role": "assistant", "content": old}],
+                )
+        self.assertTrue(result.used)
+        self.assertEqual(result.answer, new)
+        self.assertEqual(send.call_count, 2)
+        self.assertNotIn(old, str(send.call_args_list))
+
     def test_unconfigured_hybrid_fails_closed_without_legacy_model_or_network(self):
         with patch.dict(os.environ, {
             "FLYGPT_GENERATOR_MODE": "hybrid",

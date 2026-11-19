@@ -6,29 +6,56 @@ completed utterance plan; it never receives a calculator implementation.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
 import re
 import subprocess
 import sys
+import unicodedata
 from typing import Any
 
 from papiti_lm.v0_6_1_data import EVERYDAY_SPEECH_ACTS, SOCIAL_SPEECH_ACTS, packet_text
+from semantic_planner import INTENT_FACT_IDS
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_CHECKPOINT = ROOT / "artifacts" / "papiti_language_v0_6_1.pt"
 _REPEATED_WORD = re.compile(r"(?<!\w)([가-힣A-Za-z]{2,})\s+\1(?!\w)")
+REPLY_HISTORY_LIMIT = 2
 
 # These speech acts have supervised examples in the small v0.6.1 corpus.
 # Other plans (notably live-search status and arbitrary sourced excerpts)
 # must go to a separately configured language model, not this tiny speaker.
-V061_TRAINED_SPEECH_ACTS = SOCIAL_SPEECH_ACTS | frozenset({
-    "introduce_flygpt",
-    "describe_supported_features",
-    "explain_malecns",
-    "state_exact_math_result",
-})
+V061_TRAINED_SPEECH_ACTS = SOCIAL_SPEECH_ACTS.union(INTENT_FACT_IDS, ("state_exact_math_result",))
+
+
+def reply_key(text: str) -> str:
+    """Treat changes in case, punctuation, and spacing as the same wording."""
+    normalized = unicodedata.normalize("NFKC", text).casefold().strip()
+    words = "".join(char for char in normalized if char.isalnum())
+    return hashlib.sha256((words or normalized).encode("utf-8")).hexdigest()
+
+
+def recent_reply_keys(
+    message: str, history: list[dict[str, Any]] | None,
+) -> tuple[str, ...]:
+    """Use only recent replies to this question from the current chat."""
+    def question_key(text: str) -> str:
+        return " ".join(unicodedata.normalize("NFKC", text).casefold().split()).rstrip(" .!?~")
+
+    key = question_key(message)
+    turns = history or []
+    avoided: dict[str, None] = {}
+    for index in range(len(turns) - 2, -1, -1):
+        previous, reply = turns[index:index + 2]
+        if (previous.get("role") == "user" and reply.get("role") == "assistant"
+                and question_key(str(previous.get("content", ""))) == key
+                and isinstance(reply.get("content"), str) and reply["content"].strip()):
+            avoided[reply_key(reply["content"])] = None
+            if len(avoided) == REPLY_HISTORY_LIMIT:
+                break
+    return tuple(avoided)
 
 
 def supports_v061_plan(plan: dict[str, Any]) -> bool:
@@ -74,7 +101,7 @@ def _speaker_checkpoint(plan: dict[str, Any]) -> Path:
     act = plan.get("speech_act")
     if act in EVERYDAY_SPEECH_ACTS:
         return base.with_name(f"{base.stem}_dialogue{base.suffix}")
-    if act in SOCIAL_SPEECH_ACTS:
+    if act in SOCIAL_SPEECH_ACTS or act in INTENT_FACT_IDS:
         social = base.with_name(f"{base.stem}_social{base.suffix}")
         if social.is_file():
             return social
@@ -97,7 +124,9 @@ def speech_python() -> str:
     return sys.executable
 
 
-def check_candidate(plan: dict[str, Any], answer: str) -> str | None:
+def check_candidate(
+    plan: dict[str, Any], answer: str, *, avoid_reply_keys: tuple[str, ...] = (),
+) -> str | None:
     """Reject unsupported/hallucinated outputs; never manufacture a reply."""
     try:
         packet_text(plan)
@@ -141,19 +170,31 @@ def check_candidate(plan: dict[str, Any], answer: str) -> str | None:
             return "wrong_language"
     if language == "en" and re.search(r"[가-힣]", answer):
         return "wrong_language"
+    if (speech_act != "state_exact_math_result" and avoid_reply_keys
+            and reply_key(answer) in avoid_reply_keys):
+        return "repeated_reply"
     return None
 
 
-def generate_speech(plan: dict[str, Any], timeout_seconds: float = 20.0) -> str:
+def generate_speech(
+    plan: dict[str, Any], timeout_seconds: float = 20.0, *,
+    avoid_reply_keys: tuple[str, ...] = (),
+) -> str:
     """Run *only* the trained Transformer, no Native realizer inside speaker."""
     packet_text(plan)  # Validate before serializing/untrusted subprocess input.
     path = _speaker_checkpoint(plan)
     if not path.is_file():
         raise FileNotFoundError(f"v0.6.1 checkpoint missing: {path}")
     seconds = min(30.0, max(0.1, float(timeout_seconds)))
+    command = [speech_python(), "-m", "papiti_lm.v0_6_1", "infer",
+               "--checkpoint", str(path), "--max-new-tokens", "96"]
+    base = checkpoint_path()
+    if path != base and base.is_file():
+        command.extend(("--base-checkpoint", str(base)))
+    for key in avoid_reply_keys[:REPLY_HISTORY_LIMIT]:
+        command.extend(("--avoid-reply-key", key))
     runner = subprocess.run(
-        [speech_python(), "-m", "papiti_lm.v0_6_1", "infer",
-         "--checkpoint", str(path), "--max-new-tokens", "96"],
+        command,
         input=json.dumps(plan, ensure_ascii=False),
         text=True, capture_output=True, timeout=seconds, cwd=ROOT,
         check=False,

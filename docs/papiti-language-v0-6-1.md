@@ -40,22 +40,24 @@ set FLYGPT_HYBRID_SPEECH_PYTHON to its Python executable. To choose
 another checkpoint set FLYGPT_HYBRID_SPEECH_CHECKPOINT.
 
 Run `make papiti-lm-train-v0.6.1-social` to train or update the companion
-checkpoint. The greeting plan supplies the user's greeting, and the speaker
-learns to return the same wording and punctuation through token prediction.
-The model predicts characters at their aligned input positions and an end
-token. The output must match the input greeting to pass validation. Thanks,
-farewells and simple help prompts use token sampling. Keep the
-original checkpoint for exact calculator results and project facts. For a
-custom checkpoint name, put the companion beside it with `_social` appended
-to its filename stem.
+checkpoint for varied greetings, short conversation and project descriptions.
+The speaker generates the whole reply from the brain's plan and a delivery
+cue. The cue changes the wording; all required fact units must still be present.
+There is no reply list or greeting-copy mode in live chat. An older copy-only
+companion uses the base model for greetings until retrained. Keep the base
+checkpoint for exact calculator results. For a custom checkpoint name, put
+the companion beside it with `_social` appended to its filename stem.
 
 Run `make papiti-lm-train-v0.6.1-dialogue` to add check-ins, good news,
 tiredness and laughter in Korean and English. The app uses this checkpoint
 for those standalone turns. For a custom base filename, give its companion
 the same name stem with `_dialogue` appended.
-The speaker samples different phrasings for supported social turns. When
-the same message is repeated in a chat, it tries to avoid its previous reply.
-Exact greetings and calculator results still preserve their required text.
+For the same question in one chat, the speaker rejects the last two distinct
+wordings, even if only the casing, spacing or punctuation has changed. The
+comparison stays outside the model prompt. If none of a small number of new
+generations passes the checks, the app reports a generation failure. Exact
+calculator results can repeat, and verified facts and source quotations must
+stay intact.
 The Korean good-news intent classifier can be rebuilt with
 `python -m training.train_good_news_intent`.
 

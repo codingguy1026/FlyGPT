@@ -91,19 +91,33 @@ jobs:
           print("REAL NEURAL HYBRID ACCEPTED:",accepted, "/4", flush=True)
           assert accepted>0, "Model did not produce any accepted social replies; fix training before merge"
           PY
-      - name: Train and verify the companion greeting checkpoint
+      - name: Train the companion and verify new wording in actual Hybrid replies
         run: |
           make papiti-lm-train-v0.6.1-social
           python -m papiti_lm.v0_6_1 eval \
             --checkpoint artifacts/papiti_language_v0_6_1_social.pt \
             --report reports/papiti_v0_6_1_social.json
           python - <<'PY'
-          import json
-          with open("reports/papiti_v0_6_1_social.json", encoding="utf-8") as file:
-              report = json.load(file)
-          greetings = [row for row in report["test_generations"]
-                       if row["purpose"] == "mirror-greeting"]
-          assert greetings and all(row["exact_match"] for row in greetings), greetings
+          import os
+          from brain_runtime import FlyBrainRuntime
+          from generator_runtime import GeneratorRuntime
+          from hybrid_speech import reply_key
+
+          os.environ["FLYGPT_GENERATOR_MODE"] = "hybrid"
+          brain = FlyBrainRuntime()
+          runtime = GeneratorRuntime()
+          for prompt in ("안녕", "고마워", "너 누구야?", "Hi!"):
+              history, wordings = [], set()
+              state = brain.plan(route_info={}, dispatch={"route": "general"}, message=prompt)
+              state = brain.finalize(state)
+              for _ in range(3):
+                  reply = runtime.generate(prompt, "general", brain_state=state, memory_context=history)
+                  assert reply.used and reply.provider == "papiti-hybrid-v0.6.1", (prompt, reply.error)
+                  print(prompt, "→", reply.answer, flush=True)
+                  wordings.add(reply_key(reply.answer))
+                  history.extend([{"role": "user", "content": prompt},
+                                  {"role": "assistant", "content": reply.answer}])
+              assert len(wordings) == 3, (prompt, history)
           PY
       - name: Train and exercise the everyday dialogue checkpoint
         run: |

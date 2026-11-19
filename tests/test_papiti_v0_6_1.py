@@ -10,7 +10,8 @@ from unittest.mock import patch, Mock
 
 from brain_runtime import FlyBrainRuntime
 from generator_runtime import GeneratorRuntime
-from hybrid_speech import check_candidate, generate_speech, supports_v061_plan
+from hybrid_speech import check_candidate, generate_speech, reply_key, supports_v061_plan
+from papiti_lm.v0_6_1 import _fresh_wording
 from papiti_lm.v0_6_1_data import create_corpus, packet_text
 
 
@@ -72,6 +73,27 @@ class SemanticContractTests(unittest.TestCase):
                 packet = json.loads(row.user)
                 expected = packet["content"][0]["value"].removeprefix("Exact math tool result: ")
                 self.assertEqual(row.assistant, expected)
+
+    def test_varied_fact_training_repeats_the_meaning_in_different_wording(self):
+        plan = plan_for("너 누구야?")["utterance_plan"]
+        corpus = create_corpus(diverse_social=True, phrasing_cues=True)
+        answers = {row.assistant for row in corpus.train if row.user == packet_text(plan)}
+        self.assertGreaterEqual(len({reply_key(answer) for answer in answers}), 3)
+        self.assertTrue(all(check_candidate(plan, answer) is None for answer in answers))
+        self.assertFalse(any(row.group == "mirror-greeting" for row in corpus.train))
+
+    def test_new_wording_skips_cosmetic_changes_and_rejected_candidates(self):
+        plan = plan_for("안녕")["utterance_plan"]
+        decode = Mock(side_effect=["안녕 !", "반가워~", '{"speech_act":"return_greeting"}', "만나서 반가워."])
+        result = _fresh_wording(plan, decode, (reply_key("안녕"), reply_key("반가워!")))
+        self.assertEqual(result, "만나서 반가워.")
+        self.assertGreater(decode.call_args_list[0].kwargs["temperature"], 0)
+
+    def test_no_valid_new_wording_never_replays_an_old_answer(self):
+        plan = plan_for("안녕")["utterance_plan"]
+        decode = Mock(return_value="안녕!")
+        self.assertEqual(_fresh_wording(plan, decode, (reply_key("안녕"),)), "")
+        self.assertLessEqual(decode.call_count, 6)
 
     def test_social_companion_speaks_greetings_while_math_uses_base(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -206,12 +228,14 @@ class SemanticContractTests(unittest.TestCase):
                 "hybrid_speech.subprocess.run",
                 return_value=Mock(returncode=0, stdout="안녕!\n", stderr=""),
             ) as proc:
-                answer = generate_speech(plan)
+                answer = generate_speech(plan, avoid_reply_keys=(reply_key("이전 대화의 답변"),))
         self.assertEqual(answer, "안녕!")
         command = proc.call_args.args[0]
         self.assertEqual(command[:3], ["python-fixture", "-m", "papiti_lm.v0_6_1"])
         self.assertEqual(json.loads(proc.call_args.kwargs["input"])["speech_act"],
                          "return_greeting")
+        self.assertNotIn("이전 대화의 답변", proc.call_args.kwargs["input"])
+        self.assertEqual(command[-2:], ["--avoid-reply-key", reply_key("이전 대화의 답변")])
 
 
 class HybridIntegrationTests(unittest.TestCase):
@@ -245,6 +269,42 @@ class HybridIntegrationTests(unittest.TestCase):
         self.assertEqual(result.provider, "papiti-hybrid")
         self.assertEqual(result.error_code, "hybrid_neural_rejected")
         self.assertIn("repetitive_speech", result.error)
+
+    def test_repeated_question_rejects_neural_duplicate(self):
+        history = [
+            {"role": "user", "content": "안녕!"},
+            {"role": "assistant", "content": "안녕! 반가워."},
+            {"role": "user", "content": "고마워"},
+            {"role": "assistant", "content": "천만에."},
+        ]
+        with self._runtime():
+            runtime = GeneratorRuntime()
+            with patch("generator_runtime.speech_checkpoint_present", return_value=True), \
+                 patch("generator_runtime.generate_speech", return_value="안녕, 반가워!") as speaker, \
+                 patch("generator_runtime.realize_native") as native:
+                result = runtime.generate("안녕", "general", brain_state=plan_for("안녕"),
+                                          memory_context=history)
+        self.assertEqual(speaker.call_args.kwargs["avoid_reply_keys"], (reply_key("안녕! 반가워."),))
+        self.assertEqual(result.error_code, "hybrid_new_wording_unavailable")
+        self.assertFalse(result.used)
+        self.assertIsNone(result.answer)
+        native.assert_not_called()
+
+    def test_repeated_exact_result_can_still_be_identical(self):
+        context = "Exact math tool result: 42"
+        with self._runtime():
+            runtime = GeneratorRuntime()
+            with patch("generator_runtime.speech_checkpoint_present", return_value=True), \
+                 patch("generator_runtime.generate_speech", return_value="42") as speaker:
+                result = runtime.generate(
+                    "6*7", "math", brain_state=plan_for("6*7", "math", context),
+                    tool_context=context, memory_context=[
+                        {"role": "user", "content": "6*7"},
+                        {"role": "assistant", "content": "42"},
+                    ],
+                )
+        self.assertEqual(result.answer, "42")
+        self.assertEqual(speaker.call_args.kwargs["avoid_reply_keys"], ())
 
     def test_unresolved_request_never_promoted_to_neural_thought(self):
         with self._runtime():

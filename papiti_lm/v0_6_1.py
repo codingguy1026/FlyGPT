@@ -16,7 +16,7 @@ def _train(args):
     from papiti_lm.cli import _collate, _evaluate, _torch
     from papiti_lm.corpus import DigitSubwordTokenizer
     from papiti_lm.model import ModelConfig, PapitiTransformer, save_checkpoint
-    from papiti_lm.v0_6_1_data import create_corpus, greeting_sequence
+    from papiti_lm.v0_6_1_data import create_corpus
     from torch.utils.data import DataLoader
 
     torch = _torch()
@@ -28,8 +28,8 @@ def _train(args):
     torch.manual_seed(args.seed)
     random.seed(args.seed)
     corpus = create_corpus(
-        args.seed, diverse_social=args.diverse_social, mirror_greetings=args.diverse_social,
-        everyday_dialogue=args.everyday_dialogue,
+        args.seed, diverse_social=args.diverse_social,
+        everyday_dialogue=args.everyday_dialogue, phrasing_cues=args.diverse_social,
     )
     tokenizer = DigitSubwordTokenizer.from_examples(corpus.train, max_merges=256)
     config = ModelConfig(
@@ -37,13 +37,8 @@ def _train(args):
         heads=args.heads, layers=args.layers, dropout=0.1,
     )
     model = PapitiTransformer(config)
-    def encode(row):
-        if row.group == "mirror-greeting":
-            return greeting_sequence(tokenizer, row.user, row.assistant)
-        return tokenizer.sequence(row, config.context)
-
-    training = [encode(row) for row in corpus.train]
-    validation = [encode(row) for row in corpus.valid]
+    training = [tokenizer.sequence(row, config.context) for row in corpus.train]
+    validation = [tokenizer.sequence(row, config.context) for row in corpus.valid]
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=0.01)
     print(
         f"v0.6.1 model-only speech | random init | "
@@ -80,7 +75,7 @@ def _train(args):
                 "role": "brain_conditioned_language_realizer_only",
                 "initialization": "random_from_scratch",
                 "diverse_social_targets": args.diverse_social,
-                "mirror_greetings": args.diverse_social,
+                "phrasing_cues": args.diverse_social,
                 "everyday_dialogue": args.everyday_dialogue,
                 "seed": args.seed, "epoch": epoch,
                 "val_char_nll": score["char_nll"],
@@ -126,6 +121,7 @@ def _eval(args):
         diverse_social=metadata.get("diverse_social_targets") is True,
         mirror_greetings=metadata.get("mirror_greetings") is True,
         everyday_dialogue=metadata.get("everyday_dialogue") is True,
+        phrasing_cues=metadata.get("phrasing_cues") is True,
     )
     test_sequences = [
         greeting_sequence(tokenizer, row.user, row.assistant) if row.group == "mirror-greeting"
@@ -170,49 +166,68 @@ def _eval(args):
     print(json.dumps(report, ensure_ascii=False, indent=2), flush=True)
 
 
+def _fresh_wording(
+    plan, decode, avoid_reply_keys: tuple[str, ...], *,
+    delivery_styles: tuple[str, ...] = (),
+) -> str:
+    from hybrid_speech import check_candidate
+
+    # Keep ordinary requests cheap; repeated turns get a few more chances.
+    if delivery_styles:
+        styles = random.sample(delivery_styles, len(delivery_styles))
+        guided = styles if avoid_reply_keys else styles[:2]
+        attempts = [(style, 0.32) for style in guided] + [(None, 0.65), (None, 0.0)]
+    else:
+        temperatures = (0.5, 0.6, 0.65, 0.72, 0.72, 0.0) if avoid_reply_keys else (0.5, 0.62, 0.0)
+        attempts = [(None, temperature) for temperature in temperatures]
+    for style, temperature in attempts:
+        answer = decode(style=style, temperature=temperature, top_k=5)
+        if check_candidate(plan, answer, avoid_reply_keys=avoid_reply_keys) is None:
+            return answer
+    return ""
+
+
 def _infer(args):
     """Only checkpoint-driven token prediction; does not load training examples."""
     from papiti_lm.cli import _torch
     from papiti_lm.model import generate, load_checkpoint
-    from papiti_lm.v0_6_1_data import EVERYDAY_SPEECH_ACTS, SOCIAL_SPEECH_ACTS, packet_text
+    from hybrid_speech import REPLY_HISTORY_LIMIT
+    from papiti_lm.v0_6_1_data import DELIVERY_STYLES, EVERYDAY_SPEECH_ACTS, delivery_packet, packet_text
+    from semantic_planner import INTENT_FACT_IDS
 
     torch = _torch()
     torch.set_num_threads(min(4, torch.get_num_threads()))
-    model, tokenizer, metadata = load_checkpoint(args.checkpoint)
-    if metadata.get("version") != "v0.6.1":
-        raise ValueError("v0.6.1 semantic speaker checkpoint required")
     plan = json.loads(sys.stdin.read())
     packet = packet_text(plan)
-    act = plan.get("speech_act")
+    act = plan["speech_act"]
+    model, tokenizer, metadata = load_checkpoint(args.checkpoint)
+    # The old companion learned to copy greetings and had no ordinary
+    # greeting targets. Use the base speaker until it is retrained.
+    if args.base_checkpoint and (
+        (act == "return_greeting" and metadata.get("mirror_greetings") is True)
+        or (act in INTENT_FACT_IDS and metadata.get("phrasing_cues") is not True)
+    ):
+        model, tokenizer, metadata = load_checkpoint(args.base_checkpoint)
+    if metadata.get("version") != "v0.6.1":
+        raise ValueError("v0.6.1 semantic speaker checkpoint required")
     if act in EVERYDAY_SPEECH_ACTS and metadata.get("everyday_dialogue") is not True:
         raise ValueError("update the social checkpoint for everyday dialogue")
-    mirror = metadata.get("mirror_greetings") is True and act == "return_greeting"
-    if mirror:
-        answer = _generate_greeting(model, tokenizer, packet_text(plan, mirror_greetings=True))
-        if answer != plan["greeting"]:
-            raise ValueError("model did not reproduce the source greeting")
-        print(answer, flush=True)
-        return
-    sample = metadata.get("diverse_social_targets") is True and act in SOCIAL_SPEECH_ACTS
-    if sample:
-        from hybrid_speech import check_candidate
+    if act == "return_greeting" and metadata.get("mirror_greetings") is True:
+        raise ValueError("retrain the companion checkpoint for generative greetings")
 
-        previous = plan.get("previous_reply")
-        repeated = None
-        for _ in range(6 if previous else 3):
-            answer = generate(model, tokenizer, packet, temperature=0.42, top_k=4,
-                              max_new_tokens=args.max_new_tokens)
-            if check_candidate(plan, answer) is None:
-                if answer.strip() == previous:
-                    repeated = answer
-                    continue
-                print(answer, flush=True)
-                return
-        if repeated is not None:
-            print(repeated, flush=True)
-            return
-    answer = generate(model, tokenizer, packet, temperature=0, max_new_tokens=args.max_new_tokens)
-    print(answer, flush=True)
+    def decode(*, style=None, **options):
+        text = delivery_packet(packet, style) if style else packet
+        return generate(model, tokenizer, text, max_new_tokens=args.max_new_tokens, **options)
+
+    if act == "state_exact_math_result":
+        answer = decode(temperature=0)
+    else:
+        answer = _fresh_wording(
+            plan, decode, tuple(args.avoid_reply_key[:REPLY_HISTORY_LIMIT]),
+            delivery_styles=DELIVERY_STYLES if metadata.get("phrasing_cues") is True else (),
+        )
+    if answer:
+        print(answer, flush=True)
 
 
 def main(argv=None):
@@ -239,6 +254,8 @@ def main(argv=None):
     evaluation.add_argument("--batch-size", type=int, default=16)
     evaluation.set_defaults(func=_eval)
     infer.add_argument("--max-new-tokens", type=int, default=96)
+    infer.add_argument("--base-checkpoint")
+    infer.add_argument("--avoid-reply-key", action="append", default=[])
     infer.set_defaults(func=_infer)
     args = parser.parse_args(argv)
     return args.func(args)

@@ -58,6 +58,7 @@ speech plans, not fixed answers at runtime.
 ```bash
 make train-setup
 make papiti-lm-train-v0.6.1
+make papiti-lm-train-v0.6.1-social
 make papiti-lm-eval-v0.6.1
 make hybrid
 ```
@@ -82,11 +83,9 @@ v0.6.1 alone cannot reason about them. To disable this experiment, set
 `make hybrid` combines the native reply engine with an **optional local
 language model**. In the historical v0.1 mode, verified plans (greetings, exact calculations,
 checked FlyGPT facts and retrieved memory) answered deterministically.
-The newer v0.6.1 mode attempts a conditioned neural realization first and
-retains deterministic Native fallback.
-Only a validated open-ended `bounded_task_v1` plan may be sent to a language
-model. Unsupported requests still receive the native limitation message if no
-local model is configured.
+Current Hybrid uses the neural response path described above; Native is a
+separate mode selected with `make native`. Open-ended requests still need
+an authorized task plan and a configured language model.
 
 ```bash
 make hybrid
