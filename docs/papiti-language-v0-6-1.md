@@ -48,6 +48,12 @@ companion uses the base model for greetings until retrained. Keep the base
 checkpoint for exact calculator results. For a custom checkpoint name, put
 the companion beside it with `_social` appended to its filename stem.
 
+Run `make papiti-lm-train-v0.6.1-greetings` to enable compositional Korean
+greetings. This companion learns separate opening and follow-up cues and
+withholds complete combinations for evaluation. The worker checks generated
+parts for valid wording and rejects complete replies found in training.
+The checkpoint filename uses the same base stem with `_greetings` appended.
+
 Run `make papiti-lm-train-v0.6.1-dialogue` to add check-ins, good news,
 tiredness and laughter in Korean and English. The app uses this checkpoint
 for those standalone turns. For a custom base filename, give its companion

@@ -18,7 +18,7 @@ def _train(args):
     from papiti_lm.cli import _collate, _evaluate, _torch
     from papiti_lm.corpus import DigitSubwordTokenizer
     from papiti_lm.model import ModelConfig, PapitiTransformer, save_checkpoint
-    from papiti_lm.v0_6_1_data import create_corpus
+    from papiti_lm.v0_6_1_data import create_corpus, greeting_fingerprints
     from torch.utils.data import DataLoader
 
     torch = _torch()
@@ -32,7 +32,9 @@ def _train(args):
     corpus = create_corpus(
         args.seed, diverse_social=args.diverse_social,
         everyday_dialogue=args.everyday_dialogue, phrasing_cues=args.diverse_social,
+        compositional_greetings=args.compositional_greetings,
     )
+    fingerprints = greeting_fingerprints(corpus) if args.compositional_greetings else {}
     tokenizer = DigitSubwordTokenizer.from_examples(corpus.train, max_merges=256)
     config = ModelConfig(
         tokenizer.vocab_size, context=args.context, d_model=args.d_model,
@@ -78,6 +80,8 @@ def _train(args):
                 "initialization": "random_from_scratch",
                 "diverse_social_targets": args.diverse_social,
                 "phrasing_cues": args.diverse_social,
+                "compositional_greetings": args.compositional_greetings,
+                "greeting_fingerprints": fingerprints,
                 "everyday_dialogue": args.everyday_dialogue,
                 "seed": args.seed, "epoch": epoch,
                 "val_char_nll": score["char_nll"],
@@ -110,6 +114,7 @@ def _generate_greeting(model, tokenizer, packet: str) -> str:
 
 
 def _eval(args):
+    from hybrid_speech import reply_key
     from papiti_lm.cli import _evaluate, _torch
     from papiti_lm.model import generate, load_checkpoint
     from papiti_lm.v0_6_1_data import create_corpus, greeting_sequence
@@ -124,6 +129,7 @@ def _eval(args):
         mirror_greetings=metadata.get("mirror_greetings") is True,
         everyday_dialogue=metadata.get("everyday_dialogue") is True,
         phrasing_cues=metadata.get("phrasing_cues") is True,
+        compositional_greetings=metadata.get("compositional_greetings") is True,
     )
     test_sequences = [
         greeting_sequence(tokenizer, row.user, row.assistant) if row.group == "mirror-greeting"
@@ -134,6 +140,7 @@ def _eval(args):
         model, test_sequences,
         args.batch_size, sum(len(row.assistant) + 1 for row in corpus.test),
     )
+    training_replies = set(metadata.get("greeting_fingerprints", {}).get("replies", ()))
     results = []
     for row in corpus.test:
         if row.group == "mirror-greeting":
@@ -144,12 +151,15 @@ def _eval(args):
         else:
             answer = generate(model, tokenizer, row.user, max_new_tokens=64,
                               temperature=0, top_k=12)
-        results.append({
+        result = {
             "purpose": row.group,
             "expected": row.assistant,
             "generated": answer,
             "exact_match": answer.strip() == row.assistant,
-        })
+        }
+        if row.group == "compositional-greeting":
+            result["matches_training_reply"] = reply_key(answer) in training_replies
+        results.append(result)
     report = {
         "version": "v0.6.1", "test_metrics": metric,
         "unseen_exact_match_count": sum(row["exact_match"] for row in results),
@@ -191,7 +201,22 @@ def _fresh_wording(
     return ""
 
 
-@lru_cache(maxsize=3)
+def _novel_greeting(plan, packet, decode, fingerprints, avoid_reply_keys) -> str:
+    from hybrid_speech import check_candidate, reply_key
+    from papiti_lm.v0_6_1_data import GREETING_CUES, greeting_packet, greeting_parts
+
+    blocked = (*fingerprints["replies"], *avoid_reply_keys)
+    openings, followups = set(fingerprints["openings"]), set(fingerprints["followups"])
+    for opening, followup in random.sample(GREETING_CUES, len(GREETING_CUES)):
+        answer = decode(greeting_packet(packet, opening, followup))
+        parts = greeting_parts(answer)
+        if (parts and reply_key(parts[0]) in openings and reply_key(parts[1]) in followups
+                and check_candidate(plan, answer, avoid_reply_keys=blocked) is None):
+            return answer
+    return ""
+
+
+@lru_cache(maxsize=4)
 def _load_speaker(path: Path, _revision: tuple[int, int, int]):
     from papiti_lm.model import load_checkpoint
 
@@ -210,7 +235,9 @@ def _infer_answer(plan, checkpoint, *, base_checkpoint=None, alternate_checkpoin
     """Only checkpoint-driven token prediction; does not load training examples."""
     from papiti_lm.model import generate
     from hybrid_speech import REPLY_HISTORY_LIMIT
-    from papiti_lm.v0_6_1_data import DELIVERY_STYLES, EVERYDAY_SPEECH_ACTS, delivery_packet, packet_text
+    from papiti_lm.v0_6_1_data import (
+        DELIVERY_STYLES, EVERYDAY_SPEECH_ACTS, delivery_packet, is_korean_greeting, packet_text,
+    )
     from semantic_planner import INTENT_FACT_IDS
 
     packet = packet_text(plan)
@@ -229,6 +256,18 @@ def _infer_answer(plan, checkpoint, *, base_checkpoint=None, alternate_checkpoin
         raise ValueError("update the social checkpoint for everyday dialogue")
     if act == "return_greeting" and metadata.get("mirror_greetings") is True:
         raise ValueError("retrain the companion checkpoint for generative greetings")
+    if metadata.get("compositional_greetings") is True and is_korean_greeting(plan):
+        fingerprints = metadata.get("greeting_fingerprints")
+        if not fingerprints:
+            raise ValueError("compositional greeting checkpoint lacks training fingerprints")
+
+        def decode_greeting(text):
+            return generate(model, tokenizer, text, max_new_tokens=max_new_tokens, temperature=0)
+
+        return _novel_greeting(
+            plan, packet, decode_greeting, fingerprints,
+            avoid_reply_keys[:REPLY_HISTORY_LIMIT],
+        )
 
     def realize(speaker):
         speaker_model, speaker_tokenizer, speaker_metadata = speaker
@@ -307,6 +346,7 @@ def main(argv=None):
     train.add_argument("--seed", type=int, default=42)
     train.add_argument("--diverse-social", action="store_true")
     train.add_argument("--everyday-dialogue", action="store_true")
+    train.add_argument("--compositional-greetings", action="store_true")
     train.add_argument("--epochs", type=int, default=12)
     train.add_argument("--patience", type=int, default=5)
     train.add_argument("--batch-size", type=int, default=16)

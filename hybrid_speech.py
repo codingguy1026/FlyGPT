@@ -20,7 +20,9 @@ import time
 import unicodedata
 from typing import Any
 
-from papiti_lm.v0_6_1_data import EVERYDAY_SPEECH_ACTS, SOCIAL_SPEECH_ACTS, packet_text
+from papiti_lm.v0_6_1_data import (
+    EVERYDAY_SPEECH_ACTS, SOCIAL_SPEECH_ACTS, is_korean_greeting, packet_text,
+)
 from semantic_planner import INTENT_FACT_IDS
 
 ROOT = Path(__file__).resolve().parent
@@ -103,6 +105,9 @@ def checkpoint_path() -> Path:
 def _speaker_checkpoints(plan: dict[str, Any]) -> tuple[Path, ...]:
     base = checkpoint_path()
     act = plan.get("speech_act")
+    greetings = base.with_stem(base.stem + "_greetings")
+    if is_korean_greeting(plan) and greetings.is_file():
+        return (greetings,)
     dialogue = base.with_name(f"{base.stem}_dialogue{base.suffix}")
     if act in EVERYDAY_SPEECH_ACTS:
         return (dialogue,)
@@ -261,7 +266,8 @@ def warm_speech_worker() -> None:
     """Start importing PyTorch before the first chat, if weights are installed."""
     base = checkpoint_path()
     candidates = (base, base.with_stem(base.stem + "_social"),
-                  base.with_stem(base.stem + "_dialogue"))
+                  base.with_stem(base.stem + "_dialogue"),
+                  base.with_stem(base.stem + "_greetings"))
     if any(path.is_file() for path in candidates):
         with _worker_lock:
             _get_worker()
