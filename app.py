@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import asynccontextmanager
 from contextvars import ContextVar
 import json
 import os
@@ -30,6 +31,7 @@ from chain_reasoner import solve_chain
 from verified_realizer import realize_verified
 from dispatcher import dispatch, dispatch_math_fast_path, is_math_fast_path
 from generator_runtime import GENERATIVE_ROUTES, GeneratorRuntime
+from hybrid_speech import stop_speech_worker, warm_speech_worker
 from local_generator_policy import enabled as local_generation_enabled
 from memory_store import MemoryStore, format_recall
 from route_learning import RouteLearningStore
@@ -94,10 +96,24 @@ else:
         _model_candidates[0],
     )
 
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    if v05_enabled() or (_generator.hybrid_mode and _generator.hybrid_speaker == "v0.6.1"):
+        try:
+            warm_speech_worker()
+        except (OSError, ValueError) as exc:
+            print(f"[SPEECH] warmup_failed type={type(exc).__name__}", flush=True)
+    try:
+        yield
+    finally:
+        stop_speech_worker()
+
+
 app = FastAPI(
     title="FlyGPT",
     version=APP_VERSION,
     description="Drosophila Connectome Chat Interface with routing, generation, and local conversation memory",
+    lifespan=_lifespan,
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -1212,8 +1228,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 answer=result_v05["answer"],
                 response_type=result_v05["response_type"],
                 data=result_v05["data"], route=result_v05["route"],
-                session_id=(session_id if result_v05["data"]["v05_error_code"]
-                            != "hybrid_new_wording_unavailable" else None),
+                session_id=session_id if result_v05["data"]["generation"]["used"] else None,
                 timings=result_v05["timings"],
             )
 

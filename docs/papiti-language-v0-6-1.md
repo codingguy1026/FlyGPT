@@ -35,7 +35,7 @@ artifacts/papiti_language_v0_6_1.pt before make hybrid. There is no
 automatic model download or implicit training on app startup.
 
 The train-setup command creates a CPU PyTorch .venv-train used by
-training and subprocess inference. If PyTorch is in another virtualenv,
+training and the local speech worker. If PyTorch is in another virtualenv,
 set FLYGPT_HYBRID_SPEECH_PYTHON to its Python executable. To choose
 another checkpoint set FLYGPT_HYBRID_SPEECH_CHECKPOINT.
 
@@ -117,9 +117,12 @@ supplied verified result, NOT whether it can calculate addition.
 Known limitations: This training corpus is very small and cannot
 establish good open-domain Korean. Strict fact checks may reject many
 generated outputs. This is intentional: it protects verified upstream
-meaning and makes fallback behavior honest. The local subprocess adds
-startup and inference latency. No model is silently marked production
-ready merely because CI succeeds.
+meaning and makes fallback behavior honest. The backend starts a local speech
+worker when the speaker is enabled and weights are present. It reuses the
+loaded weights, while each turn still generates a fresh reply from its plan.
+Queueing and inference share the existing time budget. A timed-out worker
+is discarded so its unfinished reply cannot be used for another turn.
+No model is silently marked production ready merely because CI succeeds.
 
 ## First measured experiment, 2026-11-12
 

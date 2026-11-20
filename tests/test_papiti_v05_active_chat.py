@@ -300,7 +300,7 @@ class MainV05PolicyTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "invariants"):
                 PapitiV05PolicyRuntime(filename)
 
-    def test_actual_app_does_not_invoke_old_categorical_router(self):
+    def test_actual_app_uses_v05_and_only_saves_successful_speech(self):
         import app
         memory = FakeMemory()
         policy = FakePolicy()
@@ -327,10 +327,14 @@ class MainV05PolicyTests(unittest.TestCase):
                 app.ChatRequest(message="안녕"),
                 request,
             )
+            speaker.assert_called_once()
+            speaker.side_effect = TimeoutError
+            timed_out = app.chat_endpoint(app.ChatRequest(message="안녕"), request)
         self.assertEqual(result["router"]["model_version"], "v0.5")
         self.assertTrue(result["router"]["category_free"])
-        speaker.assert_called_once()
-        self.assertEqual(len(memory.add_calls), 2)
+        self.assertEqual(timed_out["data"]["generation"]["error_code"], "timeout")
+        self.assertIn("시간이 너무 오래 걸렸어", timed_out["answer"])
+        self.assertEqual([call[1] for call in memory.add_calls], ["user", "assistant", "user"])
 
 
 if __name__ == "__main__":

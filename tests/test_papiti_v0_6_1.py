@@ -4,14 +4,17 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import patch, Mock
 
 from brain_runtime import FlyBrainRuntime
 from generator_runtime import GeneratorRuntime
 from hybrid_speech import check_candidate, generate_speech, reply_key, supports_v061_plan
-from papiti_lm.v0_6_1 import _fresh_wording
+from hybrid_speech import _request_speech, stop_speech_worker
+from papiti_lm.v0_6_1 import _fresh_wording, _load_speaker, _speaker_model
 from papiti_lm.v0_6_1_data import create_corpus, packet_text
 
 
@@ -103,12 +106,12 @@ class SemanticContractTests(unittest.TestCase):
                 path.touch()
             with (
                 patch.dict(os.environ, {"FLYGPT_HYBRID_SPEECH_CHECKPOINT": str(base)}),
-                patch("hybrid_speech.subprocess.run", return_value=Mock(returncode=0, stdout="reply")) as proc,
+                patch("hybrid_speech._request_speech", return_value="reply") as worker,
             ):
                 generate_speech(plan_for("안녕")["utterance_plan"])
-                self.assertIn(str(companion), proc.call_args.args[0])
+                self.assertEqual(worker.call_args.args[0]["checkpoint"], str(companion.resolve()))
                 generate_speech(plan_for("6*7", "math", "Exact math tool result: 42")["utterance_plan"])
-                self.assertIn(str(base), proc.call_args.args[0])
+                self.assertEqual(worker.call_args.args[0]["checkpoint"], str(base.resolve()))
 
     def test_math_candidate_never_replaced_by_calculator(self):
         plan = plan_for("6*7", "math", "Exact math tool result: 42")["utterance_plan"]
@@ -127,10 +130,9 @@ class SemanticContractTests(unittest.TestCase):
                 self.assertFalse(checkpoint_present(plan))
                 dialogue.touch()
                 self.assertTrue(checkpoint_present(plan))
-                with patch("hybrid_speech.subprocess.run",
-                           return_value=Mock(returncode=0, stdout="피곤했겠다.")) as proc:
+                with patch("hybrid_speech._request_speech", return_value="피곤했겠다.") as worker:
                     self.assertEqual(generate_speech(plan), "피곤했겠다.")
-                self.assertIn(str(dialogue), proc.call_args.args[0])
+                self.assertEqual(worker.call_args.args[0]["checkpoint"], str(dialogue.resolve()))
 
     def test_meaning_and_repetition_guard(self):
         plan = plan_for("안녕")["utterance_plan"]
@@ -216,26 +218,61 @@ class SemanticContractTests(unittest.TestCase):
         speaker.assert_not_called()
         self.assertEqual(result.error_code, "hybrid_speaker_unsupported")
 
-    def test_bridge_uses_only_local_python_no_http(self):
+    def test_bridge_sends_plan_and_digests_without_reply_history(self):
         plan = plan_for("안녕")["utterance_plan"]
         with tempfile.TemporaryDirectory() as temp:
             checkpoint = Path(temp) / "trained.pt"
             checkpoint.write_bytes(b"fixture")  # subprocess is mocked, not loaded
             with patch.dict(os.environ, {
                 "FLYGPT_HYBRID_SPEECH_CHECKPOINT": str(checkpoint),
-                "FLYGPT_HYBRID_SPEECH_PYTHON": "python-fixture",
             }, clear=False), patch(
-                "hybrid_speech.subprocess.run",
-                return_value=Mock(returncode=0, stdout="안녕!\n", stderr=""),
-            ) as proc:
+                "hybrid_speech._request_speech", return_value="안녕!",
+            ) as worker:
                 answer = generate_speech(plan, avoid_reply_keys=(reply_key("이전 대화의 답변"),))
         self.assertEqual(answer, "안녕!")
-        command = proc.call_args.args[0]
-        self.assertEqual(command[:3], ["python-fixture", "-m", "papiti_lm.v0_6_1"])
-        self.assertEqual(json.loads(proc.call_args.kwargs["input"])["speech_act"],
-                         "return_greeting")
-        self.assertNotIn("이전 대화의 답변", proc.call_args.kwargs["input"])
-        self.assertEqual(command[-2:], ["--avoid-reply-key", reply_key("이전 대화의 답변")])
+        payload = worker.call_args.args[0]
+        self.assertEqual(payload["plan"]["speech_act"], "return_greeting")
+        self.assertNotIn("이전 대화의 답변", json.dumps(payload, ensure_ascii=False))
+        self.assertEqual(payload["avoid_reply_keys"], (reply_key("이전 대화의 답변"),))
+
+
+class SpeechWorkerLifecycleTests(unittest.TestCase):
+    def test_reuses_worker_and_discards_timed_out_reply(self):
+        command = [sys.executable, "-c", """
+import json, os, sys, time
+for line in sys.stdin:
+    request = json.loads(line)
+    if request.get('stall'):
+        time.sleep(5)
+    print(json.dumps({'answer': f"{os.getpid()}:{request['value']}"}), flush=True)
+"""]
+        self.addCleanup(stop_speech_worker)
+        with patch("hybrid_speech._worker_command", return_value=command) as start:
+            first = _request_speech({"value": "first"}, time.monotonic() + 5)
+            second = _request_speech({"value": "second"}, time.monotonic() + 5)
+            self.assertEqual(first.split(":")[0], second.split(":")[0])
+            self.assertTrue(second.endswith(":second"))
+            start.assert_called_once()
+            with self.assertRaises(TimeoutError):
+                _request_speech({"value": "stale", "stall": True}, time.monotonic() + 0.05)
+            recovered = _request_speech({"value": "recovered"}, time.monotonic() + 5)
+            self.assertTrue(recovered.endswith(":recovered"))
+            self.assertEqual(start.call_count, 2)
+
+    def test_reloads_checkpoint_after_atomic_replacement(self):
+        self.addCleanup(_load_speaker.cache_clear)
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "speaker.pt"
+            path.write_bytes(b"first")
+            with patch("papiti_lm.model.load_checkpoint", side_effect=Path.read_bytes) as load:
+                self.assertEqual(_speaker_model(str(path)), b"first")
+                self.assertEqual(_speaker_model(str(path)), b"first")
+                load.assert_called_once_with(path.resolve())
+                replacement = path.with_suffix(".tmp")
+                replacement.write_bytes(b"second")
+                replacement.replace(path)
+                self.assertEqual(_speaker_model(str(path)), b"second")
+                self.assertEqual(load.call_count, 2)
 
 
 class HybridIntegrationTests(unittest.TestCase):
