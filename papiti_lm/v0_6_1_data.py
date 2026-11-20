@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import random
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -24,11 +25,47 @@ SOCIAL_SPEECH_ACTS = frozenset({
 }) | EVERYDAY_SPEECH_ACTS
 MIRROR_GREETING_PREFIX = "Mirror greeting: "
 DELIVERY_STYLES = ("direct", "brief", "warm", "casual")
+GREETING_CUES = tuple((opening, followup) for opening in range(5) for followup in range(5))
 
 
 def delivery_packet(packet: str, style: str) -> str:
     """A style cue changes how to speak, without changing the facts to speak."""
     return f"Delivery: {style}\n{packet}"
+
+
+def greeting_packet(packet: str, opening: int, followup: int) -> str:
+    return f"Greeting opening {opening}\nGreeting follow-up {followup}\n{packet}"
+
+
+def is_korean_greeting(plan: dict[str, Any]) -> bool:
+    return (
+        plan.get("speech_act") == "return_greeting"
+        and (plan.get("style") or {}).get("language", "ko") == "ko"
+    )
+
+
+def greeting_parts(text: str) -> tuple[str, str] | None:
+    parts = re.split(r"(?<=[.!?])\s+", text.strip(), maxsplit=1)
+    return (parts[0], parts[1]) if len(parts) == 2 else None
+
+
+def greeting_fingerprints(corpus: SpeechCorpus) -> dict[str, list[str]]:
+    from hybrid_speech import reply_key
+
+    openings, followups = set(), set()
+    for row in corpus.train:
+        if row.group == "compositional-greeting":
+            parts = greeting_parts(row.assistant)
+            if parts is None:
+                raise ValueError("incomplete greeting training example")
+            opening, followup = parts
+            openings.add(reply_key(opening))
+            followups.add(reply_key(followup))
+    return {
+        "replies": sorted({reply_key(row.assistant) for row in corpus.train}),
+        "openings": sorted(openings),
+        "followups": sorted(followups),
+    }
 
 
 def packet_text(plan: dict[str, Any], *, mirror_greetings: bool = False) -> str:
@@ -132,7 +169,7 @@ def _greeting_examples(seed: int) -> SpeechCorpus:
 
 def create_corpus(
     seed: int = 42, *, diverse_social: bool = False, mirror_greetings: bool = False,
-    everyday_dialogue: bool = False, phrasing_cues: bool = False,
+    everyday_dialogue: bool = False, phrasing_cues: bool = False, compositional_greetings: bool = False,
 ) -> SpeechCorpus:
     """Training examples use original human prose and verified upstream content.
 
@@ -236,6 +273,11 @@ def create_corpus(
         train.extend(greetings.train)
         valid.extend(greetings.valid)
         test.extend(greetings.test)
+    if compositional_greetings:
+        greetings = _compositional_greetings()
+        train.extend(greetings.train)
+        valid.extend(greetings.valid)
+        test.extend(greetings.test)
     if everyday_dialogue:
         for key, rows in originals.items():
             if rows[0].group.removeprefix("social:") not in EVERYDAY_SPEECH_ACTS:
@@ -253,4 +295,39 @@ def create_corpus(
             raise AssertionError("cross-split semantic packet leakage")
     if {row.user for row in data.valid} & {row.user for row in data.test}:
         raise AssertionError("valid/test semantic packet leakage")
+    return data
+
+
+def _compositional_greetings() -> SpeechCorpus:
+    # Every opening and follow-up occurs in training. Two combinations per
+    # opening are withheld, so neither complete response nor cue pair leaks.
+    examples = (
+        (
+            "안녕",
+            ("안녕!", "반가워!", "어서 와!", "오, 안녕!", "안녕, 반가워!"),
+            ("편하게 얘기해.", "오늘은 뭐가 궁금해?", "우리 같이 얘기해 보자.",
+             "어떤 이야기를 하고 싶어?", "무슨 얘기부터 해볼까?"),
+        ),
+        (
+            "Hi",
+            ("Hi!", "Hello!", "Hey there!", "Nice to see you!", "Glad you're here!"),
+            ("What's on your mind?", "Let's chat.", "What would you like to talk about?",
+             "Feel free to ask me anything.", "Where should we start?"),
+        ),
+    )
+    data = SpeechCorpus([], [], [])
+    for message, openings, followups in examples:
+        packet = packet_text(_sample_plan(message))
+        for opening, followup in GREETING_CUES:
+            pair = Example(
+                "compositional-greeting", greeting_packet(packet, opening, followup),
+                f"{openings[opening]} {followups[followup]}",
+            )
+            offset = (followup - opening) % len(followups)
+            if offset == 1:
+                data.valid.append(pair)
+            elif offset == 2:
+                data.test.append(pair)
+            else:
+                data.train.extend([pair] * 12)
     return data

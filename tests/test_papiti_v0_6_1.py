@@ -98,6 +98,38 @@ class SemanticContractTests(unittest.TestCase):
         self.assertEqual(_fresh_wording(plan, decode, (reply_key("안녕"),)), "")
         self.assertLessEqual(decode.call_count, 6)
 
+    def test_compositional_greeting_holdouts_have_unseen_full_text(self):
+        corpus = create_corpus(diverse_social=True, phrasing_cues=True, compositional_greetings=True)
+        known = {reply_key(row.assistant) for row in corpus.train}
+        for split in (corpus.valid, corpus.test):
+            greetings = [row for row in split if row.group == "compositional-greeting"]
+            self.assertEqual(len(greetings), 10)
+            self.assertTrue(all(reply_key(row.assistant) not in known for row in greetings))
+
+    def test_compositional_checkpoint_rejects_training_text_and_recent_replies(self):
+        plan = plan_for("안녕")["utterance_plan"]
+        metadata = {
+            "version": "v0.6.1",
+            "compositional_greetings": True,
+            "greeting_fingerprints": {
+                "replies": [reply_key("안녕! 편하게 얘기해.")],
+                "openings": list(map(reply_key, ("안녕!", "반가워!", "어서 와!"))),
+                "followups": [reply_key("편하게 얘기해.")],
+            },
+        }
+        recent = "반가워! 편하게 얘기해."
+        new_reply = "어서 와! 편하게 얘기해."
+        with (
+            patch("papiti_lm.v0_6_1._speaker_model", return_value=("model", "tokenizer", metadata)),
+            patch("papiti_lm.model.generate", side_effect=[
+                "안녕? 편하게 얘기해!", "반가워! 얘기 얘기해.", recent, new_reply,
+            ]) as decode,
+        ):
+            self.assertEqual(_infer_answer(
+                plan, "social.pt", avoid_reply_keys=(reply_key(recent),),
+            ), new_reply)
+        self.assertEqual(len({call.args[2] for call in decode.call_args_list}), 4)
+
     def test_repeated_greeting_uses_a_companion_trained_for_varied_delivery(self):
         plan = plan_for("안녕")["utterance_plan"]
         original = "안녕! 반가워."
@@ -141,6 +173,22 @@ class SemanticContractTests(unittest.TestCase):
                 generate_speech(plan_for("6*7", "math", "Exact math tool result: 42")["utterance_plan"])
                 self.assertEqual(worker.call_args.args[0]["checkpoint"], str(base.resolve()))
                 self.assertIsNone(worker.call_args.args[0]["alternate_checkpoint"])
+
+    def test_compositional_companion_is_selected_for_korean_greetings(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp) / "trained.pt"
+            greetings = base.with_stem("trained_greetings")
+            social = base.with_stem("trained_social")
+            greetings.touch()
+            social.touch()
+            with (
+                patch.dict(os.environ, {"FLYGPT_HYBRID_SPEECH_CHECKPOINT": str(base)}),
+                patch("hybrid_speech._request_speech", return_value="reply") as worker,
+            ):
+                for prompt, path in (("안녕", greetings), ("Hi!", social), ("고마워", social)):
+                    with self.subTest(prompt=prompt):
+                        generate_speech(plan_for(prompt)["utterance_plan"])
+                        self.assertEqual(worker.call_args.args[0]["checkpoint"], str(path.resolve()))
 
     def test_math_candidate_never_replaced_by_calculator(self):
         plan = plan_for("6*7", "math", "Exact math tool result: 42")["utterance_plan"]
