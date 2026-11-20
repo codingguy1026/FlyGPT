@@ -1460,6 +1460,30 @@ textarea:focus-visible {
   overflow: hidden;
 }
 
+.railScroll {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: inherit;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--accent-rgb), .38) transparent;
+}
+
+.railScroll > *,
+.railAccount {
+  flex-shrink: 0;
+}
+
+.railScroll:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 .railBrandFull {
   min-height: 58px;
   padding: 2px 7px 8px;
@@ -1557,11 +1581,9 @@ textarea:focus-visible {
 }
 
 .historySection {
-  min-height: 0;
   margin-top: 3px;
   padding-top: 11px;
   display: flex;
-  flex: 1;
   flex-direction: column;
   border-top: 1px solid var(--line);
 }
@@ -1593,24 +1615,10 @@ textarea:focus-visible {
 }
 
 .historyList {
-  min-height: 0;
   padding: 2px 2px 8px;
   display: flex;
-  flex: 1;
   flex-direction: column;
   gap: 3px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(85,93,120,.16) transparent;
-}
-
-.historyList::-webkit-scrollbar {
-  width: 6px;
-}
-
-.historyList::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: rgba(85,93,120,.16);
 }
 
 .historyEmpty {

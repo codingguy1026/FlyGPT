@@ -497,85 +497,87 @@ export default function FlyGPTApp({
   return (
     <main className={"flightApp" + (sending ? " isThinking" : "") + (hasConversation ? " hasConversation" : " isWelcome")} style={themeVars}>
       <aside className={"flightRail" + (railOpen ? " open" : "")}>
-        <div className="railBrandFull">
-          <div className="railBrand">
-            <PapitiMark />
+        <div className="railScroll" role="region" aria-label="왼쪽 메뉴 및 대화 목록" tabIndex={0}>
+          <div className="railBrandFull">
+            <div className="railBrand">
+              <PapitiMark />
+            </div>
+            <div className="railBrandCopy">
+              <strong>papiti.</strong>
+              <span>CURIOSITY IN MOTION</span>
+            </div>
           </div>
-          <div className="railBrandCopy">
-            <strong>papiti.</strong>
-            <span>CURIOSITY IN MOTION</span>
-          </div>
-        </div>
 
-        <button className="newFlightButton" type="button" onClick={newFlight} disabled={sending}>
-          <Icon name="plus" size={18} />
-          <span>새 채팅</span>
-        </button>
+          <button className="newFlightButton" type="button" onClick={newFlight} disabled={sending}>
+            <Icon name="plus" size={18} />
+            <span>새 채팅</span>
+          </button>
 
-        <nav className="railNav" aria-label="FlyGPT navigation">
-          <button className="railButton active" type="button" title="홈" aria-current="page">
-            <Icon name="home" size={18} />
-            <span>홈</span>
-          </button>
-          <button className="railButton" type="button" title="FlyGraph" onClick={() => { setBrainOpen(true); setRailOpen(false); }}>
-            <Icon name="brain" size={18} />
-            <span>신경 지도</span>
-          </button>
-          <button className="railButton" type="button" title="테마" onClick={() => { setTelemetryOpen(true); setRailOpen(false); }}>
-            <Icon name="palette" size={18} />
-            <span>작동 기록</span>
-          </button>
-        </nav>
-
-        <section className="historySection" aria-label="채팅 기록">
-          <div className="historyLabel">
-            <span>최근 대화</span>
-            <b>{historyQuery.trim() ? filteredChatHistory.length + "/" + chatHistory.length : chatHistory.length}</b>
-          </div>
-          <div className="historyTools">
-            <label className="historySearch">
-              <Icon name="search" size={15} />
-              <input
-                type="search"
-                value={historyQuery}
-                onChange={(event) => setHistoryQuery(event.target.value)}
-                placeholder="대화 제목·내용 검색"
-                aria-label="대화 기록 검색"
-              />
-            </label>
-            <button
-              className="historyExport"
-              type="button"
-              onClick={exportCurrentFlight}
-              disabled={sending || !messages.some((message) => message.role === "user")}
-              title="현재 대화를 Markdown 파일로 저장"
-            >
-              ↓ 현재 대화 저장 (.md)
+          <nav className="railNav" aria-label="FlyGPT navigation">
+            <button className="railButton active" type="button" title="홈" aria-current="page">
+              <Icon name="home" size={18} />
+              <span>홈</span>
             </button>
-          </div>
+            <button className="railButton" type="button" title="FlyGraph" onClick={() => { setBrainOpen(true); setRailOpen(false); }}>
+              <Icon name="brain" size={18} />
+              <span>신경 지도</span>
+            </button>
+            <button className="railButton" type="button" title="테마" onClick={() => { setTelemetryOpen(true); setRailOpen(false); }}>
+              <Icon name="palette" size={18} />
+              <span>작동 기록</span>
+            </button>
+          </nav>
 
-          <div className="historyList">
-            {chatHistory.length === 0 ? (
-              <p className="historyEmpty">대화를 시작하면 여기에 기록돼요.</p>
-            ) : filteredChatHistory.length === 0 ? (
-              <p className="historyEmpty">검색 결과가 없어요. 다른 단어를 입력해 보세요.</p>
-            ) : (
-              filteredChatHistory.map((chat) => (
-                <button
-                  key={chat.id}
-                  className={"historyItem" + (chat.id === activeChatId ? " active" : "")}
-                  type="button"
-                  onClick={() => openFlight(chat)}
-                  disabled={sending}
-                  title={chat.title}
-                >
-                  <span>{chat.title}</span>
-                  <small>{formatChatTime(chat.updatedAt)}</small>
-                </button>
-              ))
-            )}
-          </div>
-        </section>
+          <section className="historySection" aria-label="채팅 기록">
+            <div className="historyLabel">
+              <span>최근 대화</span>
+              <b>{historyQuery.trim() ? filteredChatHistory.length + "/" + chatHistory.length : chatHistory.length}</b>
+            </div>
+            <div className="historyTools">
+              <label className="historySearch">
+                <Icon name="search" size={15} />
+                <input
+                  type="search"
+                  value={historyQuery}
+                  onChange={(event) => setHistoryQuery(event.target.value)}
+                  placeholder="대화 제목·내용 검색"
+                  aria-label="대화 기록 검색"
+                />
+              </label>
+              <button
+                className="historyExport"
+                type="button"
+                onClick={exportCurrentFlight}
+                disabled={sending || !messages.some((message) => message.role === "user")}
+                title="현재 대화를 Markdown 파일로 저장"
+              >
+                ↓ 현재 대화 저장 (.md)
+              </button>
+            </div>
+
+            <div className="historyList">
+              {chatHistory.length === 0 ? (
+                <p className="historyEmpty">대화를 시작하면 여기에 기록돼요.</p>
+              ) : filteredChatHistory.length === 0 ? (
+                <p className="historyEmpty">검색 결과가 없어요. 다른 단어를 입력해 보세요.</p>
+              ) : (
+                filteredChatHistory.map((chat) => (
+                  <button
+                    key={chat.id}
+                    className={"historyItem" + (chat.id === activeChatId ? " active" : "")}
+                    type="button"
+                    onClick={() => openFlight(chat)}
+                    disabled={sending}
+                    title={chat.title}
+                  >
+                    <span>{chat.title}</span>
+                    <small>{formatChatTime(chat.updatedAt)}</small>
+                  </button>
+                ))
+              )}
+            </div>
+          </section>
+        </div>
 
         <div className="railAccount">
           <div className="railAccountAvatar" aria-hidden="true">
