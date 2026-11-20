@@ -105,6 +105,9 @@ def checkpoint_path() -> Path:
 def _speaker_checkpoints(plan: dict[str, Any]) -> tuple[Path, ...]:
     base = checkpoint_path()
     act = plan.get("speech_act")
+    prose = base.with_stem(base.stem + "_prose")
+    if (act in SOCIAL_SPEECH_ACTS or act in INTENT_FACT_IDS) and prose.is_file():
+        return (prose,)
     greetings = base.with_stem(base.stem + "_greetings")
     if is_korean_greeting(plan) and greetings.is_file():
         return (greetings,)
@@ -267,7 +270,7 @@ def warm_speech_worker() -> None:
     base = checkpoint_path()
     candidates = (base, base.with_stem(base.stem + "_social"),
                   base.with_stem(base.stem + "_dialogue"),
-                  base.with_stem(base.stem + "_greetings"))
+                  base.with_stem(base.stem + "_greetings"), base.with_stem(base.stem + "_prose"))
     if any(path.is_file() for path in candidates):
         with _worker_lock:
             _get_worker()

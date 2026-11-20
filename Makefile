@@ -4,6 +4,7 @@
 PAPITI_PYTHON ?= $(if $(wildcard .venv-papiti/bin/python),.venv-papiti/bin/python,$(if $(wildcard .venv-train/bin/python),.venv-train/bin/python,$(if $(wildcard .venv/bin/python),.venv/bin/python,python3)))
 
 .PHONY: papiti-lm-train-v0.6.1 papiti-lm-train-v0.6.1-social papiti-lm-train-v0.6.1-greetings papiti-lm-train-v0.6.1-dialogue papiti-lm-eval-v0.6.1
+.PHONY: papiti-lm-train-v0.6.1-prose
 papiti-lm-train-v0.6.1:
 	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 train
 
@@ -12,6 +13,9 @@ papiti-lm-train-v0.6.1-social:
 
 papiti-lm-train-v0.6.1-greetings:
 	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 train --diverse-social --compositional-greetings --epochs 20 --checkpoint artifacts/papiti_language_v0_6_1_greetings.pt
+
+papiti-lm-train-v0.6.1-prose:
+	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 train --shared-prose --context 448 --batch-size 24 --epochs 20 --checkpoint artifacts/papiti_language_v0_6_1_prose.pt
 
 papiti-lm-train-v0.6.1-dialogue:
 	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 train --diverse-social --everyday-dialogue --epochs 24 --patience 8 --checkpoint artifacts/papiti_language_v0_6_1_dialogue.pt

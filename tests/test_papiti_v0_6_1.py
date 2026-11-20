@@ -66,6 +66,39 @@ class SemanticContractTests(unittest.TestCase):
         self.assertFalse(train & test)
         self.assertFalse(valid & test)
 
+    def test_shared_prose_holds_out_wording_across_supported_languages_and_acts(self):
+        from hybrid_speech import SOCIAL_SPEECH_ACTS
+        from papiti_lm.v0_6_1_prose import _packet_details, create_prose_corpus
+        from semantic_planner import INTENT_FACT_IDS
+
+        corpus = create_prose_corpus()
+        coverage = {_packet_details(row.user.rsplit("\n", 1)[0]) for row in corpus.train}
+        expected = {(act, lang) for act in SOCIAL_SPEECH_ACTS | INTENT_FACT_IDS.keys()
+                    for lang in ("ko", "en")}
+        self.assertEqual(coverage, expected)
+        train, valid, test = [
+            {reply_key(row.assistant) for row in split}
+            for split in (corpus.train, corpus.valid, corpus.test)
+        ]
+        self.assertFalse(train & valid or train & test or valid & test)
+
+    def test_shared_prose_checks_plan_specific_parts_and_rejects_known_replies(self):
+        from papiti_lm.v0_6_1_prose import decode_novel_prose
+
+        plan = plan_for("고마워")["utterance_plan"]
+        first = "별말씀을요."
+        old_second = "도움이 됐다니 기뻐."
+        new_second = "다른 궁금한 점도 말해 줘."
+        fingerprints = {
+            "replies": [reply_key(f"{first} {old_second}")],
+            "parts": {packet_text(plan): [[reply_key(first)], list(map(reply_key, (old_second, new_second)))]},
+        }
+        decode = Mock(side_effect=[
+            f"안녕!\n{new_second}", f"{first}\n{old_second}",
+        ])
+        self.assertEqual(decode_novel_prose(plan, decode, fingerprints, ()), f"{first} {new_second}")
+        self.assertEqual(decode.call_count, 2)
+
     def test_social_packet_keeps_multiple_targets_but_math_stays_exact(self):
         corpus = create_corpus(diverse_social=True)
         greeting = packet_text(plan_for("안녕")["utterance_plan"])
@@ -189,6 +222,17 @@ class SemanticContractTests(unittest.TestCase):
                     with self.subTest(prompt=prompt):
                         generate_speech(plan_for(prompt)["utterance_plan"])
                         self.assertEqual(worker.call_args.args[0]["checkpoint"], str(path.resolve()))
+
+                shared = base.with_stem("trained_prose")
+                shared.touch()
+                base.touch()
+                for prompt in ("안녕", "Thanks", "오늘 너무 피곤해", "너 누구야?"):
+                    with self.subTest(shared_prompt=prompt):
+                        generate_speech(plan_for(prompt)["utterance_plan"])
+                        self.assertEqual(worker.call_args.args[0]["checkpoint"], str(shared.resolve()))
+                math = plan_for("6*7", "math", "Exact math tool result: 42")["utterance_plan"]
+                generate_speech(math)
+                self.assertEqual(worker.call_args.args[0]["checkpoint"], str(base.resolve()))
 
     def test_math_candidate_never_replaced_by_calculator(self):
         plan = plan_for("6*7", "math", "Exact math tool result: 42")["utterance_plan"]
