@@ -7,7 +7,9 @@ No runtime intent classifier, arithmetic operation or canned answer exists.
 from __future__ import annotations
 
 import argparse
+from functools import lru_cache
 import json
+from pathlib import Path
 import random
 import sys
 
@@ -187,27 +189,38 @@ def _fresh_wording(
     return ""
 
 
-def _infer(args):
+@lru_cache(maxsize=3)
+def _load_speaker(path: Path, _revision: tuple[int, int, int]):
+    from papiti_lm.model import load_checkpoint
+
+    return load_checkpoint(path)
+
+
+def _speaker_model(checkpoint: str):
+    path = Path(checkpoint).resolve()
+    stat = path.stat()
+    # Picking up a replaced checkpoint must not require a server restart.
+    return _load_speaker(path, (stat.st_ino, stat.st_mtime_ns, stat.st_size))
+
+
+def _infer_answer(plan, checkpoint, *, base_checkpoint=None, max_new_tokens=96,
+                  avoid_reply_keys=()):
     """Only checkpoint-driven token prediction; does not load training examples."""
-    from papiti_lm.cli import _torch
-    from papiti_lm.model import generate, load_checkpoint
+    from papiti_lm.model import generate
     from hybrid_speech import REPLY_HISTORY_LIMIT
     from papiti_lm.v0_6_1_data import DELIVERY_STYLES, EVERYDAY_SPEECH_ACTS, delivery_packet, packet_text
     from semantic_planner import INTENT_FACT_IDS
 
-    torch = _torch()
-    torch.set_num_threads(min(4, torch.get_num_threads()))
-    plan = json.loads(sys.stdin.read())
     packet = packet_text(plan)
     act = plan["speech_act"]
-    model, tokenizer, metadata = load_checkpoint(args.checkpoint)
+    model, tokenizer, metadata = _speaker_model(checkpoint)
     # The old companion learned to copy greetings and had no ordinary
     # greeting targets. Use the base speaker until it is retrained.
-    if args.base_checkpoint and (
+    if base_checkpoint and (
         (act == "return_greeting" and metadata.get("mirror_greetings") is True)
         or (act in INTENT_FACT_IDS and metadata.get("phrasing_cues") is not True)
     ):
-        model, tokenizer, metadata = load_checkpoint(args.base_checkpoint)
+        model, tokenizer, metadata = _speaker_model(base_checkpoint)
     if metadata.get("version") != "v0.6.1":
         raise ValueError("v0.6.1 semantic speaker checkpoint required")
     if act in EVERYDAY_SPEECH_ACTS and metadata.get("everyday_dialogue") is not True:
@@ -217,17 +230,43 @@ def _infer(args):
 
     def decode(*, style=None, **options):
         text = delivery_packet(packet, style) if style else packet
-        return generate(model, tokenizer, text, max_new_tokens=args.max_new_tokens, **options)
+        return generate(model, tokenizer, text, max_new_tokens=max_new_tokens, **options)
 
     if act == "state_exact_math_result":
-        answer = decode(temperature=0)
-    else:
-        answer = _fresh_wording(
-            plan, decode, tuple(args.avoid_reply_key[:REPLY_HISTORY_LIMIT]),
-            delivery_styles=DELIVERY_STYLES if metadata.get("phrasing_cues") is True else (),
-        )
+        return decode(temperature=0)
+    return _fresh_wording(
+        plan, decode, tuple(avoid_reply_keys[:REPLY_HISTORY_LIMIT]),
+        delivery_styles=DELIVERY_STYLES if metadata.get("phrasing_cues") is True else (),
+    )
+
+
+def _configure_inference():
+    from papiti_lm.cli import _torch
+
+    # Small autoregressive steps get little benefit from extra threads, but
+    # those threads compete with the router and web server on shared CPUs.
+    _torch().set_num_threads(1)
+
+
+def _infer(args):
+    _configure_inference()
+    answer = _infer_answer(
+        json.loads(sys.stdin.read()), args.checkpoint,
+        base_checkpoint=args.base_checkpoint, max_new_tokens=args.max_new_tokens,
+        avoid_reply_keys=args.avoid_reply_key,
+    )
     if answer:
         print(answer, flush=True)
+
+
+def _infer_worker(_args):
+    _configure_inference()
+    for line in sys.stdin:
+        try:
+            result = {"answer": _infer_answer(**json.loads(line))}
+        except (OSError, RuntimeError, ValueError, KeyError, TypeError) as exc:
+            result = {"error": type(exc).__name__}
+        print(json.dumps(result, ensure_ascii=False), flush=True)
 
 
 def main(argv=None):
@@ -236,6 +275,7 @@ def main(argv=None):
     train = actions.add_parser("train", help="train from scratch on semantic packets")
     evaluation = actions.add_parser("eval", help="score packets withheld from training")
     infer = actions.add_parser("infer", help="read complete brain plan JSON on stdin")
+    worker = actions.add_parser("infer-worker", help="serve brain plans over local stdio")
     for cmd in (train, evaluation, infer):
         cmd.add_argument("--checkpoint", default="artifacts/papiti_language_v0_6_1.pt")
     train.add_argument("--seed", type=int, default=42)
@@ -257,6 +297,7 @@ def main(argv=None):
     infer.add_argument("--base-checkpoint")
     infer.add_argument("--avoid-reply-key", action="append", default=[])
     infer.set_defaults(func=_infer)
+    worker.set_defaults(func=_infer_worker)
     args = parser.parse_args(argv)
     return args.func(args)
 

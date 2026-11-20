@@ -1,4 +1,4 @@
-"""Isolated local subprocess bridge for Papiti v0.6.1 brain-conditioned speech.
+"""Isolated local worker bridge for Papiti v0.6.1 brain-conditioned speech.
 
 No external endpoint, pretrained model, answer table, or silent downloads.
 The subprocess uses a trusted local checkpoint and receives ONLY the upstream
@@ -6,13 +6,17 @@ completed utterance plan; it never receives a calculator implementation.
 """
 from __future__ import annotations
 
+import atexit
 import hashlib
 import json
 import os
 from pathlib import Path
+from queue import Empty, SimpleQueue
 import re
 import subprocess
 import sys
+from threading import Lock, Thread
+import time
 import unicodedata
 from typing import Any
 
@@ -176,32 +180,135 @@ def check_candidate(
     return None
 
 
+def _worker_command(python: str) -> list[str]:
+    return [python, "-m", "papiti_lm.v0_6_1", "infer-worker"]
+
+
+class _SpeechWorker:
+    def __init__(self, python: str):
+        self.python = python
+        self.process = subprocess.Popen(
+            _worker_command(python), cwd=ROOT, stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE, encoding="utf-8",
+            env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+        )
+        self.requests: SimpleQueue[str | None] = SimpleQueue()
+        self.replies: SimpleQueue[str | Exception] = SimpleQueue()
+        Thread(target=self._exchange, name="papiti-speech-io", daemon=True).start()
+
+    def _exchange(self) -> None:
+        # Pipe reads *and* writes happen off the request thread so slow startup
+        # or a wedged child cannot block the caller beyond its deadline.
+        assert self.process.stdin is not None and self.process.stdout is not None
+        try:
+            with self.process.stdin as source, self.process.stdout as output:
+                for request in iter(self.requests.get, None):
+                    source.write(request + "\n")
+                    source.flush()
+                    reply = output.readline()
+                    if not reply:
+                        raise RuntimeError("v0.6.1 speech worker exited")
+                    self.replies.put(reply)
+        except (OSError, RuntimeError, ValueError) as exc:
+            self.replies.put(exc)
+
+    def request(self, payload: dict[str, Any], deadline: float) -> dict[str, Any]:
+        self.requests.put(json.dumps(payload, ensure_ascii=False))
+        try:
+            reply = self.replies.get(timeout=max(0.0, deadline - time.monotonic()))
+        except Empty as exc:
+            raise TimeoutError("v0.6.1 speech worker exceeded its deadline") from exc
+        if isinstance(reply, Exception):
+            raise reply
+        result = json.loads(reply)
+        if not isinstance(result, dict):
+            raise RuntimeError("Invalid v0.6.1 speech worker response")
+        return result
+
+    def close(self) -> None:
+        self.requests.put(None)
+        self.process.kill()  # Interrupt even a timed-out inference.
+        try:
+            self.process.wait(timeout=0.2)
+        except subprocess.TimeoutExpired:
+            Thread(target=self.process.wait, daemon=True).start()
+
+
+_worker_lock = Lock()
+_worker: _SpeechWorker | None = None
+
+
+def _stop_worker() -> None:
+    global _worker
+    worker, _worker = _worker, None
+    if worker is not None:
+        worker.close()
+
+
+def _get_worker() -> _SpeechWorker:
+    global _worker
+    python = speech_python()
+    if _worker is None or _worker.python != python or _worker.process.poll() is not None:
+        _stop_worker()
+        _worker = _SpeechWorker(python)
+    return _worker
+
+
+def warm_speech_worker() -> None:
+    """Start importing PyTorch before the first chat, if weights are installed."""
+    base = checkpoint_path()
+    candidates = (base, base.with_stem(base.stem + "_social"),
+                  base.with_stem(base.stem + "_dialogue"))
+    if any(path.is_file() for path in candidates):
+        with _worker_lock:
+            _get_worker()
+
+
+@atexit.register
+def stop_speech_worker() -> None:
+    with _worker_lock:
+        _stop_worker()
+
+
+def _request_speech(payload: dict[str, Any], deadline: float) -> str:
+    remaining = deadline - time.monotonic()
+    if remaining <= 0 or not _worker_lock.acquire(timeout=remaining):
+        raise TimeoutError("v0.6.1 speech worker did not become available in time")
+    try:
+        if time.monotonic() >= deadline:
+            raise TimeoutError("v0.6.1 speech budget exhausted")
+        try:
+            result = _get_worker().request(payload, deadline)
+        except (OSError, RuntimeError, ValueError):
+            # Includes TimeoutError. Never let a late reply become another
+            # request's answer. The next call starts a clean worker.
+            _stop_worker()
+            raise
+    finally:
+        _worker_lock.release()
+
+    if result.get("error") == "FileNotFoundError":
+        raise FileNotFoundError("v0.6.1 speech checkpoint disappeared")
+    answer = result.get("answer")
+    if not isinstance(answer, str):
+        raise RuntimeError("v0.6.1 neural speech worker could not generate a reply")
+    return answer.strip()
+
+
 def generate_speech(
     plan: dict[str, Any], timeout_seconds: float = 20.0, *,
     avoid_reply_keys: tuple[str, ...] = (),
 ) -> str:
-    """Run *only* the trained Transformer, no Native realizer inside speaker."""
-    packet_text(plan)  # Validate before serializing/untrusted subprocess input.
+    """Run only the trained Transformer, reusing weights across messages."""
+    deadline = time.monotonic() + min(30.0, max(0.0, float(timeout_seconds)))
+    packet_text(plan)  # Validate before sending to the isolated speaker.
     path = _speaker_checkpoint(plan)
     if not path.is_file():
         raise FileNotFoundError(f"v0.6.1 checkpoint missing: {path}")
-    seconds = min(30.0, max(0.1, float(timeout_seconds)))
-    command = [speech_python(), "-m", "papiti_lm.v0_6_1", "infer",
-               "--checkpoint", str(path), "--max-new-tokens", "96"]
     base = checkpoint_path()
-    if path != base and base.is_file():
-        command.extend(("--base-checkpoint", str(base)))
-    for key in avoid_reply_keys[:REPLY_HISTORY_LIMIT]:
-        command.extend(("--avoid-reply-key", key))
-    runner = subprocess.run(
-        command,
-        input=json.dumps(plan, ensure_ascii=False),
-        text=True, capture_output=True, timeout=seconds, cwd=ROOT,
-        check=False,
-    )
-    if runner.returncode:
-        raise RuntimeError(
-            "v0.6.1 neural speech subprocess failed: "
-            + runner.stderr.strip()[-300:]
-        )
-    return runner.stdout.strip()
+    return _request_speech({
+        "plan": plan,
+        "checkpoint": str(path.resolve()),
+        "base_checkpoint": str(base.resolve()) if path != base and base.is_file() else None,
+        "avoid_reply_keys": avoid_reply_keys[:REPLY_HISTORY_LIMIT],
+    }, deadline)

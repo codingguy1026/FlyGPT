@@ -148,6 +148,8 @@ def run_v05_chat(
         )
     elif error == "hybrid_new_wording_unavailable":
         answer = "🪰 이번에는 같은 뜻을 다른 문장으로 표현하지 못했어요."
+    elif error == "timeout":
+        answer = "🪰 답변 문장을 만드는 데 시간이 너무 오래 걸렸어. 잠깐 뒤에 다시 보내 줘."
     elif not generation.used:
         answer = "🪰 파피티 v0.6.1이 발화 계획에 맞는 답변을 생성하지 못했어."
 
