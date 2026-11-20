@@ -146,8 +146,8 @@ def prose_fingerprints(corpus: SpeechCorpus) -> dict[str, Any]:
 
 
 def decode_novel_prose(
-    plan: dict[str, Any], decode: Callable[[str, float], str],
-    fingerprints: dict[str, Any], previous_keys: tuple[str, ...],
+    plan: dict[str, Any], decode: Callable[[str, float, str], str],
+    fingerprints: dict[str, Any], previous_keys: tuple[str, ...], *, fact_plan: bool = False,
 ) -> str:
     from hybrid_speech import check_candidate, reply_key
 
@@ -164,8 +164,13 @@ def decode_novel_prose(
     attempts.extend((*pair, 0.0) for pair in combinations[1::2])
     generated_first: dict[str, str] = {}
     generated_second: dict[str, str] = {}
-    for wording, continuation, temperature in attempts:
-        candidate = decode(prose_packet(packet, wording, continuation), temperature)
+    for index, (wording, continuation, temperature) in enumerate(attempts):
+        # Carry a verified part generated in this request across some retries.
+        # This lets long factual replies explore more follow-ups within budget.
+        prefix = ""
+        if fact_plan and generated_first and index % 3:
+            prefix = next(iter(generated_first.values())) + "\n"
+        candidate = decode(prose_packet(packet, wording, continuation), temperature, prefix)
         first, separator, second = candidate.partition("\n")
         if not separator:
             continue

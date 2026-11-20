@@ -110,6 +110,7 @@ def generate(
     repetition_penalty: float = 1.0,
     seed: int | None = None,
     continuation_temperature: float | None = None,
+    response_prefix: str = "",
 ) -> str:
     """Autoregressively sample a new answer; no canned answers or lookup."""
     if not user.strip() or len(user) > 2048:
@@ -130,14 +131,17 @@ def generate(
     # Preserve role delimiters, trimming only oldest user characters.
     message = tokenizer.encode(user)
     message = message[-(model.config.context - 3):]
-    ids = [BOS, USER, *message, ASSISTANT]
-    produced: list[int] = []
+    produced = tokenizer.encode(response_prefix) if response_prefix else []
+    ids = [BOS, USER, *message, ASSISTANT, *produced]
     rng = None
     if seed is not None:
         rng = torch.Generator(device=device)
         rng.manual_seed(seed)
     model.eval()
-    sampling_temperature = temperature
+    sampling_temperature = (
+        continuation_temperature if continuation_temperature is not None and "\n" in response_prefix
+        else temperature
+    )
     for _ in range(max_new_tokens):
         window = torch.tensor(
             [ids[-model.config.context:]], dtype=torch.long, device=device

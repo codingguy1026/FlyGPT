@@ -262,19 +262,22 @@ def _infer_answer(plan, checkpoint, *, base_checkpoint=None, alternate_checkpoin
     if metadata.get("shared_prose") is True:
         from papiti_lm.v0_6_1_prose import decode_novel_prose
 
-        token_limit = (200 if act in INTENT_FACT_IDS else 96) if max_new_tokens is None else max_new_tokens
+        fact_plan = act in INTENT_FACT_IDS
+        token_limit = (200 if fact_plan else 96) if max_new_tokens is None else max_new_tokens
 
-        def decode(text, temperature):
+        def decode(text, temperature, prefix):
             # Sample the follow-up of a factual answer after a greedy pass
             # through its protected content.
             return generate(
                 model, tokenizer, text, max_new_tokens=token_limit, top_k=8,
-                temperature=0 if act in INTENT_FACT_IDS else temperature,
-                continuation_temperature=(temperature or None) if act in INTENT_FACT_IDS else None,
+                temperature=0 if fact_plan else temperature,
+                continuation_temperature=(temperature or None) if fact_plan else None,
+                response_prefix=prefix,
             )
 
         return decode_novel_prose(
             plan, decode, metadata["prose_fingerprints"], avoid_reply_keys[:REPLY_HISTORY_LIMIT],
+            fact_plan=fact_plan,
         )
     max_new_tokens = 96 if max_new_tokens is None else max_new_tokens
     if act in EVERYDAY_SPEECH_ACTS and metadata.get("everyday_dialogue") is not True:
