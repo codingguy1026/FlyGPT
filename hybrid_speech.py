@@ -100,20 +100,23 @@ def checkpoint_path() -> Path:
     return Path(path).expanduser() if path else DEFAULT_CHECKPOINT
 
 
-def _speaker_checkpoint(plan: dict[str, Any]) -> Path:
+def _speaker_checkpoints(plan: dict[str, Any]) -> tuple[Path, ...]:
     base = checkpoint_path()
     act = plan.get("speech_act")
+    dialogue = base.with_name(f"{base.stem}_dialogue{base.suffix}")
     if act in EVERYDAY_SPEECH_ACTS:
-        return base.with_name(f"{base.stem}_dialogue{base.suffix}")
+        return (dialogue,)
     if act in SOCIAL_SPEECH_ACTS or act in INTENT_FACT_IDS:
         social = base.with_name(f"{base.stem}_social{base.suffix}")
         if social.is_file():
-            return social
-    return base
+            return (social, dialogue) if dialogue.is_file() else (social,)
+        if dialogue.is_file():
+            return (base, dialogue) if base.is_file() else (dialogue,)
+    return (base,)
 
 
 def checkpoint_present(plan: dict[str, Any] | None = None) -> bool:
-    path = checkpoint_path() if plan is None else _speaker_checkpoint(plan)
+    path = checkpoint_path() if plan is None else _speaker_checkpoints(plan)[0]
     return path.is_file()
 
 
@@ -302,7 +305,7 @@ def generate_speech(
     """Run only the trained Transformer, reusing weights across messages."""
     deadline = time.monotonic() + min(30.0, max(0.0, float(timeout_seconds)))
     packet_text(plan)  # Validate before sending to the isolated speaker.
-    path = _speaker_checkpoint(plan)
+    path, *alternatives = _speaker_checkpoints(plan)
     if not path.is_file():
         raise FileNotFoundError(f"v0.6.1 checkpoint missing: {path}")
     base = checkpoint_path()
@@ -310,5 +313,6 @@ def generate_speech(
         "plan": plan,
         "checkpoint": str(path.resolve()),
         "base_checkpoint": str(base.resolve()) if path != base and base.is_file() else None,
+        "alternate_checkpoint": str(alternatives[0].resolve()) if alternatives else None,
         "avoid_reply_keys": avoid_reply_keys[:REPLY_HISTORY_LIMIT],
     }, deadline)

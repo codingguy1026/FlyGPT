@@ -14,7 +14,7 @@ from brain_runtime import FlyBrainRuntime
 from generator_runtime import GeneratorRuntime
 from hybrid_speech import check_candidate, generate_speech, reply_key, supports_v061_plan
 from hybrid_speech import _request_speech, stop_speech_worker
-from papiti_lm.v0_6_1 import _fresh_wording, _load_speaker, _speaker_model
+from papiti_lm.v0_6_1 import _fresh_wording, _infer_answer, _load_speaker, _speaker_model
 from papiti_lm.v0_6_1_data import create_corpus, packet_text
 
 
@@ -98,11 +98,38 @@ class SemanticContractTests(unittest.TestCase):
         self.assertEqual(_fresh_wording(plan, decode, (reply_key("안녕"),)), "")
         self.assertLessEqual(decode.call_count, 6)
 
+    def test_repeated_greeting_uses_a_companion_trained_for_varied_delivery(self):
+        plan = plan_for("안녕")["utterance_plan"]
+        original = "안녕! 반가워."
+        fresh = "안녕하세요!"
+        checkpoints = {
+            "base.pt": ("base", "tokenizer", {"version": "v0.6.1"}),
+            "base_dialogue.pt": (
+                "dialogue", "tokenizer", {"version": "v0.6.1", "phrasing_cues": True},
+            ),
+        }
+        with (
+            patch("papiti_lm.v0_6_1._speaker_model", side_effect=checkpoints.__getitem__),
+            patch("papiti_lm.model.generate", side_effect=[original, original, fresh]) as decode,
+        ):
+            self.assertEqual(_infer_answer(
+                plan, "base.pt", alternate_checkpoint="base_dialogue.pt",
+            ), original)
+            self.assertEqual(_infer_answer(
+                plan, "base.pt", alternate_checkpoint="base_dialogue.pt",
+                avoid_reply_keys=(reply_key(original),),
+            ), fresh)
+        self.assertEqual([call.args[0] for call in decode.call_args_list],
+                         ["base", "dialogue", "dialogue"])
+        self.assertTrue(all(call.args[2].startswith("Delivery: ") and call.kwargs["temperature"] == 0
+                            for call in decode.call_args_list[1:]))
+
     def test_social_companion_speaks_greetings_while_math_uses_base(self):
         with tempfile.TemporaryDirectory() as temp:
             base = Path(temp) / "trained.pt"
             companion = base.with_stem("trained_social")
-            for path in (base, companion):
+            dialogue = base.with_stem("trained_dialogue")
+            for path in (base, companion, dialogue):
                 path.touch()
             with (
                 patch.dict(os.environ, {"FLYGPT_HYBRID_SPEECH_CHECKPOINT": str(base)}),
@@ -110,8 +137,10 @@ class SemanticContractTests(unittest.TestCase):
             ):
                 generate_speech(plan_for("안녕")["utterance_plan"])
                 self.assertEqual(worker.call_args.args[0]["checkpoint"], str(companion.resolve()))
+                self.assertEqual(worker.call_args.args[0]["alternate_checkpoint"], str(dialogue.resolve()))
                 generate_speech(plan_for("6*7", "math", "Exact math tool result: 42")["utterance_plan"])
                 self.assertEqual(worker.call_args.args[0]["checkpoint"], str(base.resolve()))
+                self.assertIsNone(worker.call_args.args[0]["alternate_checkpoint"])
 
     def test_math_candidate_never_replaced_by_calculator(self):
         plan = plan_for("6*7", "math", "Exact math tool result: 42")["utterance_plan"]
