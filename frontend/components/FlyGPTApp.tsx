@@ -12,7 +12,8 @@ import BrainPanel from "./BrainPanel";
 import ConnectomePreview from "./ConnectomePreview";
 import FullPopulationMap from "./FullPopulationMap";
 import FlyThinkingIndicator from "./FlyThinkingIndicator";
-import { Icon, PapitiMark } from "./FlightIdentity";
+import { Icon } from "./FlightIdentity";
+import styles from "./FlyGPTApp.module.css";
 import { THEMES } from "@/lib/flight-theme";
 import {
   activeChatKey, formatChatTime, INITIAL_MESSAGE, loadChatHistory,
@@ -45,6 +46,21 @@ import {
   setMemorySessionId,
 } from "@/lib/session";
 
+const STARTERS = [
+  { icon: "brain", title: "개념 이해하기", prompt: "신경망은 어떻게 학습하는지 쉽게 설명해줘." },
+  { icon: "code", title: "코드 짜기", prompt: "자바스크립트로 만들 만한 작은 프로젝트를 추천해줘." },
+  { icon: "spark", title: "새로운 이야기", prompt: "흥미로운 역사 이야기를 하나 들려줘." },
+] as const;
+
+const GENERATOR_LABELS = {
+  checking: "모델 상태 확인 중",
+  native: "파피티 자체 응답기",
+  ready: "AI 모델 준비 완료",
+  loading: "AI 모델 준비 중",
+  unavailable: "AI 모델 연결 확인 필요",
+  not_local: "외부 AI 모델",
+} as const;
+
 export default function FlyGPTApp({
   user,
   onSignOut,
@@ -60,9 +76,11 @@ export default function FlyGPTApp({
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [brainOpen, setBrainOpen] = useState(false);
-  const [telemetryOpen, setTelemetryOpen] = useState(false);
+  const [traceExpanded, setTraceExpanded] = useState(false);
+  const [telemetryPreference, setTelemetryPreference] = useState<boolean | null>(null);
+  const [wideViewport, setWideViewport] = useState(false);
+  const [compactViewport, setCompactViewport] = useState(false);
   const [railOpen, setRailOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [router, setRouter] = useState<RouterResult | null>(null);
   const [liveFrames, setLiveFrames] = useState<TraceFrame[]>([]);
   const [liveRoute, setLiveRoute] = useState<RouterResult | null>(null);
@@ -76,8 +94,55 @@ export default function FlyGPTApp({
   const [sessionId, setSessionId] = useState("");
   const [conversationTitle, setConversationTitle] = useState("Untitled flight");
   const [themeId, setThemeId] = useState<(typeof THEMES)[number]["id"]>("bio");
-  const bottomRef = useRef<HTMLDivElement | null>(null);
-  const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  const messageViewportRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const settingsRef = useRef<HTMLDialogElement>(null);
+  const railRef = useRef<HTMLElement>(null);
+  const telemetryRef = useRef<HTMLElement>(null);
+  const traceDetailsRef = useRef<HTMLDetailsElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const telemetryButtonRef = useRef<HTMLButtonElement>(null);
+  const telemetryOpen = telemetryPreference ?? wideViewport;
+  const activeDrawer = compactViewport && railOpen ? "history"
+    : !wideViewport && telemetryOpen ? "telemetry" : null;
+
+  useEffect(() => {
+    const wide = window.matchMedia("(min-width: 1180px)");
+    const compact = window.matchMedia("(max-width: 767px)");
+    const update = () => {
+      setWideViewport(wide.matches);
+      setCompactViewport(compact.matches);
+      if (!compact.matches) setRailOpen(false);
+    };
+    update();
+    wide.addEventListener("change", update);
+    compact.addEventListener("change", update);
+    return () => {
+      wide.removeEventListener("change", update);
+      compact.removeEventListener("change", update);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!activeDrawer) return;
+    const drawer = activeDrawer === "history" ? railRef.current : telemetryRef.current;
+    const returnTo = activeDrawer === "history" ? menuButtonRef.current : telemetryButtonRef.current;
+    drawer?.focus();
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape" || event.defaultPrevented || settingsRef.current?.open) return;
+      if (activeDrawer === "history") setRailOpen(false);
+      else setTelemetryPreference(false);
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.removeEventListener("keydown", closeOnEscape);
+      window.requestAnimationFrame(() => {
+        if (document.activeElement === document.body || drawer?.contains(document.activeElement)) {
+          returnTo?.focus();
+        }
+      });
+    };
+  }, [activeDrawer]);
 
   useEffect(() => {
     const storedHistory = loadChatHistory(user.id);
@@ -167,8 +232,16 @@ export default function FlyGPTApp({
   }, [themeId]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const viewport = messageViewportRef.current;
+    if (viewport) viewport.scrollTop = viewport.scrollHeight;
   }, [messages, sending]);
+
+  useEffect(() => {
+    const composer = composerRef.current;
+    if (!composer) return;
+    composer.style.height = "auto";
+    composer.style.height = composer.scrollHeight + "px";
+  }, [input]);
 
   useEffect(() => {
     if (!historyReady || !activeChatId || !sessionId) return;
@@ -385,6 +458,7 @@ export default function FlyGPTApp({
     setMonitorPhase("idle");
     setTraceRequestId((current) => current + 1);
     setBrainOpen(false);
+    setTraceExpanded(false);
     setConversationTitle("Untitled flight");
     setRailOpen(false);
 
@@ -409,6 +483,7 @@ export default function FlyGPTApp({
     setMonitorPhase("idle");
     setTraceRequestId((current) => current + 1);
     setBrainOpen(false);
+    setTraceExpanded(false);
     setInput("");
     setRailOpen(false);
 
@@ -489,504 +564,366 @@ export default function FlyGPTApp({
       n_nodes: liveFrames[0]?.activations.length,
     };
   }, [sending, router, liveFrames, liveRoute]);
-  // The historical welcome message is retained for storage compatibility,
-  // but the landing screen renders its own centered welcome instead.
+  // Keep the sentinel out of the transcript while preserving existing records.
   const conversationMessages = messages.filter((message) => message.id !== INITIAL_MESSAGE.id);
   const hasConversation = conversationMessages.length > 0;
 
+  const connectionLabel = online ? "연결됨" : healthError ? "연결 끊김" : "연결 확인 중";
+  const canExport = messages.some((message) => message.role === "user");
+  const datasetLabel = health?.connectome?.dataset ?? "확인 중";
+  const generatorLabel = GENERATOR_LABELS[generatorReadiness];
+
+  function openBrain() {
+    setRailOpen(false);
+    if (!wideViewport) setTelemetryPreference(null);
+    setBrainOpen(true);
+  }
+
+  function showLatestTrace() {
+    setTraceExpanded(true);
+    setTelemetryPreference(true);
+    window.requestAnimationFrame(() => traceDetailsRef.current?.focus());
+  }
+
   return (
-    <main className={"flightApp" + (sending ? " isThinking" : "") + (hasConversation ? " hasConversation" : " isWelcome")} style={themeVars}>
-      <aside className={"flightRail" + (railOpen ? " open" : "")}>
-        <div className="railScroll" role="region" aria-label="왼쪽 메뉴 및 대화 목록" tabIndex={0}>
-          <div className="railBrandFull">
-            <div className="railBrand">
-              <PapitiMark />
-            </div>
-            <div className="railBrandCopy">
-              <strong>papiti.</strong>
-              <span>CURIOSITY IN MOTION</span>
-            </div>
+    <main className={styles.app} data-inspector={telemetryOpen} style={themeVars}>
+      <aside
+        id="chat-history"
+        ref={railRef}
+        className={styles.sidebar}
+        data-open={railOpen}
+        aria-label="대화 메뉴"
+        tabIndex={-1}
+        inert={activeDrawer === "telemetry"}
+      >
+        <div className={styles.sidebarTop}>
+          <div className={styles.brand}>
+            <img src="/papiti-mark.svg" width={39} height={39} alt="" />
+            <strong>FlyGPT<span>.</span></strong>
           </div>
-
-          <button className="newFlightButton" type="button" onClick={newFlight} disabled={sending}>
-            <Icon name="plus" size={18} />
-            <span>새 채팅</span>
-          </button>
-
-          <nav className="railNav" aria-label="FlyGPT navigation">
-            <button className="railButton active" type="button" title="홈" aria-current="page">
-              <Icon name="home" size={18} />
-              <span>홈</span>
-            </button>
-            <button className="railButton" type="button" title="FlyGraph" onClick={() => { setBrainOpen(true); setRailOpen(false); }}>
-              <Icon name="brain" size={18} />
-              <span>신경 지도</span>
-            </button>
-            <button className="railButton" type="button" title="테마" onClick={() => { setTelemetryOpen(true); setRailOpen(false); }}>
-              <Icon name="palette" size={18} />
-              <span>작동 기록</span>
-            </button>
-          </nav>
-
-          <section className="historySection" aria-label="채팅 기록">
-            <div className="historyLabel">
-              <span>최근 대화</span>
-              <b>{historyQuery.trim() ? filteredChatHistory.length + "/" + chatHistory.length : chatHistory.length}</b>
-            </div>
-            <div className="historyTools">
-              <label className="historySearch">
-                <Icon name="search" size={15} />
-                <input
-                  type="search"
-                  value={historyQuery}
-                  onChange={(event) => setHistoryQuery(event.target.value)}
-                  placeholder="대화 제목·내용 검색"
-                  aria-label="대화 기록 검색"
-                />
-              </label>
-              <button
-                className="historyExport"
-                type="button"
-                onClick={exportCurrentFlight}
-                disabled={sending || !messages.some((message) => message.role === "user")}
-                title="현재 대화를 Markdown 파일로 저장"
-              >
-                ↓ 현재 대화 저장 (.md)
-              </button>
-            </div>
-
-            <div className="historyList">
-              {chatHistory.length === 0 ? (
-                <p className="historyEmpty">대화를 시작하면 여기에 기록돼요.</p>
-              ) : filteredChatHistory.length === 0 ? (
-                <p className="historyEmpty">검색 결과가 없어요. 다른 단어를 입력해 보세요.</p>
-              ) : (
-                filteredChatHistory.map((chat) => (
-                  <button
-                    key={chat.id}
-                    className={"historyItem" + (chat.id === activeChatId ? " active" : "")}
-                    type="button"
-                    onClick={() => openFlight(chat)}
-                    disabled={sending}
-                    title={chat.title}
-                  >
-                    <span>{chat.title}</span>
-                    <small>{formatChatTime(chat.updatedAt)}</small>
-                  </button>
-                ))
-              )}
-            </div>
-          </section>
-        </div>
-
-        <div className="railAccount">
-          <div className="railAccountAvatar" aria-hidden="true">
-            {user.display_name.slice(0, 1).toUpperCase()}
-          </div>
-          <div className="railAccountCopy">
-            <strong>{user.display_name}</strong>
-            <span>{user.email}</span>
-          </div>
-          <button
-            className="railSignOut"
-            type="button"
-            onClick={() => void onSignOut()}
-            title="로그아웃"
-          >
-            로그아웃
+          <button className={styles.closeMenu} type="button" aria-label="대화 메뉴 닫기" onClick={() => setRailOpen(false)}>
+            <Icon name="close" size={19} />
           </button>
         </div>
 
-        <button className="railButton railSettings" type="button" title="설정" onClick={() => { setSettingsOpen(true); setRailOpen(false); }}>
-          <Icon name="settings" size={18} />
-          <span>설정</span>
+        <button className={styles.newChat} type="button" onClick={() => {
+          newFlight();
+          if (!compactViewport) composerRef.current?.focus();
+        }} disabled={sending}>
+          <Icon name="plus" size={19} />
+          새 대화
         </button>
-      </aside>
 
-      {railOpen && <button className="railScrim" type="button" aria-label="메뉴 닫기" onClick={() => setRailOpen(false)} />}
-
-      <section className="flightWorkspace">
-        <header className="flightHeader">
-          <div className="flightTitleWrap">
-            <button className="mobileMenu" type="button" aria-label="메뉴 열기" onClick={() => setRailOpen(true)}>
-              <Icon name="menu" />
-            </button>
-            <div className="flightTitle">
-              <span className="flightEyebrow">PAPITI / THINKING SPACE</span>
-              <h1>{hasConversation ? conversationTitle : "파피티"}</h1>
-            </div>
+        <section className={styles.history} aria-labelledby="chat-history-title">
+          <div className={styles.historyHeading}>
+            <h2 id="chat-history-title">최근 대화</h2>
+            <span>{historyQuery.trim() ? filteredChatHistory.length + "/" + chatHistory.length : chatHistory.length}</span>
           </div>
-
-          <div className="headerTelemetry">
-            <span className={"connectionChip " + (online ? "online" : "offline")}>
-              <i />
-              {online ? "연결됨" : healthError ? "연결 끊김" : "확인 중"}
-            </span>
-            {router && (
-              <button className="routeChip" type="button" onClick={() => setTelemetryOpen(true)}>
-                <span>{router.category_free ? "MaleCNS v0.5" : router.route}</span>
-                <strong>{router.category_free ? "multi-tool"
-                  : router.semantic_override ? "rule"
-                  : (router.confidence * 100).toFixed(0) + "%"}</strong>
-              </button>
-            )}
-            <button className="telemetryToggle" type="button" onClick={() => setTelemetryOpen((value) => !value)}>
-              <Icon name="spark" size={18} />
-              <span>작동 기록</span>
-            </button>
-          </div>
-        </header>
-
-        <div className="labStatusStrip" aria-label="MaleCNS system status">
-          <div>
-            <span>DATASET</span>
-            <strong>{health?.connectome?.dataset ?? (healthError ? "unavailable" : "checking")}</strong>
-          </div>
-          <div>
-            <span>ROUTER</span>
-            <strong>{health?.papiti_v05?.enabled
-              ? (health.papiti_v05.checkpoint_present ? "v0.5 · 166,700 nodes" : "v0.5 model missing")
-              : router?.n_nodes ? router.n_nodes + " nodes"
-              : health?.model_available ? "checkpoint ready" : "standby"}</strong>
-          </div>
-          <div>
-            <span>TRACE</span>
-            <strong>{router?.category_free ? "structural policy · no live firing"
-              : router?.steps ? router.steps + " propagation steps" : "awaiting signal"}</strong>
-          </div>
-          <div>
-            <span>GENERATOR</span>
-            <strong>{health?.generator?.model ?? (health?.generator?.configured ? "ready" : healthError ? "unavailable" : "checking")}</strong>
-          </div>
-          <div className={"labPulse" + (sending ? " active" : "")}>
-            <i />
-            <span>{sending ? "REQUEST RUNNING" : online ? "SYSTEM NOMINAL" : "BACKEND CHECK"}</span>
-          </div>
-        </div>
-
-        <div className="airCanvas">
-          <div className="airCurrent currentOne" />
-          <div className="airCurrent currentTwo" />
-
-          <section className="messageViewport" aria-label={hasConversation ? "대화 내용" : "새 대화 시작"}>
-            {!hasConversation ? (
-              <div className="welcomeLanding">
-                <div className="welcomeEmblem"><PapitiMark /></div>
-                <span className="welcomeEyebrow">HELLO, THIS IS PAPITI.</span>
-                <h2>오늘은 어떤 생각을 펼쳐볼까?</h2>
-                <p>작은 호기심부터 커다란 아이디어까지.<br className="desktopOnly" /> 질문 하나로 새로운 생각을 시작해 봐.</p>
-                <div className="welcomeStarters" aria-label="대화 시작 예시">
-                  {[
-                    { symbol: "✦", label: "가볍게 궁금한 것", detail: "흥미로운 이야기로 시작하기", prompt: "흥미로운 역사 이야기를 하나 들려줘." },
-                    { symbol: "⌘", label: "함께 만들기", detail: "코딩과 아이디어 발전시키기", prompt: "자바스크립트로 만들 만한 작은 프로젝트를 추천해줘." },
-                    { symbol: "◎", label: "깊게 알아보기", detail: "복잡한 개념도 차근차근", prompt: "신경망은 어떻게 학습하는지 쉽게 설명해줘." },
-                  ].map((item) => (
-                    <button className="starterCard" type="button" key={item.label} onClick={() => {
-                      setInput(item.prompt);
-                      composerRef.current?.focus();
-                    }}>
-                      <span className="starterIcon" aria-hidden="true">{item.symbol}</span>
-                      <strong>{item.label}</strong>
-                      <small>{item.detail}</small>
-                    </button>
-                  ))}
-                </div>
-              </div>
+          <label className={styles.search}>
+            <Icon name="search" size={16} />
+            <input
+              type="search"
+              value={historyQuery}
+              onChange={(event) => setHistoryQuery(event.target.value)}
+              placeholder="제목·내용 검색"
+              aria-label="대화 기록 검색"
+            />
+          </label>
+          <div className={styles.historyList} tabIndex={0} role="region" aria-label="저장된 대화 목록">
+            {!historyReady ? (
+              <p>대화 기록을 불러오는 중이에요.</p>
+            ) : chatHistory.length === 0 ? (
+              <p>새 대화를 시작하면<br />여기에 기록돼요.</p>
+            ) : filteredChatHistory.length === 0 ? (
+              <p>검색 결과가 없어요.</p>
             ) : (
-            <div className="flightConversation" role="log" aria-live="polite" aria-relevant="additions">
-              {conversationMessages.map((message, index) => (
-                <article key={message.id} className={"flightMessage " + message.role}>
-                  {message.role === "assistant" && (
-                    <div className="messageBeacon">
-                      <PapitiMark small />
-                      {index < conversationMessages.length - 1 && <span className="beaconTrail" />}
-                    </div>
-                  )}
-
-                  <div className="messagePayload">
-                    <div className="messageBubble">
-                      <div className="messageText">{message.content}</div>
-
-                      {message.meta && message.meta.length > 0 && (
-                        <div className="messageMeta">
-                          {message.meta.map((item, metaIndex) => (
-                            <span
-                              key={message.id + "-" + metaIndex}
-                              className={"metaChip " + (item.tone ?? "muted")}
-                            >
-                              {item.text}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {message.role === "assistant" && (
-                      <div className="payloadActions">
-                        <button type="button" title="복사" onClick={() => navigator.clipboard?.writeText(message.content)}>
-                          <Icon name="copy" size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          title={message.learning?.confirmed ? "학습 완료" : "이 라우트가 맞았다고 학습시키기"}
-                          onClick={() => void confirmLearning(message.id, message.learning)}
-                          disabled={!message.learning || message.learning.confirmed}
-                        >
-                          <Icon name="thumb" size={16} />
-                        </button>
-                        <button type="button" title="경로 보기" onClick={() => setTelemetryOpen(true)}>
-                          <Icon name="retry" size={16} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </article>
-              ))}
-
-              {sending && (
-                <article className="flightMessage assistant">
-                  <div className="messageBeacon">
-                    <PapitiMark small />
-                  </div>
-                  <div className="messagePayload">
-                    <div className="messageBubble flyThinkingBubble">
-                      <FlyThinkingIndicator
-                        phase={monitorPhase}
-                        frame={liveFrames.length ? liveFrames[liveFrames.length - 1] : null}
-                      />
-                    </div>
-                  </div>
-                </article>
-              )}
-
-              <div ref={bottomRef} />
-            </div>
-            )}
-          </section>
-
-          <footer className="launchDock">
-            <form className="launchComposer" onSubmit={handleSubmit}>
-
-              <div className="composerCaption" role="status" aria-live="polite">
-                {generatorReadiness === "native" ? "🪰 파피티 자체 응답기 활성화 · LLM 미사용" :
-                   generatorReadiness === "ready" ? "🟢 AI 모델 준비 완료" :
-                  generatorReadiness === "loading" ? "🟡 AI 모델 준비 중 · 첫 답변이 느릴 수 있어요" :
-                  generatorReadiness === "unavailable" ? "⚠️ AI 모델 상태를 확인할 수 없어요" :
-                  generatorReadiness === "checking" ? "⏳ AI 모델 상태 확인 중..." :
-                  "☁️ 외부 AI 모델 연결"}
-              </div>
-
-              <div className="launchInputRow">
-                <textarea
-                  ref={composerRef}
-                  value={input}
-                  onChange={(event) => setInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && !event.shiftKey) {
-                      if (!event.nativeEvent.isComposing) {
-                        event.preventDefault();
-                        event.currentTarget.form?.requestSubmit();
-                      }
-                    }
-                  }}
-                  placeholder="무엇이든 궁금한 걸 물어봐..."
-                  rows={1}
-                  disabled={sending}
-                  aria-label="FlyGPT message"
-                />
+              filteredChatHistory.map((chat) => (
                 <button
-                  className="launchButton"
-                  type="submit"
-                  disabled={sending || !input.trim() || !sessionId}
-                  aria-label="메시지 보내기"
+                  key={chat.id}
+                  className={styles.historyItem}
+                  type="button"
+                  aria-current={chat.id === activeChatId ? "true" : undefined}
+                  onClick={() => openFlight(chat)}
+                  disabled={sending}
+                  title={chat.title}
                 >
-                  {sending ? <span className="launchSpinner" /> : <Icon name="send" size={20} />}
+                  <Icon name="message" size={16} />
+                  <span><strong>{chat.title}</strong><small>{formatChatTime(chat.updatedAt)}</small></span>
                 </button>
-              </div>
-            </form>
-
-            <div className="dockStatus">
-              <span>{health?.app_version ? "FlyGPT v" + health.app_version : "FlyGPT · " + (healthError ? "offline" : "checking")}</span>
-              <span>•</span>
-              <span>{health?.connectome?.dataset ?? "dataset pending"}</span>
-              <span>•</span>
-              <span>{modelLabel}</span>
-              {router && (
-                <>
-                  <span>•</span>
-                  <span>{router.category_free ? "v0.5 · multi-tool" : router.route}</span>
-                </>
-              )}
-            </div>
-          </footer>
-        </div>
-      </section>
-
-      <aside className={"telemetryDock" + (telemetryOpen ? " open" : "")}>
-        <div className="telemetryHeader">
-          <div>
-            <span>PAPITI / HOW IT WORKS</span>
-            <h2>신경 관제실</h2>
-          </div>
-          <button className="dockClose" type="button" aria-label="Telemetry 닫기" onClick={() => setTelemetryOpen(false)}>
-            <Icon name="close" />
-          </button>
-        </div>
-
-        <FullPopulationMap
-          phase={monitorPhase}
-          pending={sending}
-          routerNodes={traceRouter?.n_nodes ?? router?.n_nodes ?? null}
-          fullPopulationActive={Boolean(health?.papiti_v05?.enabled || health?.full_population_router?.active)}
-        />
-        <details className="observatoryRouterTrace">
-          <summary>실제 라우터 추론 기록 펼치기</summary>
-          <ConnectomePreview router={traceRouter} pending={sending} live={sending} phase={monitorPhase} onExpand={() => setBrainOpen(true)} />
-        </details>
-
-        <section className="telemetrySection">
-          <div className="sectionTitle">
-            <span>LAST ROUTE MIX</span>
-            <button type="button" onClick={() => setBrainOpen(true)}>view graph ↗</button>
-          </div>
-
-          <div className="routeMix">
-            {topRoutes.length === 0 ? (
-              <p className="telemetryEmpty">질문을 보내면 라우터 분포가 여기에 나타나요.</p>
-            ) : (
-              topRoutes.map((item) => (
-                <div className="routeMixRow" key={item.route}>
-                  <div>
-                    <span>{item.route}</span>
-                    <strong>{(item.confidence * 100).toFixed(1)}%</strong>
-                  </div>
-                  <i><b style={{ width: Math.max(3, item.confidence * 100) + "%" }} /></i>
-                </div>
               ))
             )}
           </div>
         </section>
 
-        <details className="telemetryDetails">
-          <summary>System details &amp; appearance <span>⌄</span></summary>
-        <section className="telemetrySection systemGrid">
-          <div>
-            <span>BACKEND</span>
-            <strong>{health?.app_version ? "v" + health.app_version : "checking"}</strong>
+        <div className={styles.sidebarBottom}>
+          <nav className={styles.sidebarTools} aria-label="채팅 도구">
+            <button type="button" onClick={openBrain}><Icon name="brain" size={18} /> 신경 지도</button>
+            <button type="button" onClick={() => {
+              setRailOpen(false);
+              settingsRef.current?.showModal();
+            }}><Icon name="settings" size={17} /> 설정</button>
+          </nav>
+          <div className={styles.account}>
+            <span className={styles.accountAvatar} aria-hidden="true">{user.display_name.slice(0, 1).toUpperCase()}</span>
+            <span className={styles.accountText}><strong>{user.display_name}</strong><small title={user.email}>{user.email}</small></span>
+            <button className={styles.iconButton} type="button" aria-label="로그아웃" title="로그아웃" onClick={() => void onSignOut()}>
+              <Icon name="logout" size={18} />
+            </button>
           </div>
-          <div>
-            <span>MEMORY</span>
-            <strong>{health?.memory?.enabled ? "ready" : "pending"}</strong>
-          </div>
-          <div>
-            <span>GENERATOR</span>
-            <strong>{health?.generator?.model ?? (health?.generator?.configured ? "ready" : "fallback")}</strong>
-          </div>
-          <div>
-            <span>ROUTER</span>
-            <strong>{modelLabel}</strong>
-          </div>
-        </section>
+        </div>
+      </aside>
 
-        <section className="telemetrySection">
-          <div className="sectionTitle">
-            <span>FLIGHT COLOR</span>
-            <small>{theme.name}</small>
+      <section className={styles.workspace} aria-label="채팅" inert={Boolean(activeDrawer)}>
+        <header className={styles.header}>
+          <div className={styles.headerTitle}>
+            <button
+              ref={menuButtonRef}
+              className={styles.menuButton}
+              type="button"
+              aria-label="대화 메뉴 열기"
+              aria-controls="chat-history"
+              aria-expanded={railOpen}
+              onClick={() => setRailOpen(true)}
+            ><Icon name="menu" /></button>
+            <div>
+              <h1 title={hasConversation ? conversationTitle : undefined}>{hasConversation ? conversationTitle : "새 대화"}</h1>
+            </div>
           </div>
-          <div className="themeSwatches">
+          <div className={styles.headerActions}>
+            {canExport && (
+              <button className={styles.iconButton} type="button" aria-label="현재 대화 Markdown으로 저장" title="Markdown으로 저장" disabled={sending} onClick={exportCurrentFlight}>
+                <Icon name="download" size={19} />
+              </button>
+            )}
+            <button
+              ref={telemetryButtonRef}
+              className={styles.inspectorToggle}
+              type="button"
+              aria-controls="chat-inspector"
+              aria-expanded={telemetryOpen}
+              aria-label={telemetryOpen ? "관제실 닫기" : "관제실 열기"}
+              title={telemetryOpen ? "관제실 닫기" : "관제실 열기"}
+              onClick={() => setTelemetryPreference(!telemetryOpen)}
+            >
+              <Icon name="panel" size={19} />
+              <span>관제실</span>
+            </button>
+          </div>
+        </header>
+
+        <div className={styles.viewport} ref={messageViewportRef}>
+          {hasConversation ? (
+            <div className={styles.transcript} role="log" aria-label="대화 내용" aria-relevant="additions">
+              {conversationMessages.map((message) => (
+                <article className={message.role === "user" ? styles.userMessage : styles.assistantMessage} key={message.id}>
+                  <div className={styles.messageAuthor}>
+                    {message.role === "assistant" && <img src="/papiti-mark.svg" width={28} height={28} alt="" />}
+                    <strong>{message.role === "user" ? "나" : "파피티"}</strong>
+                  </div>
+                  <div className={styles.messageText}>{message.content}</div>
+                  {message.meta && message.meta.length > 0 && (
+                    <details className={styles.responseDetails}>
+                      <summary>응답 정보</summary>
+                      <ul>
+                        {message.meta.map((item, index) => <li key={index} data-tone={item.tone}>{item.text}</li>)}
+                      </ul>
+                    </details>
+                  )}
+                  {message.role === "assistant" && (
+                    <div className={styles.messageActions}>
+                      <button className={styles.iconButton} type="button" aria-label="답변 복사" title="답변 복사" onClick={() => void navigator.clipboard?.writeText(message.content).catch(() => undefined)}>
+                        <Icon name="copy" size={16} />
+                      </button>
+                      {router && message.id === conversationMessages[conversationMessages.length - 1]?.id && (
+                        <button className={styles.iconButton} type="button" aria-label="최근 라우터 기록 보기" title="최근 라우터 기록 보기" onClick={showLatestTrace}>
+                          <Icon name="activity" size={16} />
+                        </button>
+                      )}
+                      {message.learning && (
+                        <button
+                          className={styles.iconButton}
+                          type="button"
+                          aria-label={message.learning.confirmed ? "학습 완료" : "이 경로가 맞다고 학습시키기"}
+                          title={message.learning.confirmed ? "학습 완료" : "이 경로가 맞다고 학습시키기"}
+                          onClick={() => void confirmLearning(message.id, message.learning)}
+                          disabled={message.learning.confirmed}
+                        ><Icon name="thumb" size={16} /></button>
+                      )}
+                    </div>
+                  )}
+                </article>
+              ))}
+              {sending && (
+                <div className={styles.thinking}>
+                  <FlyThinkingIndicator phase={monitorPhase} frame={liveFrames[liveFrames.length - 1] ?? null} />
+                </div>
+              )}
+            </div>
+          ) : (
+            <section className={styles.welcome} aria-labelledby="welcome-title">
+              <div className={styles.welcomeHero}>
+                <div className={styles.welcomeLogo} aria-hidden="true">
+                  <img src="/papiti-mark.svg" width={53} height={53} alt="" />
+                </div>
+                <h2 id="welcome-title">오늘은 뭐가<br /><em>궁금해?</em></h2>
+                <p>파피티에게 질문하거나 아래 예시로 대화를 시작해 봐.</p>
+              </div>
+              <div className={styles.starters} role="group" aria-label="대화 시작 예시">
+                {STARTERS.map((item) => (
+                  <button className={styles.starter} type="button" key={item.title} onClick={() => {
+                    setInput(item.prompt);
+                    composerRef.current?.focus();
+                  }}>
+                    <span className={styles.starterIcon}><Icon name={item.icon} size={18} /></span>
+                    <span><strong>{item.title}</strong><small>{item.prompt}</small></span>
+                    <Icon name="diagonal" size={16} />
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+
+        <footer className={styles.footer}>
+          <form className={styles.composer} onSubmit={handleSubmit}>
+            <textarea
+              ref={composerRef}
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey &&
+                    !event.nativeEvent.isComposing && event.keyCode !== 229) {
+                  event.preventDefault();
+                  event.currentTarget.form?.requestSubmit();
+                }
+              }}
+              placeholder="파피티에게 메시지 보내기"
+              rows={1}
+              disabled={sending}
+              aria-label="파피티에게 메시지 보내기"
+            />
+            <div className={styles.composerActions}>
+              <span className={styles.modelStatus} role="status" data-state={generatorReadiness}><i />{generatorLabel}</span>
+              <button className={styles.send} type="submit" disabled={sending || !input.trim() || !sessionId} aria-label="메시지 보내기">
+                <Icon name="send" size={21} />
+              </button>
+            </div>
+          </form>
+          <div className={styles.footerMeta}>
+            <span className={styles.keyboardHint}><kbd>Shift</kbd> + <kbd>Enter</kbd> 줄바꿈</span>
+            <span className={styles.connection} role="status" data-state={online ? "online" : healthError ? "offline" : "checking"}><i />{connectionLabel}</span>
+          </div>
+        </footer>
+      </section>
+
+      {telemetryOpen && (
+        <aside
+          id="chat-inspector"
+          ref={telemetryRef}
+          className={styles.inspector}
+          aria-label="신경 관제실"
+          tabIndex={-1}
+          inert={activeDrawer === "history"}
+        >
+          <header className={styles.inspectorHead}>
+            <div><Icon name="activity" size={19} /><h2>신경 관제실</h2></div>
+            <button className={styles.iconButton} type="button" aria-label="신경 관제실 닫기" onClick={() => {
+              setTelemetryPreference(false);
+              if (wideViewport) telemetryButtonRef.current?.focus();
+            }}><Icon name="close" size={19} /></button>
+          </header>
+          <div className={styles.inspectorBody}>
+            <FullPopulationMap
+              phase={monitorPhase}
+              pending={sending}
+              routerNodes={traceRouter?.n_nodes ?? router?.n_nodes ?? null}
+              fullPopulationActive={Boolean(health?.papiti_v05?.enabled || health?.full_population_router?.active)}
+            />
+            <button className={styles.graphButton} type="button" onClick={openBrain}>
+              <Icon name="brain" size={18} /> 신경 지도 열기 <Icon name="diagonal" size={16} />
+            </button>
+            <details
+              className={styles.inspectorDetails}
+              ref={traceDetailsRef}
+              tabIndex={-1}
+              open={traceExpanded}
+              onToggle={(event) => setTraceExpanded(event.currentTarget.open)}
+            >
+              <summary>최근 라우터 기록</summary>
+              {traceExpanded && <ConnectomePreview router={traceRouter} pending={sending} live={sending} phase={monitorPhase} onExpand={openBrain} />}
+              {traceExpanded && topRoutes.length > 0 && (
+                <dl className={styles.routeMix}>
+                  {topRoutes.map((item) => (
+                    <div key={item.route}>
+                      <dt>{item.route}</dt>
+                      <dd>{(item.confidence * 100).toFixed(1)}%</dd>
+                      <span aria-hidden="true"><i style={{ width: item.confidence * 100 + "%" }} /></span>
+                    </div>
+                  ))}
+                </dl>
+              )}
+            </details>
+            <details className={styles.inspectorDetails}>
+              <summary>시스템 정보</summary>
+              <dl className={styles.systemRows}>
+                <div><dt>데이터셋</dt><dd>{datasetLabel}</dd></div>
+                <div><dt>라우터</dt><dd>{modelLabel}</dd></div>
+                <div><dt>생성기</dt><dd>{health?.generator?.model ?? generatorLabel}</dd></div>
+                <div><dt>백엔드</dt><dd>{health?.app_version ? "v" + health.app_version : connectionLabel}</dd></div>
+                <div><dt>메모리</dt><dd>{health?.memory?.enabled ? "활성" : "대기"}</dd></div>
+              </dl>
+            </details>
+          </div>
+        </aside>
+      )}
+
+      {activeDrawer && (
+        <button
+          className={styles.scrim}
+          type="button"
+          tabIndex={-1}
+          aria-label={activeDrawer === "history" ? "대화 메뉴 닫기" : "관제실 닫기"}
+          onClick={() => activeDrawer === "history" ? setRailOpen(false) : setTelemetryPreference(false)}
+        />
+      )}
+
+      <BrainPanel open={brainOpen} onClose={() => setBrainOpen(false)} router={traceRouter} phase={monitorPhase} requestId={traceRequestId} />
+
+      <dialog ref={settingsRef} className={styles.settings} aria-labelledby="chat-settings-title" onClick={(event) => {
+        if (event.target === event.currentTarget) event.currentTarget.close();
+      }}>
+        <div className={styles.settingsInner}>
+          <header>
+            <h2 id="chat-settings-title">설정</h2>
+            <button className={styles.iconButton} type="button" aria-label="설정 닫기" onClick={() => settingsRef.current?.close()}><Icon name="close" /></button>
+          </header>
+          <h3>강조 색상</h3>
+          <div className={styles.swatches} role="group" aria-label="채팅 강조 색상">
             {THEMES.map((item) => (
               <button
                 key={item.id}
-                className={themeId === item.id ? "selected" : ""}
                 type="button"
-                aria-label={item.name}
-                style={{ background: "linear-gradient(135deg," + item.accent + "," + item.accent2 + ")" }}
+                aria-pressed={themeId === item.id}
                 onClick={() => setThemeId(item.id)}
-              />
+              ><i style={{ backgroundColor: item.accent2 }} />{item.name}</button>
             ))}
           </div>
-        </section>
-
-        <div className="telemetryActions">
-          <button type="button" onClick={newFlight} disabled={sending}>
-            <Icon name="plus" size={17} />
-            New flight
-          </button>
-          <button type="button" onClick={resetMemory} disabled={sending}>
-            <Icon name="retry" size={17} />
-            Clear memory
-          </button>
+          <h3>세션 및 학습</h3>
+          <dl className={styles.systemRows}>
+            <div><dt>연결</dt><dd>{connectionLabel}</dd></div>
+            <div><dt>라우터</dt><dd>{modelLabel}</dd></div>
+            <div><dt>세션</dt><dd>{sessionId ? sessionId.slice(0, 12) + "…" : "준비 중"}</dd></div>
+            <div><dt>경로 학습</dt><dd>{learningStatus ? learningStatus.examples + "개 예시" : health?.adaptive_learning?.enabled ? "활성" : "대기"}</dd></div>
+            <div><dt>장기 지식</dt><dd>{knowledgeStatus ? knowledgeStatus.items + "개 · " + knowledgeStatus.verified + "개 검증" : health?.knowledge?.enabled ? "활성" : "대기"}</dd></div>
+            <div><dt>웹 검색</dt><dd>{health?.research?.configured ? health.research.provider ?? "활성" : "API 키 필요"}</dd></div>
+          </dl>
+          <div className={styles.resetActions}>
+            <button type="button" onClick={resetMemory} disabled={sending}>현재 대화 기억 지우기</button>
+            <button type="button" onClick={() => void resetRouteLearning()} disabled={sending}>경로 학습 지우기</button>
+            <button type="button" onClick={() => void resetKnowledge()} disabled={sending}>장기 지식 지우기</button>
+          </div>
         </div>
-        </details>
-      </aside>
-
-      {telemetryOpen && <button className="telemetryScrim" type="button" aria-label="Telemetry 닫기" onClick={() => setTelemetryOpen(false)} />}
-
-      <BrainPanel
-        open={brainOpen}
-        onClose={() => setBrainOpen(false)}
-        router={traceRouter}
-        phase={monitorPhase}
-        requestId={traceRequestId}
-      />
-
-      {settingsOpen && (
-        <div className="settingsBackdrop" onMouseDown={() => setSettingsOpen(false)}>
-          <section className="settingsModal" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="settingsModalHeader">
-              <div>
-                <span>PAPITI / PREFERENCES</span>
-                <h2>설정</h2>
-              </div>
-              <button type="button" onClick={() => setSettingsOpen(false)}><Icon name="close" /></button>
-            </div>
-            <div className="settingsList">
-              <div><span>Connection</span><strong>{online ? "Online" : "Check backend"}</strong></div>
-              <div><span>Router</span><strong>{modelLabel}</strong></div>
-              <div><span>Session</span><strong>{sessionId ? sessionId.slice(0, 12) + "…" : "loading"}</strong></div>
-              <div><span>Theme</span><strong>{theme.name}</strong></div>
-              <div>
-                <span>Adaptive learning</span>
-                <strong>
-                  {learningStatus
-                    ? learningStatus.examples + " examples"
-                    : health?.adaptive_learning?.enabled
-                      ? "ready"
-                      : "pending"}
-                </strong>
-              </div>
-              <div>
-                <span>Long-term knowledge</span>
-                <strong>
-                  {knowledgeStatus
-                    ? knowledgeStatus.items +
-                      " items · " +
-                      knowledgeStatus.verified +
-                      " verified"
-                    : health?.knowledge?.enabled
-                      ? "ready"
-                      : "pending"}
-                </strong>
-              </div>
-              <div>
-                <span>Web research</span>
-                <strong>
-                  {health?.research?.configured
-                    ? (health.research.provider ?? "ready")
-                    : "API key needed"}
-                </strong>
-              </div>
-            </div>
-            <button className="settingsDanger" type="button" onClick={resetMemory} disabled={sending}>Clear current memory</button>
-            <button className="settingsDanger" type="button" onClick={() => void resetRouteLearning()}>
-              Clear learned routing
-            </button>
-            <button className="settingsDanger" type="button" onClick={() => void resetKnowledge()}>
-              Clear long-term knowledge
-            </button>
-          </section>
-        </div>
-      )}
+      </dialog>
     </main>
   );
 }
