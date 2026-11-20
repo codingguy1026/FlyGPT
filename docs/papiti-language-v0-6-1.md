@@ -54,6 +54,14 @@ withholds complete combinations for evaluation. The worker checks generated
 parts for valid wording and rejects complete replies found in training.
 The checkpoint filename uses the same base stem with `_greetings` appended.
 
+To train a single experimental speaker for supported Korean and English prose
+plans, run `make papiti-lm-train-v0.6.1-prose`. The `_prose` checkpoint
+combines learned response parts and rejects complete training replies, while
+checking the selected plan and required project facts. Evaluation holds out
+complete phrasings across all the supported prose acts. The base checkpoint
+still serves exact calculator results. Arbitrary open-domain answers and
+external search results require a speaker trained for that evidence.
+
 Run `make papiti-lm-train-v0.6.1-dialogue` to add check-ins, good news,
 tiredness and laughter in Korean and English. The app uses this checkpoint
 for those standalone turns. For a custom base filename, give its companion

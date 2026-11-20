@@ -19,6 +19,7 @@ def _train(args):
     from papiti_lm.corpus import DigitSubwordTokenizer
     from papiti_lm.model import ModelConfig, PapitiTransformer, save_checkpoint
     from papiti_lm.v0_6_1_data import create_corpus, greeting_fingerprints
+    from papiti_lm.v0_6_1_prose import create_prose_corpus, prose_fingerprints
     from torch.utils.data import DataLoader
 
     torch = _torch()
@@ -29,12 +30,13 @@ def _train(args):
     torch.set_num_threads(min(4, torch.get_num_threads()))
     torch.manual_seed(args.seed)
     random.seed(args.seed)
-    corpus = create_corpus(
+    corpus = create_prose_corpus(args.seed) if args.shared_prose else create_corpus(
         args.seed, diverse_social=args.diverse_social,
         everyday_dialogue=args.everyday_dialogue, phrasing_cues=args.diverse_social,
         compositional_greetings=args.compositional_greetings,
     )
     fingerprints = greeting_fingerprints(corpus) if args.compositional_greetings else {}
+    prose_keys = prose_fingerprints(corpus) if args.shared_prose else {}
     tokenizer = DigitSubwordTokenizer.from_examples(corpus.train, max_merges=256)
     config = ModelConfig(
         tokenizer.vocab_size, context=args.context, d_model=args.d_model,
@@ -82,6 +84,8 @@ def _train(args):
                 "phrasing_cues": args.diverse_social,
                 "compositional_greetings": args.compositional_greetings,
                 "greeting_fingerprints": fingerprints,
+                "shared_prose": args.shared_prose,
+                "prose_fingerprints": prose_keys,
                 "everyday_dialogue": args.everyday_dialogue,
                 "seed": args.seed, "epoch": epoch,
                 "val_char_nll": score["char_nll"],
@@ -118,12 +122,13 @@ def _eval(args):
     from papiti_lm.cli import _evaluate, _torch
     from papiti_lm.model import generate, load_checkpoint
     from papiti_lm.v0_6_1_data import create_corpus, greeting_sequence
+    from papiti_lm.v0_6_1_prose import HELD_OUT_PROSE, create_prose_corpus
 
     _torch()
     model, tokenizer, metadata = load_checkpoint(args.checkpoint)
     if metadata.get("version") != "v0.6.1":
         raise ValueError("v0.6.1 checkpoint required")
-    corpus = create_corpus(
+    corpus = create_prose_corpus(int(metadata["seed"])) if metadata.get("shared_prose") else create_corpus(
         int(metadata["seed"]),
         diverse_social=metadata.get("diverse_social_targets") is True,
         mirror_greetings=metadata.get("mirror_greetings") is True,
@@ -141,6 +146,7 @@ def _eval(args):
         args.batch_size, sum(len(row.assistant) + 1 for row in corpus.test),
     )
     training_replies = set(metadata.get("greeting_fingerprints", {}).get("replies", ()))
+    training_replies.update(metadata.get("prose_fingerprints", {}).get("replies", ()))
     results = []
     for row in corpus.test:
         if row.group == "mirror-greeting":
@@ -149,7 +155,8 @@ def _eval(args):
             except ValueError:
                 answer = ""
         else:
-            answer = generate(model, tokenizer, row.user, max_new_tokens=64,
+            answer = generate(model, tokenizer, row.user,
+                              max_new_tokens=200 if row.group == HELD_OUT_PROSE else 64,
                               temperature=0, top_k=12)
         result = {
             "purpose": row.group,
@@ -157,7 +164,7 @@ def _eval(args):
             "generated": answer,
             "exact_match": answer.strip() == row.assistant,
         }
-        if row.group == "compositional-greeting":
+        if row.group in {"compositional-greeting", HELD_OUT_PROSE}:
             result["matches_training_reply"] = reply_key(answer) in training_replies
         results.append(result)
     report = {
@@ -216,7 +223,7 @@ def _novel_greeting(plan, packet, decode, fingerprints, avoid_reply_keys) -> str
     return ""
 
 
-@lru_cache(maxsize=4)
+@lru_cache(maxsize=5)
 def _load_speaker(path: Path, _revision: tuple[int, int, int]):
     from papiti_lm.model import load_checkpoint
 
@@ -231,7 +238,7 @@ def _speaker_model(checkpoint: str):
 
 
 def _infer_answer(plan, checkpoint, *, base_checkpoint=None, alternate_checkpoint=None,
-                  max_new_tokens=96, avoid_reply_keys=()):
+                  max_new_tokens=None, avoid_reply_keys=()):
     """Only checkpoint-driven token prediction; does not load training examples."""
     from papiti_lm.model import generate
     from hybrid_speech import REPLY_HISTORY_LIMIT
@@ -247,11 +254,32 @@ def _infer_answer(plan, checkpoint, *, base_checkpoint=None, alternate_checkpoin
     # greeting targets. Use the base speaker until it is retrained.
     if base_checkpoint and (
         (act == "return_greeting" and metadata.get("mirror_greetings") is True)
-        or (act in INTENT_FACT_IDS and metadata.get("phrasing_cues") is not True)
+        or (act in INTENT_FACT_IDS and not (metadata.get("phrasing_cues") or metadata.get("shared_prose")))
     ):
         model, tokenizer, metadata = _speaker_model(base_checkpoint)
     if metadata.get("version") != "v0.6.1":
         raise ValueError("v0.6.1 semantic speaker checkpoint required")
+    if metadata.get("shared_prose") is True:
+        from papiti_lm.v0_6_1_prose import decode_novel_prose
+
+        fact_plan = act in INTENT_FACT_IDS
+        token_limit = (200 if fact_plan else 96) if max_new_tokens is None else max_new_tokens
+
+        def decode(text, temperature, prefix):
+            # Sample the follow-up of a factual answer after a greedy pass
+            # through its protected content.
+            return generate(
+                model, tokenizer, text, max_new_tokens=token_limit, top_k=8,
+                temperature=0 if fact_plan else temperature,
+                continuation_temperature=(temperature or None) if fact_plan else None,
+                response_prefix=prefix,
+            )
+
+        return decode_novel_prose(
+            plan, decode, metadata["prose_fingerprints"], avoid_reply_keys[:REPLY_HISTORY_LIMIT],
+            fact_plan=fact_plan,
+        )
+    max_new_tokens = 96 if max_new_tokens is None else max_new_tokens
     if act in EVERYDAY_SPEECH_ACTS and metadata.get("everyday_dialogue") is not True:
         raise ValueError("update the social checkpoint for everyday dialogue")
     if act == "return_greeting" and metadata.get("mirror_greetings") is True:
@@ -346,7 +374,9 @@ def main(argv=None):
     train.add_argument("--seed", type=int, default=42)
     train.add_argument("--diverse-social", action="store_true")
     train.add_argument("--everyday-dialogue", action="store_true")
-    train.add_argument("--compositional-greetings", action="store_true")
+    curriculum = train.add_mutually_exclusive_group()
+    curriculum.add_argument("--compositional-greetings", action="store_true")
+    curriculum.add_argument("--shared-prose", action="store_true")
     train.add_argument("--epochs", type=int, default=12)
     train.add_argument("--patience", type=int, default=5)
     train.add_argument("--batch-size", type=int, default=16)
@@ -359,7 +389,7 @@ def main(argv=None):
     evaluation.add_argument("--report", default="reports/papiti_v0_6_1.json")
     evaluation.add_argument("--batch-size", type=int, default=16)
     evaluation.set_defaults(func=_eval)
-    infer.add_argument("--max-new-tokens", type=int, default=96)
+    infer.add_argument("--max-new-tokens", type=int)
     infer.add_argument("--base-checkpoint")
     infer.add_argument("--avoid-reply-key", action="append", default=[])
     infer.set_defaults(func=_infer)

@@ -109,6 +109,8 @@ def generate(
     top_k: int = 24,
     repetition_penalty: float = 1.0,
     seed: int | None = None,
+    continuation_temperature: float | None = None,
+    response_prefix: str = "",
 ) -> str:
     """Autoregressively sample a new answer; no canned answers or lookup."""
     if not user.strip() or len(user) > 2048:
@@ -117,6 +119,8 @@ def generate(
         raise ValueError("max_new_tokens must be 1..256")
     if not 0 <= temperature <= 2.0:
         raise ValueError("temperature must be 0..2")
+    if continuation_temperature is not None and not 0 <= continuation_temperature <= 2.0:
+        raise ValueError("continuation_temperature must be 0..2")
     if not 1 <= top_k <= 65536:
         raise ValueError("top_k must be positive and bounded")
     if not 1 <= repetition_penalty <= 2:
@@ -127,13 +131,17 @@ def generate(
     # Preserve role delimiters, trimming only oldest user characters.
     message = tokenizer.encode(user)
     message = message[-(model.config.context - 3):]
-    ids = [BOS, USER, *message, ASSISTANT]
-    produced: list[int] = []
+    produced = tokenizer.encode(response_prefix) if response_prefix else []
+    ids = [BOS, USER, *message, ASSISTANT, *produced]
     rng = None
     if seed is not None:
         rng = torch.Generator(device=device)
         rng.manual_seed(seed)
     model.eval()
+    sampling_temperature = (
+        continuation_temperature if continuation_temperature is not None and "\n" in response_prefix
+        else temperature
+    )
     for _ in range(max_new_tokens):
         window = torch.tensor(
             [ids[-model.config.context:]], dtype=torch.long, device=device
@@ -148,10 +156,10 @@ def generate(
                     logits[token] /= repetition_penalty
                 else:
                     logits[token] *= repetition_penalty
-        if temperature == 0:
+        if sampling_temperature == 0:
             next_token = int(logits.argmax())
         else:
-            logits /= max(temperature, 1e-6)
+            logits /= max(sampling_temperature, 1e-6)
             limit = min(top_k, logits.numel())
             top_values, top_ids = torch.topk(logits, limit)
             probabilities = F.softmax(top_values, dim=-1)
@@ -161,6 +169,8 @@ def generate(
             break
         produced.append(next_token)
         ids.append(next_token)
+        if continuation_temperature is not None and "\n" in tokenizer.decode([next_token]):
+            sampling_temperature = continuation_temperature
     return tokenizer.decode(produced)
 
 
