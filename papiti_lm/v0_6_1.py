@@ -178,7 +178,9 @@ def _fresh_wording(
     if delivery_styles:
         styles = random.sample(delivery_styles, len(delivery_styles))
         guided = styles if avoid_reply_keys else styles[:2]
-        attempts = [(style, 0.32) for style in guided] + [(None, 0.65), (None, 0.0)]
+        # On a repeat, try each learned delivery directly before sampling.
+        attempts = [(style, 0.0 if avoid_reply_keys else 0.32) for style in guided]
+        attempts += [(None, 0.65), (None, 0.0)]
     else:
         temperatures = (0.5, 0.6, 0.65, 0.72, 0.72, 0.0) if avoid_reply_keys else (0.5, 0.62, 0.0)
         attempts = [(None, temperature) for temperature in temperatures]
@@ -203,8 +205,8 @@ def _speaker_model(checkpoint: str):
     return _load_speaker(path, (stat.st_ino, stat.st_mtime_ns, stat.st_size))
 
 
-def _infer_answer(plan, checkpoint, *, base_checkpoint=None, max_new_tokens=96,
-                  avoid_reply_keys=()):
+def _infer_answer(plan, checkpoint, *, base_checkpoint=None, alternate_checkpoint=None,
+                  max_new_tokens=96, avoid_reply_keys=()):
     """Only checkpoint-driven token prediction; does not load training examples."""
     from papiti_lm.model import generate
     from hybrid_speech import REPLY_HISTORY_LIMIT
@@ -228,16 +230,40 @@ def _infer_answer(plan, checkpoint, *, base_checkpoint=None, max_new_tokens=96,
     if act == "return_greeting" and metadata.get("mirror_greetings") is True:
         raise ValueError("retrain the companion checkpoint for generative greetings")
 
-    def decode(*, style=None, **options):
-        text = delivery_packet(packet, style) if style else packet
-        return generate(model, tokenizer, text, max_new_tokens=max_new_tokens, **options)
+    def realize(speaker):
+        speaker_model, speaker_tokenizer, speaker_metadata = speaker
+
+        def decode(*, style=None, **options):
+            text = delivery_packet(packet, style) if style else packet
+            return generate(
+                speaker_model, speaker_tokenizer, text, max_new_tokens=max_new_tokens, **options,
+            )
+
+        return _fresh_wording(
+            plan, decode, tuple(avoid_reply_keys[:REPLY_HISTORY_LIMIT]),
+            delivery_styles=DELIVERY_STYLES if speaker_metadata.get("phrasing_cues") is True else (),
+        )
 
     if act == "state_exact_math_result":
-        return decode(temperature=0)
-    return _fresh_wording(
-        plan, decode, tuple(avoid_reply_keys[:REPLY_HISTORY_LIMIT]),
-        delivery_styles=DELIVERY_STYLES if metadata.get("phrasing_cues") is True else (),
-    )
+        return generate(model, tokenizer, packet, max_new_tokens=max_new_tokens, temperature=0)
+
+    speakers = [(model, tokenizer, metadata)]
+    if avoid_reply_keys and alternate_checkpoint:
+        try:
+            alternate = _speaker_model(alternate_checkpoint)
+        except (OSError, RuntimeError, ValueError, KeyError):
+            # A missing or unusable optional companion cannot break the primary.
+            alternate = None
+        if alternate and alternate[2].get("version") == "v0.6.1" and alternate[2].get("phrasing_cues") is True:
+            if metadata.get("phrasing_cues") is True:
+                speakers.append(alternate)
+            else:
+                speakers.insert(0, alternate)
+    for speaker in speakers:
+        answer = realize(speaker)
+        if answer:
+            return answer
+    return ""
 
 
 def _configure_inference():
