@@ -65,12 +65,12 @@ export default function FullPopulationMap({
   const points = useMemo(makeSchematicPoints, []);
   const signal = signalFor(phase);
   const status = !pending
-    ? phase === "error" ? "REQUEST ERROR" : phase === "done" ? "RESPONSE COMPLETE" : "READY"
-    : phase === "router_loading" ? "LOADING ROUTER"
-    : phase === "routing" ? "ROUTING"
-    : phase === "generation" ? "GENERATING"
-    : phase === "tool" ? "TOOL PROCESSING"
-    : "PROCESSING INPUT";
+    ? phase === "error" ? "요청 실패" : phase === "done" ? "응답 완료" : "대기 중"
+    : phase === "router_loading" ? "라우터 준비"
+    : phase === "routing" ? "라우터 계산"
+    : phase === "generation" ? "답변 생성"
+    : phase === "tool" ? "도구 처리"
+    : "입력 처리";
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -134,11 +134,11 @@ export default function FullPopulationMap({
       resize();
       animation = window.requestAnimationFrame(draw);
     }
-    refresh();
-    window.addEventListener("resize", refresh);
+    const observer = new ResizeObserver(refresh);
+    observer.observe(canvas);
     return () => {
       window.cancelAnimationFrame(animation);
-      window.removeEventListener("resize", refresh);
+      observer.disconnect();
     };
   }, [points, pending, phase, signal.color, signal.key]);
 
@@ -146,16 +146,16 @@ export default function FullPopulationMap({
     <section className="neuralObservatory" aria-label="MaleCNS 전체 집단 관제 시각화">
       <div className="neuralObsHead">
         <div>
-          <span>MALECNS / POPULATION MAP</span>
-          <strong>신경 관제실</strong>
+          <strong>MaleCNS</strong>
+          <span>전체 뉴런 분포 도식</span>
         </div>
         <span className={"neuralObsLive" + (pending ? " active" : "")}>
-          <i />{pending ? "PROCESSING" : "STANDBY"}
+          <i />{pending ? "처리 중" : "대기"}
         </span>
       </div>
       <div className="neuralObsCanvasFrame">
         <canvas ref={canvasRef} className="neuralObsCanvas" aria-hidden="true" />
-        <div className="neuralObsOverlayTop">166,700 · CURATED NEURONS</div>
+        <div className="neuralObsOverlayTop">166,700개 뉴런</div>
         <div className="neuralObsOverlayBottom">
           <span style={{ "--signal": signal.color } as CSSProperties} />
           {status}
@@ -174,7 +174,7 @@ export default function FullPopulationMap({
         <strong>{routerNodes ? `현재 라우터 ${routerNodes.toLocaleString()}개` : "라우터 정보 대기 중"}</strong>
       </div>
       <p className="neuralObsNote">
-        166,700개 점의 배치는 도식이야. 색상과 반짝임은 처리 단계 시각효과이며, 실제 뉴런 위치나 개별 뉴런 발화 측정값이 아니야.
+        점의 배치는 개념도예요. 반짝임은 요청 처리 단계를 표시해요.
       </p>
     </section>
   );

@@ -14,7 +14,13 @@ type IconName =
   | "search"
   | "send"
   | "menu"
-  | "close";
+  | "close"
+  | "activity"
+  | "diagonal"
+  | "download"
+  | "logout"
+  | "message"
+  | "panel";
 
 export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   const common = {
@@ -43,6 +49,12 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   if (name === "send") return <svg {...common}><path d="M12 19V5M6.5 10.5 12 5l5.5 5.5" /></svg>;
   if (name === "menu") return <svg {...common}><path d="M4 7h16M4 12h16M4 17h16" /></svg>;
   if (name === "close") return <svg {...common}><path d="m6 6 12 12M18 6 6 18" /></svg>;
+  if (name === "activity") return <svg {...common}><path d="M3 12h4l3-7 4 14 3-7h4" /></svg>;
+  if (name === "diagonal") return <svg {...common}><path d="M7 17 17 7M8 7h9v9" /></svg>;
+  if (name === "download") return <svg {...common}><path d="M12 3v12m-4-4 4 4 4-4M5 16v4h14v-4" /></svg>;
+  if (name === "logout") return <svg {...common}><path d="M11 5H5v14h6m-1-7h11m-4-4 4 4-4 4" /></svg>;
+  if (name === "message") return <svg {...common}><path d="M20 15a2 2 0 0 1-2 2H9l-5 3V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z" /></svg>;
+  if (name === "panel") return <svg {...common}><rect x="4" y="5" width="16" height="14" rx="2" /><path d="M14 5v14" /></svg>;
   return null;
 }
 
