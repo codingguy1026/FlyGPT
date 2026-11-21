@@ -1,0 +1,48 @@
+{"input":"일상 대화를 나눠 볼래?","route":"general"}
+{"input":"오늘은 기분이 어떠니?","route":"general"}
+{"input":"왜 사람들은 서로 다른 취향을 가질까?","route":"general"}
+{"input":"사과와 배는 어떤 공통점이 있어?","route":"general"}
+{"input":"바나나와 포도는 뭐가 비슷해?","route":"general"}
+{"input":"축구와 야구의 공통점을 설명해 줘","route":"general"}
+{"input":"바다와 호수의 차이를 알려줘","route":"general"}
+{"input":"비가 내리는 이유를 알려줘","route":"general"}
+{"input":"고양이가 말을 한다면 어떤 말을 할지 상상해 봐","route":"general"}
+{"input":"사람들이 꿈을 꾸는 이유가 뭐야?","route":"general"}
+{"input":"흥미로운 역사 사건 하나 이야기해 줘","route":"general"}
+{"input":"짧고 재밌는 이야기를 지어 줘","route":"general"}
+{"input":"전구는 왜 켜지는 거야?","route":"general"}
+{"input":"새들이 하늘을 날 수 있는 이유가 뭐야?","route":"general"}
+{"input":"인공지능이 왜 가끔 엉뚱한 대답을 해?","route":"general"}
+{"input":"고양이와 강아지의 공통점이 뭐지?","route":"general"}
+{"input":"커피와 차가 비슷한 점은?","route":"general"}
+{"input":"우리나라와 일본은 어떤 차이가 있지?","route":"general"}
+{"input":"나무와 풀은 공통점이 뭐야?","route":"general"}
+{"input":"이 주제에 대해 네 생각을 들려줘","route":"general"}
+{"input":"오늘 있었던 일에 대해 이야기하고 싶어","route":"general"}
+{"input":"학교에 다니는 이유는 뭐라고 생각해?","route":"general"}
+{"input":"서로 다른 의견을 존중하려면 어떻게 해야 해?","route":"general"}
+{"input":"만약 달에 도시가 생긴다면 어떤 모습일까?","route":"general"}
+{"input":"과일과 채소를 나누는 기준이 뭔지 알려줘","route":"general"}
+{"input":"어떤 동물이 가장 오래 살 수 있어?","route":"general"}
+{"input":"달과 지구의 공통점은 무엇이야?","route":"general"}
+{"input":"내가 물어보는 질문에 직접 답해 줄래?","route":"general"}
+{"input":"문장을 요약하지 말고 뜻을 설명해 줘","route":"general"}
+{"input":"요약이라는 말은 정확히 무슨 뜻이야?","route":"general"}
+{"input":"지금 내가 뭘 물어봤는지 이해했어?","route":"general"}
+{"input":"주어진 상황에 대해 의견을 말해 줘","route":"general"}
+{"input":"다음 문장을 한 문장으로 요약해 줘: 아침에는 비가 왔지만 오후에는 구름이 걷혔다.","route":"summarize"}
+{"input":"아래 글의 핵심만 정리해 줘: 학생들이 교내 쓰레기를 조사하고 대안을 발표했다.","route":"summarize"}
+{"input":"이 글을 두 문장으로 요약해 줘: 지구는 태양을 공전한다. 공전에는 약 1년이 걸린다.","route":"summarize"}
+{"input":"다음 뉴스 내용을 짧게 정리해 줘: 지역 도서관이 개관 시간을 연장했다.","route":"summarize"}
+{"input":"이 문단을 요약해 줘: 겨울에는 기온이 낮아지고 일부 지역에 눈이 내린다.","route":"summarize"}
+{"input":"아래 메모를 세 줄로 줄여 줘: 회의는 월요일에 시작한다. 발표는 화요일이다. 보고서는 수요일에 낸다.","route":"summarize"}
+{"input":"다음 인터뷰를 핵심 위주로 압축해 줘: 참여자는 교통 접근성과 운영 시간을 중요하게 생각했다.","route":"summarize"}
+{"input":"이 글의 요지만 뽑아 줘: 연구팀은 관찰과 실험 결과를 비교하여 가설을 검토했다.","route":"summarize"}
+{"input":"다음 내용을 간단히 요약해 줘: 고양이는 포유류다. 강아지도 포유류다. 둘 다 반려동물로 기른다.","route":"summarize"}
+{"input":"이 내용에서 중요한 문장만 요약해 줘: 비행기는 날개에서 발생하는 양력으로 떠오른다.","route":"summarize"}
+{"input":"요약 부탁해. 원문: 이번 학기에는 과학 실험과 역사 발표를 진행했다.","route":"summarize"}
+{"input":"아래 설명을 요약해: 물은 액체에서 기체로 증발할 수 있다. 기체는 냉각되면 응결한다.","route":"summarize"}
+{"input":"내용 요약: 일주일 동안 수집한 설문 결과를 표로 만들고 발표 자료에 반영했다.","route":"summarize"}
+{"input":"이 문서의 주요 내용만 뽑아 줘. 문서: 행사는 오전에 시작하며 참가 신청은 온라인으로 받는다.","route":"summarize"}
+{"input":"다음 글에서 핵심 두 가지를 정리해 줘: 태양광은 햇빛으로 발전한다. 풍력은 바람으로 발전한다.","route":"summarize"}
+{"input":"이 길지 않은 내용을 한 줄로 요약해: 공원은 휴식 공간이며 시민들이 산책하기도 한다.","route":"summarize"}

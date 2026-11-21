@@ -1,0 +1,18 @@
+{"input":"오늘 기분이 어때?","route":"general"}
+{"input":"사과와 바나나의 공통점이 뭐야?","route":"general"}
+{"input":"고양이가 말을 할 수 있다면 무슨 말을 할까?","route":"general"}
+{"input":"자기소개는 하지 말고, 사과와 바나나의 공통점을 한 문장으로 설명해 줘.","route":"general"}
+{"input":"흥미로운 역사 이야기를 들려줘","route":"general"}
+{"input":"왜 꽃은 여러 색깔일까?","route":"general"}
+{"input":"달팽이와 거북이의 공통점이 뭐야?","route":"general"}
+{"input":"모래사장과 사막의 차이점을 알려줘","route":"general"}
+{"input":"나랑 간단한 대화를 해 보자","route":"general"}
+{"input":"왜 어떤 사람들은 매운 음식을 좋아할까?","route":"general"}
+{"input":"바이올린과 피아노의 공통점을 말해 줘","route":"general"}
+{"input":"상상 속에서 책이 말을 한다면?","route":"general"}
+{"input":"다음 글을 한 줄로 요약해 줘: 가을은 날씨가 선선하고 나뭇잎의 색이 변하는 계절이다.","route":"summarize"}
+{"input":"아래 문단의 핵심을 요약해: 학생회가 설문을 실시하고 결과를 학교에 전달했다.","route":"summarize"}
+{"input":"이 기사를 짧게 요약해 줘: 신설 버스 노선이 월요일부터 운행한다.","route":"summarize"}
+{"input":"다음 문장의 핵심만 남겨 줘: 펭귄은 남반구에 서식하며 수영을 잘하는 새다.","route":"summarize"}
+{"input":"이 메모를 두 줄로 요약: 발표 연습은 목요일이며 평가지는 금요일에 제출한다.","route":"summarize"}
+{"input":"아래 글의 요점을 정리해 줘: 씨앗은 물과 적절한 온도를 만나 발아하고 식물로 성장한다.","route":"summarize"}
