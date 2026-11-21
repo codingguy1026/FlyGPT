@@ -1,0 +1,100 @@
+{
+  "description": "Research-only fresh authored samples for attribution; no training labels or answer text fed into either model",
+  "method": "one set of 18 prompts; categorical routing audits and exploratory qualitative response comparisons, not a blinded statistical accuracy benchmark",
+  "questions": [
+    {
+      "id": "G1",
+      "category": "general",
+      "prompt": "기차 창문에 물방울이 생기는 이유를 중학생도 이해하게 설명해줘."
+    },
+    {
+      "id": "G2",
+      "category": "general",
+      "prompt": "일반적으로 거울은 빛을 어떻게 반사해? 쉽게 알려줘."
+    },
+    {
+      "id": "G3",
+      "category": "general",
+      "prompt": "왜 얼음은 물 위에 떠? 간단한 설명 부탁해."
+    },
+    {
+      "id": "G4",
+      "category": "general",
+      "prompt": "친구와 의견이 다를 때 서로 기분 상하지 않게 이야기하는 방법 알려줘."
+    },
+    {
+      "id": "G5",
+      "category": "general",
+      "prompt": "공기 중에 소리가 전달되는 원리를 알려줘."
+    },
+    {
+      "id": "G6",
+      "category": "general",
+      "prompt": "한 번 읽은 정보를 다음 날에도 기억하려면 어떤 공부법을 쓰면 좋을까?"
+    },
+    {
+      "id": "C1",
+      "category": "code",
+      "prompt": "파이썬에서 리스트의 짝수만 추출하는 짧은 코드 작성해줘."
+    },
+    {
+      "id": "C2",
+      "category": "code",
+      "prompt": "자바스크립트 배열을 길이순으로 정렬하는 예시를 보여줘."
+    },
+    {
+      "id": "C3",
+      "category": "code",
+      "prompt": "파이썬으로 문자열의 단어 수를 세는 함수를 만들어줘."
+    },
+    {
+      "id": "C4",
+      "category": "code",
+      "prompt": "CSS에서 버튼을 키보드로 선택했을 때 외곽선을 보이게 하는 방법을 알려줘."
+    },
+    {
+      "id": "S1",
+      "category": "summarize",
+      "prompt": "이 문장을 한 문장으로 요약해줘: 체육관은 월요일부터 금요일까지 오전 9시에 문을 열고 오후 6시에 닫는다. 주말에는 문을 열지 않는다."
+    },
+    {
+      "id": "S2",
+      "category": "summarize",
+      "prompt": "다음 내용을 1문장으로 요약해줘: 학교 도서관은 책을 2주 동안 빌려준다. 연장은 한 번 가능하지만 예약자가 있으면 연장할 수 없다."
+    },
+    {
+      "id": "S3",
+      "category": "summarize",
+      "prompt": "핵심만 요약해줘: 이번 동아리 모임에서는 주제를 먼저 정한 뒤 역할을 나눈다. 결과물은 다음 주 금요일까지 제출해야 한다."
+    },
+    {
+      "id": "S4",
+      "category": "summarize",
+      "prompt": "짧게 요약해줘: 정원에서 식물이 자라려면 물과 빛이 필요하다. 너무 물을 많이 주면 뿌리가 약해질 수 있다."
+    },
+    {
+      "id": "M1",
+      "category": "math",
+      "prompt": "3x+9=27에서 x를 구하고 이유를 알려줘.",
+      "expected_exact": "x = 6"
+    },
+    {
+      "id": "M2",
+      "category": "math",
+      "prompt": "루트 144의 값을 알려줘.",
+      "expected_exact": "12"
+    },
+    {
+      "id": "M3",
+      "category": "math",
+      "prompt": "19의 세제곱을 계산해줘.",
+      "expected_exact": "6859"
+    },
+    {
+      "id": "M4",
+      "category": "math",
+      "prompt": "28의 제곱은 얼마야?",
+      "expected_exact": "784"
+    }
+  ]
+}
