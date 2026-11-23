@@ -27,6 +27,12 @@ papiti-lm-train-v0.6.1-prose-factorized:
 papiti-lm-train-v0.6.2-repeat2:
 	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 train --shared-prose --prose-repeats 2 --context 448 --batch-size 24 --epochs 30 --patience 6 --checkpoint artifacts/papiti_language_v0_6_2_repeat2.pt
 
+# Inquiry-inspired language curriculum: opt-in authored expression transfer.
+# Keep the production speech checkpoint and the 94 frozen combination tests intact.
+.PHONY: papiti-lm-train-v0.6.2-inquiry
+papiti-lm-train-v0.6.2-inquiry:
+	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 train --shared-prose --inquiry-curriculum --prose-repeats 2 --context 448 --batch-size 24 --epochs 30 --patience 6 --checkpoint artifacts/papiti_language_v0_6_2_inquiry.pt
+
 papiti-lm-train-v0.6.1-dialogue:
 	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 train --diverse-social --everyday-dialogue --epochs 24 --patience 8 --checkpoint artifacts/papiti_language_v0_6_1_dialogue.pt
 
