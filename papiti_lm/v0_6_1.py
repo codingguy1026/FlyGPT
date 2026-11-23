@@ -37,6 +37,10 @@ def _train(args):
     )
     if args.language_curriculum and not (args.shared_prose and args.inquiry_curriculum):
         raise ValueError("--language-curriculum requires --shared-prose --inquiry-curriculum")
+    if args.composition_curriculum and not (args.shared_prose and args.inquiry_curriculum):
+        raise ValueError("--composition-curriculum requires --shared-prose --inquiry-curriculum")
+    if args.composition_curriculum and args.language_curriculum:
+        raise ValueError("choose only one of the two language curricula")
     if args.inquiry_curriculum:
         if not args.shared_prose:
             raise ValueError("--inquiry-curriculum requires --shared-prose")
@@ -52,7 +56,12 @@ def _train(args):
     model = PapitiTransformer(config)
     training = [tokenizer.sequence(row, config.context) for row in corpus.train]
     validation = [tokenizer.sequence(row, config.context) for row in corpus.valid]
-    if args.language_curriculum:
+    if args.composition_curriculum:
+        from papiti_lm.compositional_curriculum import clause_training_sequences
+        from papiti_lm.language_curriculum import foundation_epoch_count
+        foundation = clause_training_sequences(corpus, tokenizer, config.context)
+        opening_epochs = foundation_epoch_count(args.epochs)
+    elif args.language_curriculum:
         from papiti_lm.language_curriculum import foundation_epoch_count, foundation_sequences
         foundation = foundation_sequences(corpus, tokenizer, config.context)
         opening_epochs = foundation_epoch_count(args.epochs)
@@ -69,8 +78,15 @@ def _train(args):
     best = float("inf")
     stale = 0
     for epoch in range(1, args.epochs + 1):
-        stage = "opening_foundations" if epoch <= opening_epochs else "full_response_transfer"
-        examples = foundation if epoch <= opening_epochs else training
+        if args.composition_curriculum:
+            stage = "factorized_clauses" if epoch <= opening_epochs else "full_prose_with_clause_rehearsal"
+            # Rehearse different auxiliary clauses every epoch without making
+            # masked lessons dominate the regular complete-response objective.
+            examples = (foundation if epoch <= opening_epochs
+                        else training + foundation[(epoch - opening_epochs - 1) % 3::3])
+        else:
+            stage = "opening_foundations" if epoch <= opening_epochs else "full_response_transfer"
+            examples = foundation if epoch <= opening_epochs else training
         loader = DataLoader(examples, batch_size=args.batch_size, shuffle=True,
                             collate_fn=_collate,
                             generator=torch.Generator().manual_seed(args.seed + epoch))
@@ -93,7 +109,7 @@ def _train(args):
             sum(len(row.assistant) + 1 for row in corpus.valid),
         )
         print(json.dumps({"epoch": epoch,
-                          **({"curriculum_stage": stage} if args.language_curriculum else {}),
+                          **({"curriculum_stage": stage} if (args.language_curriculum or args.composition_curriculum) else {}),
                           "train_nll": round(train_loss_sum / max(1, train_token_count), 5),
                           "validation": score}, ensure_ascii=False), flush=True)
         if score["char_nll"] < best:
@@ -111,6 +127,7 @@ def _train(args):
                 "prose_repeats": args.prose_repeats,
                 "inquiry_curriculum": args.inquiry_curriculum,
                 "language_curriculum": args.language_curriculum,
+                "composition_curriculum": args.composition_curriculum,
                 "foundation_epochs": opening_epochs,
                 "prose_fingerprints": prose_keys,
                 "everyday_dialogue": args.everyday_dialogue,
@@ -412,6 +429,8 @@ def main(argv=None):
                        help="opt-in authored transfer examples; frozen legacy validation/test")
     train.add_argument("--language-curriculum", action="store_true",
                        help="v0.6.3: opening-clause foundations followed by complete response training")
+    train.add_argument("--composition-curriculum", action="store_true",
+                       help="v0.6.4: style-independent opening/follow-up lessons with full prose rehearsal")
     train.add_argument("--prose-repeats", type=int, default=6,
                        help="training copies per prose combination (1..6; 6 preserves baseline)")
     train.add_argument("--epochs", type=int, default=12)
