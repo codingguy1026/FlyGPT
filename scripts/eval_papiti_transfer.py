@@ -22,8 +22,8 @@ def evaluate_transfer(checkpoint: Path, report_path: Path, batch_size: int = 24)
     _torch()
     model, tokenizer, metadata = load_checkpoint(checkpoint)
     if not (metadata.get("shared_prose") and metadata.get("inquiry_curriculum")
-            and metadata.get("language_curriculum")):
-        raise ValueError("the transfer exam requires a v0.6.3 language-curriculum checkpoint")
+            and (metadata.get("language_curriculum") or metadata.get("composition_curriculum"))):
+        raise ValueError("the transfer exam requires a v0.6.3/v0.6.4 curriculum checkpoint")
     corpus = add_inquiry_training(create_prose_corpus(
         int(metadata["seed"]), repeats=int(metadata["prose_repeats"])
     ))
@@ -49,7 +49,9 @@ def evaluate_transfer(checkpoint: Path, report_path: Path, batch_size: int = 24)
             "matches_training_reply": reply_key(answer) in trained,
         })
     report = {
-        "experiment": "papiti_v0_6_3_mixed_style_transfer",
+        "experiment": ("papiti_v0_6_4_factorized_transfer"
+                       if metadata.get("composition_curriculum")
+                       else "papiti_v0_6_3_mixed_style_transfer"),
         "checkpoint_epoch": metadata["epoch"],
         "test_count": len(records),
         "test_metrics": score,
@@ -59,6 +61,7 @@ def evaluate_transfer(checkpoint: Path, report_path: Path, batch_size: int = 24)
             "Pairs are new, but all constituent utterance parts were seen in supervised training.",
             "The 36 examples test recombination, not arbitrary user requests or human-level grammar.",
             "All novel outputs require human grammar/meaning review before improvement claims.",
+            "The same 36 probe pairs must never be used for training or as optimization targets.",
         ],
     }
     report_path.parent.mkdir(parents=True, exist_ok=True)

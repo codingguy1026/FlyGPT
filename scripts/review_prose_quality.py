@@ -12,7 +12,7 @@ from pathlib import Path
 
 FIELDS = (
     "index", "purpose", "prompt", "expected", "generated", "copied_training",
-    "grammar_ok", "meaning_ok", "severe_fact_error", "notes",
+    "grammar_ok", "meaning_ok", "severe_fact_error", "language_mix", "notes",
 )
 
 
@@ -32,13 +32,14 @@ def export(report_path: Path, output: Path) -> None:
                 "grammar_ok": "",
                 "meaning_ok": "",
                 "severe_fact_error": "",
+                "language_mix": "",
                 "notes": "",
             })
     print(f"Review {len(report['test_generations'])} outputs in {output}.")
     print("Fill grammar_ok, meaning_ok, severe_fact_error with 1 or 0.")
 
 
-def score(review_path: Path) -> None:
+def score(review_path: Path, *, v064_goals: bool = False) -> None:
     with review_path.open(encoding="utf-8", newline="") as stream:
         rows = list(csv.DictReader(stream))
     if not rows:
@@ -68,6 +69,43 @@ def score(review_path: Path) -> None:
         ),
         "caveat": "Manually scored combination-test results only; unseen conversational intents still require separate testing.",
     }
+    if v064_goals:
+        # Historical quality thresholds differ from the v0.6.4 agreed rubric.
+        result.pop("provisional_targets_met", None)
+        if count != 36:
+            raise ValueError("v0.6.4 goals apply only to the frozen 36-item transfer exam")
+        if any(row.get("language_mix") not in ("0", "1") for row in rows):
+            raise ValueError("fill language_mix (0 or 1) for all 36 items")
+        if any(row.get("copied_training") not in ("True", "False") for row in rows):
+            raise ValueError("copied_training must be True or False for all 36 items")
+        new_rows = [row for row in rows if row["copied_training"] == "False"]
+        new_natural = sum(row["grammar_ok"] == "1" for row in new_rows)
+        grammar_count = sum(row["grammar_ok"] == "1" for row in rows)
+        meaning_count = sum(row["meaning_ok"] == "1" for row in rows)
+        language_mixes = sum(row["language_mix"] == "1" for row in rows)
+        checks = {
+            "broken_responses_at_most_7": count - grammar_count <= 7,
+            "meaning_ok_at_least_33": meaning_count >= 33,
+            "training_copies_at_most_10": copied <= 10,
+            "novel_natural_at_least_70pct": (
+                bool(new_rows) and new_natural * 10 >= len(new_rows) * 7
+            ),
+            "zero_language_mix": language_mixes == 0,
+            "zero_severe_fact_errors": fact_errors == 0,
+        }
+        result["v064_goals"] = {
+            "natural_count": grammar_count,
+            "broken_count": count - grammar_count,
+            "meaning_ok_count": meaning_count,
+            "copied_count": copied,
+            "novel_count": len(new_rows),
+            "novel_natural_count": new_natural,
+            "novel_natural_rate": round(new_natural / len(new_rows), 4) if new_rows else 0,
+            "language_mix_count": language_mixes,
+            "checks": checks,
+            "all_met": all(checks.values()),
+            "note": "Targets are manually reviewed, not model-derived or automated grammar detection.",
+        }
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
@@ -79,11 +117,13 @@ def main() -> None:
     export_cmd.add_argument("output", type=Path)
     score_cmd = actions.add_parser("score")
     score_cmd.add_argument("review_csv", type=Path)
+    score_cmd.add_argument("--v064-goals", action="store_true",
+                           help="apply frozen 36-item v0.6.4 human-review targets")
     args = parser.parse_args()
     if args.action == "export":
         export(args.report, args.output)
     else:
-        score(args.review_csv)
+        score(args.review_csv, v064_goals=args.v064_goals)
 
 
 if __name__ == "__main__":

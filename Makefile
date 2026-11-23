@@ -41,6 +41,25 @@ papiti-lm-train-v0.6.3-language:
 papiti-lm-transfer-v0.6.3:
 	@$(PAPITI_PYTHON) -m scripts.eval_papiti_transfer --checkpoint artifacts/papiti_language_v0_6_3_curriculum.pt --report artifacts/papiti_v0_6_3_transfer_eval.json
 
+# v0.6.4: factorized clauses + joint prose, no direct supervision on the
+# frozen 36 cross-family transfer probes. Production checkpoints are unchanged.
+.PHONY: papiti-lm-train-v0.6.4-composition papiti-lm-train-v0.6.4-control papiti-lm-transfer-v0.6.4 papiti-lm-review-v0.6.4 papiti-lm-review-score-v0.6.4
+papiti-lm-train-v0.6.4-composition:
+	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 train --shared-prose --inquiry-curriculum --composition-curriculum --prose-repeats 2 --context 448 --batch-size 24 --epochs 36 --patience 7 --d-model 128 --layers 3 --learning-rate 0.0007 --checkpoint artifacts/papiti_language_v0_6_4_composition.pt
+
+# Identical original v0.6.3 capacity/budget to isolate the curriculum effect.
+papiti-lm-train-v0.6.4-control:
+	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 train --shared-prose --inquiry-curriculum --composition-curriculum --prose-repeats 2 --context 448 --batch-size 24 --epochs 30 --patience 6 --checkpoint artifacts/papiti_language_v0_6_4_control.pt
+
+papiti-lm-transfer-v0.6.4:
+	@$(PAPITI_PYTHON) -m scripts.eval_papiti_transfer --checkpoint artifacts/papiti_language_v0_6_4_composition.pt --report artifacts/papiti_v0_6_4_transfer_eval.json
+
+papiti-lm-review-v0.6.4:
+	@$(PAPITI_PYTHON) -m scripts.review_prose_quality export artifacts/papiti_v0_6_4_transfer_eval.json artifacts/papiti_v0_6_4_transfer_review.csv
+
+papiti-lm-review-score-v0.6.4:
+	@$(PAPITI_PYTHON) -m scripts.review_prose_quality score artifacts/papiti_v0_6_4_transfer_review.csv --v064-goals
+
 papiti-lm-train-v0.6.1-dialogue:
 	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 train --diverse-social --everyday-dialogue --epochs 24 --patience 8 --checkpoint artifacts/papiti_language_v0_6_1_dialogue.pt
 
