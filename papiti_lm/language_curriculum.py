@@ -50,7 +50,8 @@ def foundation_epoch_count(epochs: int) -> int:
     """An intentionally short opening phase followed by full-text practice."""
     if not 1 <= epochs <= 60:
         raise ValueError("invalid training length")
-    return min(6, max(1, epochs // 5))
+    # Reserve at least one full-response epoch, even in a short smoke run.
+    return min(6, max(1, epochs // 5), epochs - 1)
 
 
 def mixed_style_transfer_probes(corpus: SpeechCorpus) -> list[Example]:
@@ -76,7 +77,9 @@ def mixed_style_transfer_probes(corpus: SpeechCorpus) -> list[Example]:
         if packet not in known_openings:
             raise ValueError(f"missing original style-zero opening for {act}/{language}")
         new_openings, new_followups = _TRANSFER[(act, language)]
-        old_followup = _FOLLOWUPS[act][language == "en"][0]
+        # Avoid awkward repetition in the Korean greeting probe (어서 와 ... 어서 와).
+        followup_index = 1 if (act, language) == ("return_greeting", "ko") else 0
+        old_followup = _FOLLOWUPS[act][language == "en"][followup_index]
         probes.extend((
             Example("inquiry-mixed-transfer", prose_packet(packet, 4, 0),
                     new_openings[0] + "\n" + old_followup),
