@@ -44,7 +44,7 @@ open-domain dialogue tests.
 git fetch origin experiment/papiti-v063-language-curriculum
 git switch -c papiti-v063-training FETCH_HEAD
 
-.venv-train/bin/python -m unittest tests.test_papiti_v0_6_3_curriculum
+.venv-train/bin/python -m unittest discover -s tests -p "test_papiti_v0_6_3_curriculum.py"
 make papiti-lm-train-v0.6.3-language PAPITI_PYTHON=.venv-train/bin/python
 
 .venv-train/bin/python -m papiti_lm.v0_6_1 eval \
