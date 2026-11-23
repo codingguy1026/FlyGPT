@@ -72,7 +72,9 @@ def _packet_details(packet: str) -> tuple[str, str]:
     return data["act"], data["lang"]
 
 
-def create_prose_corpus(seed: int = 42) -> SpeechCorpus:
+def create_prose_corpus(seed: int = 42, repeats: int = 6) -> SpeechCorpus:
+    if not 1 <= repeats <= 6:
+        raise ValueError("repeats must be between 1 and 6")
     from hybrid_speech import reply_key
     from semantic_planner import trusted_fact_fallback
 
@@ -112,7 +114,7 @@ def create_prose_corpus(seed: int = 42) -> SpeechCorpus:
                 elif offset == 2:
                     result.test.append(row)
                 else:
-                    result.train.extend([row] * 6)
+                    result.train.extend([row] * repeats)
     random.Random(seed).shuffle(result.train)
     # Alternate punctuation and spacing can make two slots realize the same
     # wording. Keep those duplicates out of the evaluation splits.
@@ -134,7 +136,7 @@ def prose_fingerprints(corpus: SpeechCorpus) -> dict[str, Any]:
 
     by_plan: dict[str, tuple[set[str], set[str]]] = defaultdict(lambda: (set(), set()))
     for row in corpus.train:
-        packet, _ = row.user.rsplit("\n", 1)
+        packet = row.user.split("\nOpening style: ", 1)[0]
         first, second = row.assistant.split("\n", 1)
         first_keys, second_keys = by_plan[packet]
         first_keys.add(reply_key(first))
