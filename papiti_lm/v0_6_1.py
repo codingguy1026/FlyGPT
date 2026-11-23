@@ -30,7 +30,7 @@ def _train(args):
     torch.set_num_threads(min(4, torch.get_num_threads()))
     torch.manual_seed(args.seed)
     random.seed(args.seed)
-    corpus = create_prose_corpus(args.seed) if args.shared_prose else create_corpus(
+    corpus = create_prose_corpus(args.seed, repeats=args.prose_repeats) if args.shared_prose else create_corpus(
         args.seed, diverse_social=args.diverse_social,
         everyday_dialogue=args.everyday_dialogue, phrasing_cues=args.diverse_social,
         compositional_greetings=args.compositional_greetings,
@@ -60,11 +60,16 @@ def _train(args):
                             collate_fn=_collate,
                             generator=torch.Generator().manual_seed(args.seed + epoch))
         model.train()
+        train_loss_sum = 0.0
+        train_token_count = 0
         for inputs, targets in loader:
             optimizer.zero_grad(set_to_none=True)
             loss = model.loss(inputs, targets)
             if not torch.isfinite(loss):
                 raise RuntimeError("non-finite training loss")
+            valid_tokens = int((targets != -100).sum().item())
+            train_loss_sum += float(loss.detach()) * valid_tokens
+            train_token_count += valid_tokens
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
@@ -72,7 +77,9 @@ def _train(args):
             model, validation, args.batch_size,
             sum(len(row.assistant) + 1 for row in corpus.valid),
         )
-        print(json.dumps({"epoch": epoch, "validation": score}, ensure_ascii=False), flush=True)
+        print(json.dumps({"epoch": epoch,
+                          "train_nll": round(train_loss_sum / max(1, train_token_count), 5),
+                          "validation": score}, ensure_ascii=False), flush=True)
         if score["char_nll"] < best:
             best = score["char_nll"]
             stale = 0
@@ -85,6 +92,7 @@ def _train(args):
                 "compositional_greetings": args.compositional_greetings,
                 "greeting_fingerprints": fingerprints,
                 "shared_prose": args.shared_prose,
+                "prose_repeats": args.prose_repeats,
                 "prose_fingerprints": prose_keys,
                 "everyday_dialogue": args.everyday_dialogue,
                 "seed": args.seed, "epoch": epoch,
@@ -128,7 +136,7 @@ def _eval(args):
     model, tokenizer, metadata = load_checkpoint(args.checkpoint)
     if metadata.get("version") != "v0.6.1":
         raise ValueError("v0.6.1 checkpoint required")
-    corpus = create_prose_corpus(int(metadata["seed"])) if metadata.get("shared_prose") else create_corpus(
+    corpus = create_prose_corpus(int(metadata["seed"]), repeats=int(metadata.get("prose_repeats", 6))) if metadata.get("shared_prose") else create_corpus(
         int(metadata["seed"]),
         diverse_social=metadata.get("diverse_social_targets") is True,
         mirror_greetings=metadata.get("mirror_greetings") is True,
@@ -377,6 +385,8 @@ def main(argv=None):
     curriculum = train.add_mutually_exclusive_group()
     curriculum.add_argument("--compositional-greetings", action="store_true")
     curriculum.add_argument("--shared-prose", action="store_true")
+    train.add_argument("--prose-repeats", type=int, default=6,
+                       help="training copies per prose combination (1..6; 6 preserves baseline)")
     train.add_argument("--epochs", type=int, default=12)
     train.add_argument("--patience", type=int, default=5)
     train.add_argument("--batch-size", type=int, default=16)

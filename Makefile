@@ -22,6 +22,11 @@ papiti-lm-train-v0.6.1-prose:
 papiti-lm-train-v0.6.1-prose-factorized:
 	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 train --shared-prose --context 448 --batch-size 24 --epochs 20 --checkpoint artifacts/papiti_language_v0_6_1_prose_factorized.pt
 
+# v0.6.2 experiment: fewer repeated training rows, same held-out combinations.
+.PHONY: papiti-lm-train-v0.6.2-repeat2
+papiti-lm-train-v0.6.2-repeat2:
+	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 train --shared-prose --prose-repeats 2 --context 448 --batch-size 24 --epochs 30 --patience 6 --checkpoint artifacts/papiti_language_v0_6_2_repeat2.pt
+
 papiti-lm-train-v0.6.1-dialogue:
 	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 train --diverse-social --everyday-dialogue --epochs 24 --patience 8 --checkpoint artifacts/papiti_language_v0_6_1_dialogue.pt
 

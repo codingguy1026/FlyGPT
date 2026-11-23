@@ -72,7 +72,7 @@ class SemanticContractTests(unittest.TestCase):
         from semantic_planner import INTENT_FACT_IDS
 
         corpus = create_prose_corpus()
-        coverage = {_packet_details(row.user.rsplit("\n", 1)[0]) for row in corpus.train}
+        coverage = {_packet_details(row.user.split("\nOpening style: ", 1)[0]) for row in corpus.train}
         expected = {(act, lang) for act in SOCIAL_SPEECH_ACTS | INTENT_FACT_IDS.keys()
                     for lang in ("ko", "en")}
         self.assertEqual(coverage, expected)
@@ -81,6 +81,22 @@ class SemanticContractTests(unittest.TestCase):
             for split in (corpus.train, corpus.valid, corpus.test)
         ]
         self.assertFalse(train & valid or train & test or valid & test)
+
+    def test_prose_repeat_ablation_keeps_validation_and_test_frozen(self):
+        from papiti_lm.v0_6_1_prose import create_prose_corpus, prose_fingerprints
+
+        baseline = create_prose_corpus(repeats=6)
+        experiment = create_prose_corpus(repeats=2)
+        self.assertEqual(baseline.valid, experiment.valid)
+        self.assertEqual(baseline.test, experiment.test)
+        self.assertEqual(len(baseline.train), 3 * len(experiment.train))
+        self.assertEqual(
+            {row.assistant for row in baseline.train},
+            {row.assistant for row in experiment.train},
+        )
+        plan = plan_for("고마워")["utterance_plan"]
+        fingerprints = prose_fingerprints(experiment)
+        self.assertIn(packet_text(plan), fingerprints["parts"])
 
     def test_shared_prose_checks_plan_specific_parts_and_rejects_known_replies(self):
         from papiti_lm.v0_6_1_prose import decode_novel_prose
