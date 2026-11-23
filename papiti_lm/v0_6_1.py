@@ -35,6 +35,11 @@ def _train(args):
         everyday_dialogue=args.everyday_dialogue, phrasing_cues=args.diverse_social,
         compositional_greetings=args.compositional_greetings,
     )
+    if args.inquiry_curriculum:
+        if not args.shared_prose:
+            raise ValueError("--inquiry-curriculum requires --shared-prose")
+        from papiti_lm.inquiry_curriculum import add_inquiry_training
+        corpus = add_inquiry_training(corpus)
     fingerprints = greeting_fingerprints(corpus) if args.compositional_greetings else {}
     prose_keys = prose_fingerprints(corpus) if args.shared_prose else {}
     tokenizer = DigitSubwordTokenizer.from_examples(corpus.train, max_merges=256)
@@ -93,6 +98,7 @@ def _train(args):
                 "greeting_fingerprints": fingerprints,
                 "shared_prose": args.shared_prose,
                 "prose_repeats": args.prose_repeats,
+                "inquiry_curriculum": args.inquiry_curriculum,
                 "prose_fingerprints": prose_keys,
                 "everyday_dialogue": args.everyday_dialogue,
                 "seed": args.seed, "epoch": epoch,
@@ -144,6 +150,9 @@ def _eval(args):
         phrasing_cues=metadata.get("phrasing_cues") is True,
         compositional_greetings=metadata.get("compositional_greetings") is True,
     )
+    if metadata.get("inquiry_curriculum"):
+        from papiti_lm.inquiry_curriculum import add_inquiry_training
+        corpus = add_inquiry_training(corpus)
     test_sequences = [
         greeting_sequence(tokenizer, row.user, row.assistant) if row.group == "mirror-greeting"
         else tokenizer.sequence(row, model.config.context)
@@ -286,6 +295,7 @@ def _infer_answer(plan, checkpoint, *, base_checkpoint=None, alternate_checkpoin
         return decode_novel_prose(
             plan, decode, metadata["prose_fingerprints"], avoid_reply_keys[:REPLY_HISTORY_LIMIT],
             fact_plan=fact_plan,
+            style_count=6 if metadata.get("inquiry_curriculum") else 4,
         )
     max_new_tokens = 96 if max_new_tokens is None else max_new_tokens
     if act in EVERYDAY_SPEECH_ACTS and metadata.get("everyday_dialogue") is not True:
@@ -385,6 +395,8 @@ def main(argv=None):
     curriculum = train.add_mutually_exclusive_group()
     curriculum.add_argument("--compositional-greetings", action="store_true")
     curriculum.add_argument("--shared-prose", action="store_true")
+    train.add_argument("--inquiry-curriculum", action="store_true",
+                       help="opt-in authored transfer examples; frozen legacy validation/test")
     train.add_argument("--prose-repeats", type=int, default=6,
                        help="training copies per prose combination (1..6; 6 preserves baseline)")
     train.add_argument("--epochs", type=int, default=12)
