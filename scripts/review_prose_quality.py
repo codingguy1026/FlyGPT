@@ -70,6 +70,8 @@ def score(review_path: Path, *, v064_goals: bool = False) -> None:
         "caveat": "Manually scored combination-test results only; unseen conversational intents still require separate testing.",
     }
     if v064_goals:
+        # Historical quality thresholds differ from the v0.6.4 agreed rubric.
+        result.pop("provisional_targets_met", None)
         if count != 36:
             raise ValueError("v0.6.4 goals apply only to the frozen 36-item transfer exam")
         if any(row.get("language_mix") not in ("0", "1") for row in rows):
