@@ -15,7 +15,7 @@ HELD_OUT_PROSE = "prose-combination"
 
 
 def prose_packet(packet: str, wording: int, continuation: int) -> str:
-    return f"{packet}\nProse {wording}/{continuation}"
+    return f"{packet}\nOpening style: {wording}\nFollow-up style: {continuation}"
 
 
 # These continuations are supervised text, used only when creating the corpus.

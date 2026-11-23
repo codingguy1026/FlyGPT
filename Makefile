@@ -17,6 +17,11 @@ papiti-lm-train-v0.6.1-greetings:
 papiti-lm-train-v0.6.1-prose:
 	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 train --shared-prose --context 448 --batch-size 24 --epochs 20 --checkpoint artifacts/papiti_language_v0_6_1_prose.pt
 
+# Factorized conditioning is an isolated experiment; it does not replace the current checkpoint.
+.PHONY: papiti-lm-train-v0.6.1-prose-factorized
+papiti-lm-train-v0.6.1-prose-factorized:
+	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 train --shared-prose --context 448 --batch-size 24 --epochs 20 --checkpoint artifacts/papiti_language_v0_6_1_prose_factorized.pt
+
 papiti-lm-train-v0.6.1-dialogue:
 	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 train --diverse-social --everyday-dialogue --epochs 24 --patience 8 --checkpoint artifacts/papiti_language_v0_6_1_dialogue.pt
 
