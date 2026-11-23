@@ -60,11 +60,16 @@ def _train(args):
                             collate_fn=_collate,
                             generator=torch.Generator().manual_seed(args.seed + epoch))
         model.train()
+        train_loss_sum = 0.0
+        train_token_count = 0
         for inputs, targets in loader:
             optimizer.zero_grad(set_to_none=True)
             loss = model.loss(inputs, targets)
             if not torch.isfinite(loss):
                 raise RuntimeError("non-finite training loss")
+            valid_tokens = int((targets != -100).sum().item())
+            train_loss_sum += float(loss.detach()) * valid_tokens
+            train_token_count += valid_tokens
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
@@ -72,7 +77,9 @@ def _train(args):
             model, validation, args.batch_size,
             sum(len(row.assistant) + 1 for row in corpus.valid),
         )
-        print(json.dumps({"epoch": epoch, "validation": score}, ensure_ascii=False), flush=True)
+        print(json.dumps({"epoch": epoch,
+                          "train_nll": round(train_loss_sum / max(1, train_token_count), 5),
+                          "validation": score}, ensure_ascii=False), flush=True)
         if score["char_nll"] < best:
             best = score["char_nll"]
             stale = 0
