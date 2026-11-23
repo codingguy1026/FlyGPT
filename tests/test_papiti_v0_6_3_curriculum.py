@@ -38,7 +38,7 @@ class LanguageCurriculumTests(unittest.TestCase):
             self.assertTrue(all(token == -100 for token in targets[last_supervised + 1:]))
             self.assertNotEqual(targets[last_supervised], 4)  # EOS
         self.assertEqual(foundation_epoch_count(30), 6)
-        self.assertEqual(foundation_epoch_count(1), 1)
+        self.assertEqual(foundation_epoch_count(1), 0)
 
     def test_untrained_mixed_style_combinations_are_disjoint(self):
         probes = mixed_style_transfer_probes(self.corpus)
