@@ -33,6 +33,14 @@ papiti-lm-train-v0.6.2-repeat2:
 papiti-lm-train-v0.6.2-inquiry:
 	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 train --shared-prose --inquiry-curriculum --prose-repeats 2 --context 448 --batch-size 24 --epochs 30 --patience 6 --checkpoint artifacts/papiti_language_v0_6_2_inquiry.pt
 
+# v0.6.3 experiment: foundation -> full prose; 94 historical tests unchanged.
+.PHONY: papiti-lm-train-v0.6.3-language papiti-lm-transfer-v0.6.3
+papiti-lm-train-v0.6.3-language:
+	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 train --shared-prose --inquiry-curriculum --language-curriculum --prose-repeats 2 --context 448 --batch-size 24 --epochs 30 --patience 6 --checkpoint artifacts/papiti_language_v0_6_3_curriculum.pt
+
+papiti-lm-transfer-v0.6.3:
+	@$(PAPITI_PYTHON) -m scripts.eval_papiti_transfer --checkpoint artifacts/papiti_language_v0_6_3_curriculum.pt --report artifacts/papiti_v0_6_3_transfer_eval.json
+
 papiti-lm-train-v0.6.1-dialogue:
 	@$(PAPITI_PYTHON) -m papiti_lm.v0_6_1 train --diverse-social --everyday-dialogue --epochs 24 --patience 8 --checkpoint artifacts/papiti_language_v0_6_1_dialogue.pt
 

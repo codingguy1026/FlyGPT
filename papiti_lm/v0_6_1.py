@@ -35,6 +35,8 @@ def _train(args):
         everyday_dialogue=args.everyday_dialogue, phrasing_cues=args.diverse_social,
         compositional_greetings=args.compositional_greetings,
     )
+    if args.language_curriculum and not (args.shared_prose and args.inquiry_curriculum):
+        raise ValueError("--language-curriculum requires --shared-prose --inquiry-curriculum")
     if args.inquiry_curriculum:
         if not args.shared_prose:
             raise ValueError("--inquiry-curriculum requires --shared-prose")
@@ -50,6 +52,12 @@ def _train(args):
     model = PapitiTransformer(config)
     training = [tokenizer.sequence(row, config.context) for row in corpus.train]
     validation = [tokenizer.sequence(row, config.context) for row in corpus.valid]
+    if args.language_curriculum:
+        from papiti_lm.language_curriculum import foundation_epoch_count, foundation_sequences
+        foundation = foundation_sequences(corpus, tokenizer, config.context)
+        opening_epochs = foundation_epoch_count(args.epochs)
+    else:
+        foundation, opening_epochs = (), 0
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=0.01)
     print(
         f"v0.6.1 model-only speech | random init | "
@@ -61,7 +69,9 @@ def _train(args):
     best = float("inf")
     stale = 0
     for epoch in range(1, args.epochs + 1):
-        loader = DataLoader(training, batch_size=args.batch_size, shuffle=True,
+        stage = "opening_foundations" if epoch <= opening_epochs else "full_response_transfer"
+        examples = foundation if epoch <= opening_epochs else training
+        loader = DataLoader(examples, batch_size=args.batch_size, shuffle=True,
                             collate_fn=_collate,
                             generator=torch.Generator().manual_seed(args.seed + epoch))
         model.train()
@@ -83,6 +93,7 @@ def _train(args):
             sum(len(row.assistant) + 1 for row in corpus.valid),
         )
         print(json.dumps({"epoch": epoch,
+                          **({"curriculum_stage": stage} if args.language_curriculum else {}),
                           "train_nll": round(train_loss_sum / max(1, train_token_count), 5),
                           "validation": score}, ensure_ascii=False), flush=True)
         if score["char_nll"] < best:
@@ -99,6 +110,8 @@ def _train(args):
                 "shared_prose": args.shared_prose,
                 "prose_repeats": args.prose_repeats,
                 "inquiry_curriculum": args.inquiry_curriculum,
+                "language_curriculum": args.language_curriculum,
+                "foundation_epochs": opening_epochs,
                 "prose_fingerprints": prose_keys,
                 "everyday_dialogue": args.everyday_dialogue,
                 "seed": args.seed, "epoch": epoch,
@@ -397,6 +410,8 @@ def main(argv=None):
     curriculum.add_argument("--shared-prose", action="store_true")
     train.add_argument("--inquiry-curriculum", action="store_true",
                        help="opt-in authored transfer examples; frozen legacy validation/test")
+    train.add_argument("--language-curriculum", action="store_true",
+                       help="v0.6.3: opening-clause foundations followed by complete response training")
     train.add_argument("--prose-repeats", type=int, default=6,
                        help="training copies per prose combination (1..6; 6 preserves baseline)")
     train.add_argument("--epochs", type=int, default=12)
