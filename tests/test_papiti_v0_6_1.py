@@ -98,6 +98,27 @@ class SemanticContractTests(unittest.TestCase):
         fingerprints = prose_fingerprints(experiment)
         self.assertIn(packet_text(plan), fingerprints["parts"])
 
+    def test_inquiry_curriculum_only_augments_training(self):
+        from papiti_lm.inquiry_curriculum import add_inquiry_training
+        from papiti_lm.v0_6_1_prose import create_prose_corpus, prose_fingerprints
+
+        base = create_prose_corpus(repeats=2)
+        inquiry = add_inquiry_training(base)
+        self.assertEqual(base.valid, inquiry.valid)
+        self.assertEqual(base.test, inquiry.test)
+        self.assertGreater(len(inquiry.train), len(base.train))
+        extra = inquiry.train[len(base.train):]
+        self.assertTrue(extra)
+        self.assertTrue(all(row.group == "inquiry-transfer" for row in extra))
+        self.assertTrue(all("Opening style: 4" in row.user or
+                            "Opening style: 5" in row.user for row in extra))
+        self.assertFalse(
+            {reply_key(row.assistant) for row in extra}
+            & {reply_key(row.assistant) for row in (*base.valid, *base.test)}
+        )
+        self.assertIn(packet_text(plan_for("고마워")["utterance_plan"]),
+                      prose_fingerprints(inquiry)["parts"])
+
     def test_shared_prose_checks_plan_specific_parts_and_rejects_known_replies(self):
         from papiti_lm.v0_6_1_prose import decode_novel_prose
 
