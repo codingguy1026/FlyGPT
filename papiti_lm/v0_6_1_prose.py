@@ -149,7 +149,8 @@ def prose_fingerprints(corpus: SpeechCorpus) -> dict[str, Any]:
 
 def decode_novel_prose(
     plan: dict[str, Any], decode: Callable[[str, float, str], str],
-    fingerprints: dict[str, Any], previous_keys: tuple[str, ...], *, fact_plan: bool = False,
+    fingerprints: dict[str, Any], previous_keys: tuple[str, ...], *,
+    fact_plan: bool = False, style_count: int = 4,
 ) -> str:
     from hybrid_speech import check_candidate, reply_key
 
@@ -159,7 +160,13 @@ def decode_novel_prose(
         return ""
     first_keys, second_keys = map(set, parts)
     blocked = (*fingerprints["replies"], *previous_keys)
-    combinations = [(wording, continuation) for wording in STYLES for continuation in STYLES]
+    if not 1 <= style_count <= 6:
+        raise ValueError("invalid style count")
+    styles = range(style_count)
+    # New transfer styles (4, 5) were taught only in pairs; do not request
+    # untrained cross-family combinations during an inquiry experiment.
+    combinations = [(wording, continuation) for wording in styles for continuation in styles
+                    if style_count == 4 or (wording < 4) == (continuation < 4)]
     random.shuffle(combinations)
     attempts = [(*pair, 0.0 if index % 2 == 0 else 0.65)
                 for index, pair in enumerate(combinations)]
