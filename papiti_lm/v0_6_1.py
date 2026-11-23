@@ -30,7 +30,7 @@ def _train(args):
     torch.set_num_threads(min(4, torch.get_num_threads()))
     torch.manual_seed(args.seed)
     random.seed(args.seed)
-    corpus = create_prose_corpus(args.seed) if args.shared_prose else create_corpus(
+    corpus = create_prose_corpus(args.seed, repeats=args.prose_repeats) if args.shared_prose else create_corpus(
         args.seed, diverse_social=args.diverse_social,
         everyday_dialogue=args.everyday_dialogue, phrasing_cues=args.diverse_social,
         compositional_greetings=args.compositional_greetings,
@@ -85,6 +85,7 @@ def _train(args):
                 "compositional_greetings": args.compositional_greetings,
                 "greeting_fingerprints": fingerprints,
                 "shared_prose": args.shared_prose,
+                "prose_repeats": args.prose_repeats,
                 "prose_fingerprints": prose_keys,
                 "everyday_dialogue": args.everyday_dialogue,
                 "seed": args.seed, "epoch": epoch,
@@ -128,7 +129,7 @@ def _eval(args):
     model, tokenizer, metadata = load_checkpoint(args.checkpoint)
     if metadata.get("version") != "v0.6.1":
         raise ValueError("v0.6.1 checkpoint required")
-    corpus = create_prose_corpus(int(metadata["seed"])) if metadata.get("shared_prose") else create_corpus(
+    corpus = create_prose_corpus(int(metadata["seed"]), repeats=int(metadata.get("prose_repeats", 6))) if metadata.get("shared_prose") else create_corpus(
         int(metadata["seed"]),
         diverse_social=metadata.get("diverse_social_targets") is True,
         mirror_greetings=metadata.get("mirror_greetings") is True,
@@ -377,6 +378,8 @@ def main(argv=None):
     curriculum = train.add_mutually_exclusive_group()
     curriculum.add_argument("--compositional-greetings", action="store_true")
     curriculum.add_argument("--shared-prose", action="store_true")
+    train.add_argument("--prose-repeats", type=int, default=6,
+                       help="training copies per prose combination (1..6; 6 preserves baseline)")
     train.add_argument("--epochs", type=int, default=12)
     train.add_argument("--patience", type=int, default=5)
     train.add_argument("--batch-size", type=int, default=16)
