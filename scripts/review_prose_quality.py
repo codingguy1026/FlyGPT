@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 
 FIELDS = (
-    "index", "expected", "generated", "copied_training",
+    "index", "purpose", "prompt", "expected", "generated", "copied_training",
     "grammar_ok", "meaning_ok", "severe_fact_error", "notes",
 )
 
@@ -24,6 +24,8 @@ def export(report_path: Path, output: Path) -> None:
         for index, generation in enumerate(report["test_generations"], start=1):
             writer.writerow({
                 "index": index,
+                "purpose": generation.get("purpose", ""),
+                "prompt": generation.get("prompt", ""),
                 "expected": generation["expected"],
                 "generated": generation["generated"],
                 "copied_training": str(generation.get("matches_training_reply", "")),
