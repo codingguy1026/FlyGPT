@@ -41,6 +41,21 @@ papiti-lm-train-v0.6.3-language:
 papiti-lm-transfer-v0.6.3:
 	@$(PAPITI_PYTHON) -m scripts.eval_papiti_transfer --checkpoint artifacts/papiti_language_v0_6_3_curriculum.pt --report artifacts/papiti_v0_6_3_transfer_eval.json
 
+# v0.6.5: IB-inspired inquiry -> transfer action -> training-side reflection.
+# Separate opt-in experiment; the production speaker and frozen tests are not touched.
+.PHONY: papiti-lm-train-v0.6.5-ib papiti-lm-train-v0.6.5-ib-control papiti-lm-transfer-v0.6.5-ib papiti-lm-transfer-v0.6.5-ib-control
+papiti-lm-train-v0.6.5-ib:
+	@$(PAPITI_PYTHON) -m scripts.train_papiti_ib --checkpoint artifacts/papiti_language_v0_6_5_ib.pt
+
+papiti-lm-train-v0.6.5-ib-control:
+	@$(PAPITI_PYTHON) -m scripts.train_papiti_ib --control --checkpoint artifacts/papiti_language_v0_6_5_ib_control.pt
+
+papiti-lm-transfer-v0.6.5-ib:
+	@$(PAPITI_PYTHON) -m scripts.eval_papiti_transfer --checkpoint artifacts/papiti_language_v0_6_5_ib.pt --report artifacts/papiti_v0_6_5_ib_transfer_eval.json
+
+papiti-lm-transfer-v0.6.5-ib-control:
+	@$(PAPITI_PYTHON) -m scripts.eval_papiti_transfer --checkpoint artifacts/papiti_language_v0_6_5_ib_control.pt --report artifacts/papiti_v0_6_5_ib_control_transfer_eval.json
+
 # v0.6.4: factorized clauses + joint prose, no direct supervision on the
 # frozen 36 cross-family transfer probes. Production checkpoints are unchanged.
 .PHONY: papiti-lm-train-v0.6.4-composition papiti-lm-train-v0.6.4-control papiti-lm-transfer-v0.6.4 papiti-lm-review-v0.6.4 papiti-lm-review-score-v0.6.4
