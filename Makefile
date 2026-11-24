@@ -41,6 +41,20 @@ papiti-lm-train-v0.6.3-language:
 papiti-lm-transfer-v0.6.3:
 	@$(PAPITI_PYTHON) -m scripts.eval_papiti_transfer --checkpoint artifacts/papiti_language_v0_6_3_curriculum.pt --report artifacts/papiti_v0_6_3_transfer_eval.json
 
+# v0.6.7: random-init comparison of interleaved factorized clauses against
+# an equal-batch full-response replay control, using only train-side texts.
+# v0.6.6 checkpoints / runtime are not modified.
+.PHONY: papiti-lm-train-v0.6.7-interleaved papiti-lm-train-v0.6.7-control papiti-lm-eval-v0.6.7-blind
+papiti-lm-train-v0.6.7-interleaved:
+	@$(PAPITI_PYTHON) -m scripts.train_papiti_interleaved --checkpoint artifacts/papiti_language_v0_6_7_interleaved.pt
+
+papiti-lm-train-v0.6.7-control:
+	@$(PAPITI_PYTHON) -m scripts.train_papiti_interleaved --control --checkpoint artifacts/papiti_language_v0_6_7_full_control.pt
+
+# Run once after both arms finish; never train on these held-out combinations.
+papiti-lm-eval-v0.6.7-blind:
+	@$(PAPITI_PYTHON) -m scripts.eval_papiti_interleaved
+
 # v0.6.5: IB-inspired inquiry -> transfer action -> training-side reflection.
 # Separate opt-in experiment; the production speaker and frozen tests are not touched.
 .PHONY: papiti-lm-train-v0.6.5-ib papiti-lm-train-v0.6.5-ib-control papiti-lm-transfer-v0.6.5-ib papiti-lm-transfer-v0.6.5-ib-control
