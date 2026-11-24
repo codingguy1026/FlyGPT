@@ -38,7 +38,7 @@ class InterleavedCurriculumTests(unittest.TestCase):
             self.assertEqual(EOS, full[1][-1])
             self.assertTrue(any(y == -100 for y in labels))
             self.assertTrue(any(y != -100 for y in labels))
-            self.assertEqual(full[0][-1], full[0][-1])
+            self.assertEqual(len(full[0]), len(full[1]))
             self.assertEqual(full[1].count(EOS), 1)
 
     def test_both_training_arms_have_equal_batches_and_full_rows(self):
