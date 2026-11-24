@@ -20,8 +20,7 @@ def train(args):
     from papiti_lm.compositional_curriculum import clause_training_sequences
     from papiti_lm.corpus import DigitSubwordTokenizer
     from papiti_lm.ib_curriculum import (
-        action_transfer_examples, balanced_epoch_rows, stage_for_epoch,
-        unique_training_rows,
+        action_transfer_examples, unique_training_rows,
     )
     from papiti_lm.inquiry_curriculum import add_inquiry_training
     from papiti_lm.interleaved_curriculum import (
@@ -61,10 +60,6 @@ def train(args):
     validation = [tokenizer.sequence(r, model.config.context) for r in corpus.valid]
     val_char_count = sum(len(r.assistant) + 1 for r in corpus.valid)
     first_full_epoch = foundation_epoch_count(args.epochs) + 1
-    base_stage = first_full_epoch + min(6, max(2, args.epochs // 6))
-    # The *same* deterministic TRAIN-ONLY focus schedule is used by both arms,
-    # avoiding divergent loss-ranked examples as a secondary confound.
-    focus = []
     experiment = "papiti_v0_6_7_full_control" if args.control else "papiti_v0_6_7_interleaved"
     print(json.dumps({
         "experiment": experiment,
@@ -86,11 +81,13 @@ def train(args):
     )
     best, stale = float("inf"), 0
     for epoch in range(1, args.epochs + 1):
-        stage = stage_for_epoch(epoch, args.epochs)
-        if stage == "ib_inquiry":
+        stage = ("factorized_foundation" if epoch < first_full_epoch
+                 else "full_replay_control" if args.control
+                 else "interleaved_clause_rehearsal")
+        if epoch < first_full_epoch:
             rows = inquiries
         else:
-            # In the IB stage both arms see the same full-response examples,
+            # In the full-response stage both arms see the same examples,
             # plus the same number of additional TRAIN-ONLY items.
             # The only treatment change is which parts are supervised
             # in those supplementary lesson items.
