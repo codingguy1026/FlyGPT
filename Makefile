@@ -41,6 +41,22 @@ papiti-lm-train-v0.6.3-language:
 papiti-lm-transfer-v0.6.3:
 	@$(PAPITI_PYTHON) -m scripts.eval_papiti_transfer --checkpoint artifacts/papiti_language_v0_6_3_curriculum.pt --report artifacts/papiti_v0_6_3_transfer_eval.json
 
+
+# v0.6.6: fine-tune from the LOCAL v0.6.5 IB checkpoint.
+# No inference filters, new answer tables, or frozen-probe supervision.
+# The control uses identical training examples, batch order and optimizer,
+# but weights every supervised token equally.
+.PHONY: papiti-lm-train-v0.6.6-fluency papiti-lm-train-v0.6.6-control papiti-lm-eval-v0.6.6-sealed
+papiti-lm-train-v0.6.6-fluency:
+	@$(PAPITI_PYTHON) -m scripts.train_papiti_fluency --checkpoint artifacts/papiti_language_v0_6_6_fluency.pt
+
+papiti-lm-train-v0.6.6-control:
+	@$(PAPITI_PYTHON) -m scripts.train_papiti_fluency --control --checkpoint artifacts/papiti_language_v0_6_6_fluency_control.pt
+
+# Run only ONCE after completing both candidate and control training.
+papiti-lm-eval-v0.6.6-sealed:
+	@$(PAPITI_PYTHON) -m scripts.eval_papiti_fluency
+
 # v0.6.5: IB-inspired inquiry -> transfer action -> training-side reflection.
 # Separate opt-in experiment; the production speaker and frozen tests are not touched.
 .PHONY: papiti-lm-train-v0.6.5-ib papiti-lm-train-v0.6.5-ib-control papiti-lm-transfer-v0.6.5-ib papiti-lm-transfer-v0.6.5-ib-control
