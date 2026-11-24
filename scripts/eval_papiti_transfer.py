@@ -49,10 +49,12 @@ def evaluate_transfer(checkpoint: Path, report_path: Path, batch_size: int = 24)
             "matches_training_reply": reply_key(answer) in trained,
         })
     report = {
-        "experiment": ("papiti_v0_6_4_factorized_transfer"
-                       if metadata.get("composition_curriculum")
+        "experiment": ("papiti_v0_6_5_ib_transfer" if metadata.get("ib_curriculum")
+                       else "papiti_v0_6_5_ib_control_transfer" if metadata.get("ib_control")
+                       else "papiti_v0_6_4_factorized_transfer" if metadata.get("composition_curriculum")
                        else "papiti_v0_6_3_mixed_style_transfer"),
         "checkpoint_epoch": metadata["epoch"],
+        "ib_action_training_pairs": metadata.get("action_training_pairs", 0),
         "test_count": len(records),
         "test_metrics": score,
         "test_generations": records,
