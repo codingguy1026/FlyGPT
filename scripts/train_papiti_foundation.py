@@ -226,7 +226,7 @@ def train(args):
     signature = {"train": manifest["splits"]["train"]["sha256"],
                  "valid": manifest["splits"]["valid"]["sha256"],
                  "seed": args.seed, "merges": args.merges, "batch": args.batch_size,
-                 "lr": args.lr, "context": 192, "width": 128, "layers": 3}
+                 "lr": args.lr, "context": 256, "width": 128, "layers": 3}
     state = None
     if last.exists():
         if not args.resume:
@@ -240,7 +240,7 @@ def train(args):
             raise ValueError("no resumable latest checkpoint; preserve best.pt and use a new output dir")
         print(json.dumps({"stage": "learn_train_only_bpe", "train": len(tr)}), flush=True)
         tok = train_tokenizer(tr, args.merges)
-    model = PapitiTransformer(ModelConfig(tok.vocab_size, context=192,
+    model = PapitiTransformer(ModelConfig(tok.vocab_size, context=256,
                                          d_model=128, heads=4, layers=3))
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=.01)
     start, best, best_epoch = 1, float("inf"), 0
