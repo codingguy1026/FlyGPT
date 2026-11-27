@@ -1,5 +1,6 @@
 """Offline smoke tests. No network or actual corpus download is required."""
 import io
+import bz2
 import tarfile
 import tempfile
 import unittest
@@ -7,7 +8,7 @@ from pathlib import Path
 
 from papiti_lm.corpus import DigitSubwordTokenizer, Example
 from scripts.train_papiti_foundation import (
-    acceptable, key, read_cc0, train_tokenizer,
+    acceptable, key, read_cc0, train_tokenizer, supplement_attributed,
 )
 
 
@@ -31,6 +32,18 @@ class FoundationTests(unittest.TestCase):
         self.assertEqual([r["id"] for r in pool["en"]], ["1"])
         self.assertEqual([r["id"] for r in pool["ko"]], ["3"])
         self.assertEqual(pool["ko"][0]["license"], "CC0-1.0")
+
+    def test_attributed_fallback_uses_local_export_and_retains_author(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "kor_sentences_detailed.tsv.bz2"
+            with bz2.open(path, "wt", encoding="utf-8") as out:
+                out.write("1\tkor\t작은 로봇이 공책을 펼치고 공부를 시작했어요.\tcontributor\t2026-01-01\t2026-01-01\n")
+            pool = {"ko": [], "en": [{"text": "A robot opened its notebook."}]}
+            sources = supplement_attributed(root, pool, set(), 1)
+            self.assertEqual(len(sources), 1)
+            self.assertEqual(pool["ko"][0]["author"], "contributor")
+            self.assertEqual(pool["ko"][0]["license"], "CC-BY-2.0-FR")
 
     def test_language_filter(self):
         self.assertTrue(acceptable("en", "The little robot opened its notebook."))
