@@ -7,6 +7,7 @@ lookup. This is a research checkpoint, not a production assistant.
 from __future__ import annotations
 
 import argparse
+import bz2
 import hashlib
 import json
 import random
@@ -96,6 +97,60 @@ def read_cc0(archive, excluded):
     return by_lang
 
 
+def supplement_attributed(root, pool, excluded, target):
+    """Opt-in CC BY fallback using official per-language detailed exports."""
+    seen = set(excluded)
+    seen.update(key(row["text"]) for rows in pool.values() for row in rows)
+    sources = []
+    for code, lang in LANGS.items():
+        if len(pool[lang]) >= target:
+            continue
+        filename = code + "_sentences_detailed.tsv.bz2"
+        url = "https://downloads.tatoeba.org/exports/per_language/" + code + "/" + filename
+        path = root / filename
+        if not path.exists():
+            tmp = path.with_suffix(".download")
+            try:
+                with urllib.request.urlopen(url, timeout=120) as response, tmp.open("wb") as out:
+                    shutil.copyfileobj(response, out)
+                tmp.replace(path)
+            finally:
+                tmp.unlink(missing_ok=True)
+        sources.append({"url": url, "sha256": digest(path),
+                        "license": "CC-BY-2.0-FR (CC0 entries may also be present)"})
+        # Reservoir sampling over eligible rows; avoids loading the entire
+        # English detailed export into memory. Reserve exactly the shortfall.
+        needed = target - len(pool[lang])
+        rng = random.Random(42 + (0 if lang == "ko" else 1))
+        candidates = []
+        eligible = 0
+        with bz2.open(path, "rt", encoding="utf-8-sig") as stream:
+            for line in stream:
+                fields = line.rstrip("\r\n").split("\t")
+                if len(fields) != 6 or not fields[0].isdigit() or fields[1] != code:
+                    continue
+                sid, _, raw, author, _, _ = fields
+                text = unicodedata.normalize("NFC", raw.strip())
+                ident = key(text)
+                if not author or author == r"\N" or ident in seen or not acceptable(lang, text):
+                    continue
+                seen.add(ident)
+                row = {"id": sid, "lang": lang, "text": text,
+                       "license": "CC-BY-2.0-FR", "author": author,
+                       "source": "https://tatoeba.org/en/sentences/show/" + sid}
+                eligible += 1
+                if len(candidates) < needed:
+                    candidates.append(row)
+                else:
+                    slot = rng.randrange(eligible)
+                    if slot < needed:
+                        candidates[slot] = row
+        pool[lang].extend(candidates)
+        print(json.dumps({"stage": "attributed_supplement", "lang": lang,
+                          "eligible": eligible, "added": len(candidates)}), flush=True)
+    return sources
+
+
 def prepare(args):
     root = args.data_dir
     root.mkdir(parents=True, exist_ok=True)
@@ -111,10 +166,15 @@ def prepare(args):
         finally:
             tmp.unlink(missing_ok=True)
     print(json.dumps({"stage": "prepare", "archive_sha256": digest(archive)}), flush=True)
-    pool = read_cc0(archive, legacy_exclusions())
+    excluded = legacy_exclusions()
+    pool = read_cc0(archive, excluded)
+    print(json.dumps({"stage": "cc0_counts", "usable": {k: len(v) for k, v in pool.items()}}), flush=True)
+    sources = []
+    if args.allow_cc_by:
+        sources = supplement_attributed(root, pool, excluded, args.per_language)
     count = min(args.per_language, *(len(v) for v in pool.values()))
     if count < 200:
-        raise ValueError("fewer than 200 usable sentences per language; need more reviewed CC0 data")
+        raise ValueError("fewer than 200 usable sentences per language: " + str({k: len(v) for k, v in pool.items()}) + "; optionally use prepare --allow-cc-by for attributed Tatoeba exports")
     rng = random.Random(args.seed)
     splits = {"train": [], "valid": [], "test": []}
     for lang, rows in sorted(pool.items()):
@@ -135,7 +195,8 @@ def prepare(args):
                 out.write(json.dumps(row, ensure_ascii=False) + "\n")
         tmp.replace(path)
     manifest = {
-        "source": URL, "license": "CC0-1.0", "seed": args.seed,
+        "source": URL, "license": "CC0-1.0 + CC-BY-2.0-FR" if sources else "CC0-1.0", "seed": args.seed,
+        "supplement_sources": sources,
         "archive_sha256": digest(archive),
         "available_after_structural_filter": {k: len(v) for k, v in pool.items()},
         "requested_per_language": args.per_language, "selected_per_language": count,
@@ -143,6 +204,15 @@ def prepare(args):
                    for name, rows in splits.items()},
         "limitations": "Exact normalized deduplication only; not human-reviewed; no guarantee of fluency, safety or semantic disjointness.",
     }
+    (root / "ATTRIBUTION.txt").write_text(
+        "Sentences contributed by Tatoeba contributors: https://tatoeba.org\n"
+        "CC0: https://creativecommons.org/publicdomain/zero/1.0/\n"
+        "CC BY 2.0 FR: https://creativecommons.org/licenses/by/2.0/fr/\n"
+        "Each JSONL record contains its source URL and license; attributed rows include author.\n"
+        "Data selected, NFC-normalized, whitespace-trimmed and deduplicated.\n"
+        "Retain this notice and record attribution when redistributing data.\n",
+        encoding="utf-8",
+    )
     tmp = root / "manifest.tmp"
     tmp.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     tmp.replace(root / "manifest.json")
@@ -292,7 +362,8 @@ def train(args):
             save_checkpoint(best_path, model, tok, {
                 "version": "v0.7-foundation", "role": "sentence_pretraining_only",
                 "epoch": epoch, "macro_char_nll": score, "signature": signature,
-                "source": URL, "license": "CC0-1.0",
+                "source": URL, "license": manifest["license"],
+                "supplement_sources": manifest.get("supplement_sources", []),
                 "initialization": "random_from_scratch",
             })
         atomic_state(torch, last, {
@@ -312,6 +383,8 @@ def main():
     prep = sub.add_parser("prepare")
     prep.add_argument("--data-dir", type=Path, default=Path("artifacts/papiti_v070_data"))
     prep.add_argument("--archive", type=Path)
+    prep.add_argument("--allow-cc-by", action="store_true",
+                      help="Opt in to attributed CC BY 2.0 FR Tatoeba supplements")
     prep.add_argument("--per-language", type=int, default=5000)
     prep.add_argument("--seed", type=int, default=42)
     tr = sub.add_parser("train")
