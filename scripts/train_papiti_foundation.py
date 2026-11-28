@@ -296,7 +296,7 @@ def train(args):
     signature = {"train": manifest["splits"]["train"]["sha256"],
                  "valid": manifest["splits"]["valid"]["sha256"],
                  "seed": args.seed, "merges": args.merges, "batch": args.batch_size,
-                 "lr": args.lr, "context": 256, "width": 128, "layers": 3}
+                 "lr": args.lr, "context": 256, "width": args.width, "layers": 3}
     state = None
     if last.exists():
         if not args.resume:
@@ -311,7 +311,7 @@ def train(args):
         print(json.dumps({"stage": "learn_train_only_bpe", "train": len(tr)}), flush=True)
         tok = train_tokenizer(tr, args.merges)
     model = PapitiTransformer(ModelConfig(tok.vocab_size, context=256,
-                                         d_model=128, heads=4, layers=3))
+                                         d_model=args.width, heads=4, layers=3))
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=.01)
     start, best, best_epoch = 1, float("inf"), 0
     if state is not None:
@@ -326,7 +326,8 @@ def train(args):
                             if x.group == "foundation-" + lang) for lang in PROMPTS}
     unknown = {lang: sum(y == UNK for _, ys in seq for y in ys)
                for lang, seq in valid_seq.items()}
-    print(json.dumps({"experiment": "papiti_v070_foundation", "start_epoch": start,
+    experiment = "papiti_v070_foundation" if args.width == 128 else "papiti_v071_capacity"
+    print(json.dumps({"experiment": experiment, "width": args.width, "start_epoch": start,
                       "parameters": sum(p.numel() for p in model.parameters()),
                       "vocab": tok.vocab_size, "train": len(tr), "valid": len(va),
                       "unknown_validation_targets": unknown,
@@ -360,7 +361,8 @@ def train(args):
         if score < best:
             best, best_epoch = score, epoch
             save_checkpoint(best_path, model, tok, {
-                "version": "v0.7-foundation", "role": "sentence_pretraining_only",
+                "version": "v0.7-foundation" if args.width == 128 else "v0.7.1-capacity",
+                "role": "sentence_pretraining_only",
                 "epoch": epoch, "macro_char_nll": score, "signature": signature,
                 "source": URL, "license": manifest["license"],
                 "supplement_sources": manifest.get("supplement_sources", []),
@@ -395,6 +397,7 @@ def main():
     tr.add_argument("--merges", type=int, default=512)
     tr.add_argument("--lr", type=float, default=.0007)
     tr.add_argument("--seed", type=int, default=42)
+    tr.add_argument("--width", type=int, choices=[128, 192], default=128)
     tr.add_argument("--resume", action="store_true")
     a = p.parse_args()
     if a.command == "prepare":
@@ -404,6 +407,8 @@ def main():
     else:
         if not 1 <= a.epochs <= 100 or not 1 <= a.batch_size <= 128 or not 0 <= a.merges <= 1024 or not 0 < a.lr <= .01:
             p.error("invalid training settings")
+        if a.width != 128 and a.output_dir == Path("artifacts/papiti_v070_foundation"):
+            p.error("use a separate --output-dir for width 192")
         train(a)
 
 
